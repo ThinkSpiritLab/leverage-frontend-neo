@@ -124,7 +124,7 @@
             <NTag type="info" size="small">活跃 {{ queues.active ?? 0 }}</NTag>
             <NTag type="success" size="small">完成 {{ queues.completed ?? 0 }}</NTag>
             <NTag type="error" size="small">失败 {{ queues.failed ?? 0 }}</NTag>
-            <NTag type="warning" size="small" v-if="(queues.delayed ?? 0) > 0">延迟 {{ queues.delayed }}</NTag>
+            <NTag v-if="(queues.delayed ?? 0) > 0" type="warning" size="small">延迟 {{ queues.delayed }}</NTag>
           </NSpace>
         </div>
         <div v-else-if="queuesLoading" class="queue-section">

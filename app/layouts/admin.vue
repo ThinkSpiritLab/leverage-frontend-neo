@@ -62,7 +62,6 @@
 </template>
 
 <script setup lang="ts">
-useHead({ titleTemplate: (s) => s ? `${s} — Leverage OJ 管理后台` : 'Leverage OJ 管理后台' })
 import { renderIcon } from '~/utils/naive'
 import {
   PeopleOutline,
@@ -76,10 +75,10 @@ import {
   SettingsOutline,
   NotificationsOutline,
   PricetagsOutline,
-  AlertCircleOutline,
   ListOutline,
   ServerOutline,
 } from '@vicons/ionicons5'
+useHead({ titleTemplate: (s) => s ? `${s} — Leverage OJ 管理后台` : 'Leverage OJ 管理后台' })
 
 const authStore = useAuthStore()
 const uiStore = useUiStore()

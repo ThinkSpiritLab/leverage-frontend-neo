@@ -60,7 +60,7 @@ onMounted(async () => {
         || JSON.stringify(data, null, 2)
     }
   }
-  catch (e: any) {
+  catch {
     // 403 or 404 — no permission or not found
     error.value = true
   }

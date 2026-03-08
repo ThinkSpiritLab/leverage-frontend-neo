@@ -79,7 +79,6 @@ import {
 
 const authStore = useAuthStore()
 const uiStore = useUiStore()
-const router = useRouter()
 const route = useRoute()
 
 const activeKey = computed(() => route.name as string)

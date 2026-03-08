@@ -3,9 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import { Compartment } from '@codemirror/state'
+import { Compartment, EditorState  } from '@codemirror/state'
 import { EditorView, basicSetup } from 'codemirror'
-import { EditorState } from '@codemirror/state'
 import { cpp } from '@codemirror/lang-cpp'
 import { java } from '@codemirror/lang-java'
 import { python } from '@codemirror/lang-python'

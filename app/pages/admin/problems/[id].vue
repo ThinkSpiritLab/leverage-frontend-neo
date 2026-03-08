@@ -223,7 +223,7 @@ async function fetchProblem() {
     contentForm.value.description = res.data.description
     problemTags.value = res.data.tags || []
   }
-  catch (e: any) {
+  catch {
     message.error('加载题目失败')
   }
   finally {
