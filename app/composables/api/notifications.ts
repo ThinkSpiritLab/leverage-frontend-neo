@@ -12,8 +12,8 @@ export interface Notification {
 export function useNotificationsApi() {
   const api = useApi()
   return {
-    list: (params?: { page?: number; perPage?: number }) =>
-      api.get<{ items: Notification[]; total: number }>('/notifications', { params }),
+    list: (params?: { page?: number; perPage?: number; read?: boolean }) =>
+      api.get<{ items: Notification[]; total: number; unreadCount?: number }>('/notifications', { params }),
     getNotification: (id: number) =>
       api.get<Notification>(`/notifications/${id}`),
     create: (dto: { title: string; content: string; targetUserId?: number }) =>

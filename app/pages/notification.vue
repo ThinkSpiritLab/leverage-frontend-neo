@@ -23,6 +23,8 @@
           :key="n.id"
           :class="['notification-item', { unread: !n.read }]"
           size="small"
+          hoverable
+          @click="handleOpenNotification(n)"
         >
           <div class="notification-header">
             <div class="notification-title">
@@ -36,7 +38,7 @@
                 text
                 size="small"
                 type="primary"
-                @click="handleMarkRead(n)"
+                @click.stop="handleMarkRead(n)"
               >
                 标为已读
               </NButton>
@@ -106,6 +108,12 @@ async function handleMarkRead(n: Notification) {
   }
   catch {
     message.error('操作失败')
+  }
+}
+
+async function handleOpenNotification(n: Notification) {
+  if (!n.read) {
+    await handleMarkRead(n)
   }
 }
 

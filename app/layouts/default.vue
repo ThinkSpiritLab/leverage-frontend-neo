@@ -43,9 +43,11 @@
                     @select="handleUserMenuSelect"
                   >
                     <NButton text class="user-trigger">
-                      <NAvatar round size="small" :style="{ backgroundColor: avatarColor }">
-                        {{ authStore.user?.username?.[0]?.toUpperCase() }}
-                      </NAvatar>
+                      <NBadge :value="unreadCount" :max="99" :show="unreadCount > 0" type="error">
+                        <NAvatar round size="small" :style="{ backgroundColor: avatarColor }">
+                          {{ authStore.user?.username?.[0]?.toUpperCase() }}
+                        </NAvatar>
+                      </NBadge>
                       <span class="username">{{ authStore.user?.username }}</span>
                       <NTag
                         size="small"
@@ -95,6 +97,10 @@ import {
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 const route = useRoute()
+const notificationsApi = useNotificationsApi()
+
+const unreadCount = ref(0)
+let unreadTimer: ReturnType<typeof setInterval> | null = null
 
 const activeKey = computed(() => route.name as string)
 
@@ -193,6 +199,31 @@ const avatarColor = computed(() => {
   const hash = [...seed].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
   return palette[hash % palette.length]
 })
+
+async function refreshUnreadCount() {
+  if (!authStore.isLoggedIn) {
+    unreadCount.value = 0
+    return
+  }
+  try {
+    const res = await notificationsApi.list({ read: false, perPage: 1 })
+    unreadCount.value = Number(res.data?.unreadCount ?? res.data?.total ?? 0)
+  }
+  catch {
+    unreadCount.value = 0
+  }
+}
+
+onMounted(() => {
+  refreshUnreadCount()
+  unreadTimer = setInterval(refreshUnreadCount, 60 * 1000)
+})
+
+onUnmounted(() => {
+  if (unreadTimer) clearInterval(unreadTimer)
+})
+
+watch(() => authStore.isLoggedIn, refreshUnreadCount)
 
 const userMenuOptions: DropdownOption[] = [
   {
