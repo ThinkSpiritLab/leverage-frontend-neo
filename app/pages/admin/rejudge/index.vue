@@ -5,7 +5,7 @@
     <NCard title="筛选条件" style="max-width: 980px">
       <NForm :model="filterForm" label-placement="left" label-width="110px">
         <NGrid :cols="2" :x-gap="24" responsive="screen" item-responsive>
-          <NGi>
+          <NGridItem>
             <NFormItem label="用户ID">
               <NInputNumber v-model:value="filterForm.userId" :min="1" placeholder="可留空" clearable style="width: 100%" />
             </NFormItem>
@@ -18,8 +18,8 @@
             <NFormItem label="竞赛ID">
               <NInputNumber v-model:value="filterForm.contestId" :min="1" placeholder="可留空" clearable style="width: 100%" />
             </NFormItem>
-          </NGi>
-          <NGi>
+          </NGridItem>
+          <NGridItem>
             <NFormItem label="起始SID">
               <NInputNumber v-model:value="filterForm.idStart" :min="1" placeholder="可留空" clearable style="width: 100%" />
             </NFormItem>
@@ -52,7 +52,7 @@
                 clearable
               />
             </NFormItem>
-          </NGi>
+          </NGridItem>
         </NGrid>
 
         <NFormItem>
