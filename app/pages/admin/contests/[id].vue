@@ -164,6 +164,36 @@
             @update:value="v => editForm.endTime = v ? dayjs(v).toISOString() : ''"
           />
         </NFormItem>
+        <NFormItem label="罚时分钟">
+          <NInputNumber v-model:value="editForm.penalty" :min="0" style="width: 100%" />
+        </NFormItem>
+        <NFormItem label="封榜分钟">
+          <NInputNumber v-model:value="editForm.freezeTime" :min="0" style="width: 100%" />
+        </NFormItem>
+        <NFormItem label="结束后封榜">
+          <NInputNumber v-model:value="editForm.freezeTimeAfterEnd" :min="0" style="width: 100%" />
+        </NFormItem>
+        <NFormItem label="允许语言">
+          <NSelect v-model:value="editEnabledLanguages" :options="LANGUAGE_OPTIONS" multiple clearable />
+        </NFormItem>
+        <NFormItem label="竞赛公告">
+          <NInput v-model:value="editForm.notification" type="textarea" :rows="4" placeholder="输入竞赛公告" />
+        </NFormItem>
+        <NFormItem label="按分计分">
+          <NSwitch v-model:value="editForm.scoreByPoint" />
+        </NFormItem>
+        <NFormItem label="开放注册">
+          <NSwitch v-model:value="editForm.openForRegistration" />
+        </NFormItem>
+        <NFormItem label="完全封榜">
+          <NSwitch v-model:value="editForm.fullyFreeze" />
+        </NFormItem>
+        <NFormItem label="允许直登">
+          <NSwitch v-model:value="editForm.allowDirectLogin" />
+        </NFormItem>
+        <NFormItem label="公开">
+          <NSwitch v-model:value="editForm.public" />
+        </NFormItem>
       </NForm>
       <template #action>
         <NSpace justify="end">
@@ -181,7 +211,7 @@ import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns, SelectOption, UploadCustomRequestOptions } from 'naive-ui'
 import dayjs from 'dayjs'
 import type { Contest, RankItem } from '~/types'
-import { STATUS_LABEL, STATUS_COLOR } from '~/types'
+import { STATUS_LABEL, STATUS_COLOR, LANGUAGE_OPTIONS } from '~/types'
 
 definePageMeta({
   layout: 'admin',
@@ -249,15 +279,49 @@ const showEditModal = ref(false)
 const saving = ref(false)
 const editStartMs = ref<number | null>(null)
 const editEndMs = ref<number | null>(null)
-const editForm = ref({ name: '', type: 'icpc', startTime: '', endTime: '' })
+const editEnabledLanguages = ref<number[]>([])
+const editForm = ref({
+  name: '',
+  type: 'icpc',
+  startTime: '',
+  endTime: '',
+  penalty: 0,
+  scoreByPoint: false,
+  openForRegistration: false,
+  fullyFreeze: false,
+  freezeTime: 0,
+  freezeTimeAfterEnd: 0,
+  enabledLanguageJSON: null as string | null,
+  notification: '',
+  allowDirectLogin: false,
+  public: false,
+})
 
 function openEditModal() {
   if (!contest.value) return
+  let enabledLanguages: number[] = []
+  try {
+    enabledLanguages = contest.value.enabledLanguageJSON ? JSON.parse(contest.value.enabledLanguageJSON) : []
+  }
+  catch {
+    enabledLanguages = []
+  }
+  editEnabledLanguages.value = Array.isArray(enabledLanguages) ? enabledLanguages : []
   editForm.value = {
     name: contest.value.name || contest.value.title,
     type: contest.value.type || 'icpc',
     startTime: contest.value.startTime,
     endTime: contest.value.endTime,
+    penalty: contest.value.penalty ?? 0,
+    scoreByPoint: !!contest.value.scoreByPoint,
+    openForRegistration: !!contest.value.openForRegistration,
+    fullyFreeze: !!contest.value.fullyFreeze,
+    freezeTime: contest.value.freezeTime ?? 0,
+    freezeTimeAfterEnd: contest.value.freezeTimeAfterEnd ?? 0,
+    enabledLanguageJSON: contest.value.enabledLanguageJSON ?? null,
+    notification: contest.value.notification || '',
+    allowDirectLogin: !!contest.value.allowDirectLogin,
+    public: !!contest.value.public,
   }
   editStartMs.value = dayjs(contest.value.startTime).valueOf()
   editEndMs.value = dayjs(contest.value.endTime).valueOf()
@@ -267,7 +331,11 @@ function openEditModal() {
 async function handleSaveEdit() {
   saving.value = true
   try {
-    await contestsApi.update(contestId, editForm.value)
+    const updateData = {
+      ...editForm.value,
+      enabledLanguageJSON: editEnabledLanguages.value.length > 0 ? JSON.stringify(editEnabledLanguages.value) : null,
+    }
+    await contestsApi.update(contestId, updateData)
     message.success('更新成功')
     showEditModal.value = false
     fetchContest()

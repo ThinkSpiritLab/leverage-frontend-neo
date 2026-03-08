@@ -44,10 +44,22 @@ export interface Contest {
   id: number
   name?: string
   title?: string
+  description?: string
   startTime: string
   endTime: string
+  registrationEndTime?: string
   type: string
   problems?: Problem[]
+  penalty?: number
+  scoreByPoint?: boolean
+  openForRegistration?: boolean
+  fullyFreeze?: boolean
+  freezeTime?: number
+  freezeTimeAfterEnd?: number
+  enabledLanguageJSON?: string | null
+  notification?: string
+  allowDirectLogin?: boolean
+  public?: boolean
 }
 
 // 提交状态（与后端 heng.types.ts Status 枚举完全对齐）
