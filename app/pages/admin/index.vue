@@ -142,6 +142,32 @@
         </NDescriptions>
         <NText v-else-if="judgersLoading" depth="3">加载中…</NText>
 
+        <!-- 失败队列 -->
+        <NDivider style="margin: 16px 0" />
+        <div class="queue-title" style="margin-bottom: 8px">
+          <NText strong>💀 失败队列</NText>
+          <NTag v-if="failedJobs.length > 0" type="error" size="small" style="margin-left: 6px">{{ failedJobs.length }}</NTag>
+          <NButton text size="tiny" style="margin-left: 8px" @click="fetchFailedJobs">🔄</NButton>
+          <NButton v-if="failedJobs.length > 0" text size="tiny" type="primary" style="margin-left: 8px" @click="handleRetryAll">全部重投</NButton>
+          <NButton v-if="failedJobs.length > 0" text size="tiny" type="error" style="margin-left: 8px" @click="handleClearAll">全部清空</NButton>
+        </div>
+        <NEmpty v-if="!failedJobsLoading && failedJobs.length === 0" description="无失败任务 🎉" style="margin: 8px 0" />
+        <NList v-else-if="failedJobs.length > 0" bordered size="small" style="margin-top: 4px">
+          <NListItem v-for="job in failedJobs" :key="job.jobId">
+            <NSpace align="center" justify="space-between" style="width: 100%">
+              <div>
+                <NText strong style="font-size: 12px">提交 #{{ job.submissionId ?? '?' }}</NText>
+                <NText depth="3" style="font-size: 11px; margin-left: 8px">{{ job.failedReason?.slice(0, 60) }}</NText>
+                <NText depth="3" style="font-size: 11px; display: block">重试 {{ job.attemptsMade }} 次 · {{ job.timestamp ? new Date(job.timestamp).toLocaleString('zh-CN') : '-' }}</NText>
+              </div>
+              <NSpace>
+                <NButton size="tiny" type="primary" @click="handleRetryOne(job.jobId)">重投</NButton>
+                <NButton size="tiny" type="error" @click="handleClearOne(job.jobId)">清除</NButton>
+              </NSpace>
+            </NSpace>
+          </NListItem>
+        </NList>
+
         <!-- 评测机状态 -->
         <NDivider style="margin: 16px 0" />
         <div class="queue-title">
@@ -225,6 +251,7 @@
 
 <script setup lang="ts">
 import type { HealthStatus, QueueHealth, SystemInfo } from '~/composables/api/health'
+import type { FailedJob } from '~/composables/api/transmit'
 import type { StatResult } from '~/composables/api/statistics'
 import type { Notification } from '~/composables/api/notifications'
 
@@ -287,6 +314,44 @@ async function fetchJudgeStats() {
   catch (e) {
     console.error('judge stats error', e)
   }
+}
+
+// ── 失败队列 ─────────────────────────────────────────────────────────────────
+const failedJobs = ref<FailedJob[]>([])
+const failedJobsLoading = ref(false)
+
+async function fetchFailedJobs() {
+  failedJobsLoading.value = true
+  try {
+    const res = await transmitApi.getFailedJobs()
+    failedJobs.value = res.data ?? []
+  }
+  catch (e) { console.error('failed jobs error', e) }
+  finally { failedJobsLoading.value = false }
+}
+
+async function handleRetryOne(jobId: string | number) {
+  await transmitApi.retryJob(jobId)
+  message.success('已重新投递')
+  fetchFailedJobs()
+}
+
+async function handleClearOne(jobId: string | number) {
+  await transmitApi.clearJob(jobId)
+  message.success('已清除')
+  fetchFailedJobs()
+}
+
+async function handleRetryAll() {
+  await transmitApi.retryAllFailed()
+  message.success('全部重新投递')
+  fetchFailedJobs()
+}
+
+async function handleClearAll() {
+  await transmitApi.clearAllFailed()
+  message.success('已清空失败队列')
+  fetchFailedJobs()
 }
 
 // ── 系统健康 ─────────────────────────────────────────────────────────────────
@@ -378,6 +443,7 @@ onMounted(() => {
   fetchHealth()
   fetchJudgers()
   fetchJudgeStats()
+  fetchFailedJobs()
   fetchNotifications()
 })
 
