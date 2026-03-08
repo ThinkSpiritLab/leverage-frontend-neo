@@ -6,7 +6,7 @@
           ← 返回课程列表
         </NButton>
         <NH2 style="margin: 0">
-          {{ course?.title || '课程详情' }}
+          {{ course?.name || '课程详情' }}
         </NH2>
       </NSpace>
     </div>
@@ -18,8 +18,8 @@
           <NCard v-if="course" style="max-width: 600px; margin-top: 16px">
             <NDescriptions :column="1" label-placement="left" bordered>
               <NDescriptionsItem label="ID">{{ course.id }}</NDescriptionsItem>
-              <NDescriptionsItem label="标题">{{ course.title }}</NDescriptionsItem>
-              <NDescriptionsItem label="描述">{{ course.description || '-' }}</NDescriptionsItem>
+              <NDescriptionsItem label="课程名">{{ course.name }}</NDescriptionsItem>
+              <NDescriptionsItem label="公告">{{ course.notification || '-' }}</NDescriptionsItem>
               <NDescriptionsItem label="创建时间">{{ fmtTime(course.createdAt) }}</NDescriptionsItem>
               <NDescriptionsItem label="题目数">{{ course.problems?.length || 0 }}</NDescriptionsItem>
               <NDescriptionsItem label="成员数">{{ course.members?.length || 0 }}</NDescriptionsItem>
@@ -109,11 +109,11 @@
     <!-- 编辑弹窗 -->
     <NModal v-model:show="showEditModal" title="编辑课程" preset="dialog" style="width: 560px">
       <NForm :model="editForm" label-placement="left" label-width="90px" style="margin-top: 12px">
-        <NFormItem label="标题" required>
-          <NInput v-model:value="editForm.title" placeholder="输入课程标题" />
+        <NFormItem label="课程名" required>
+          <NInput v-model:value="editForm.name" placeholder="输入课程名" />
         </NFormItem>
-        <NFormItem label="描述">
-          <NInput v-model:value="editForm.description" type="textarea" placeholder="输入课程描述" :rows="4" />
+        <NFormItem label="公告">
+          <NInput v-model:value="editForm.notification" type="textarea" placeholder="输入课程公告" :rows="4" />
         </NFormItem>
       </NForm>
       <template #action>
@@ -169,13 +169,13 @@ onMounted(fetchCourse)
 // ── 编辑弹窗 ──
 const showEditModal = ref(false)
 const saving = ref(false)
-const editForm = ref({ title: '', description: '' })
+const editForm = ref({ name: '', notification: '' })
 
 function openEditModal() {
   if (!course.value) return
   editForm.value = {
-    title: course.value.title,
-    description: course.value.description || '',
+    name: course.value.name || '',
+    notification: course.value.notification || '',
   }
   showEditModal.value = true
 }

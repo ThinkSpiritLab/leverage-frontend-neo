@@ -15,8 +15,8 @@ export interface Course {
 }
 
 export interface CreateCourseDto {
-  title: string
-  description?: string
+  name: string
+  notification?: string
   problemIds?: number[]
 }
 

@@ -21,14 +21,14 @@
     <!-- 新增/编辑弹窗 -->
     <NModal v-model:show="showModal" :title="editingId ? '编辑课程' : '新增课程'" preset="dialog" style="width: 560px">
       <NForm :model="form" label-placement="left" label-width="90px" style="margin-top: 12px">
-        <NFormItem label="标题" required>
-          <NInput v-model:value="form.title" placeholder="输入课程标题" />
+        <NFormItem label="课程名" required>
+          <NInput v-model:value="form.name" placeholder="输入课程名" />
         </NFormItem>
-        <NFormItem label="描述">
+        <NFormItem label="公告">
           <NInput
-            v-model:value="form.description"
+            v-model:value="form.notification"
             type="textarea"
-            placeholder="输入课程描述（可选）"
+            placeholder="输入课程公告（可选）"
             :rows="4"
           />
         </NFormItem>
@@ -77,8 +77,8 @@ const saving = ref(false)
 const problemIdsText = ref('')
 
 const defaultForm = (): CreateCourseDto => ({
-  title: '',
-  description: '',
+  name: '',
+  notification: '',
   problemIds: [],
 })
 
@@ -118,8 +118,8 @@ function openCreateModal() {
 function openEditModal(row: Course) {
   editingId.value = row.id
   form.value = {
-    title: row.title,
-    description: row.description || '',
+    name: row.name || '',
+    notification: row.notification || '',
     problemIds: (row.problems as any[])?.map((p: any) => typeof p === 'object' ? p.id : p) || [],
   }
   problemIdsText.value = form.value.problemIds?.join(',') || ''
@@ -127,8 +127,8 @@ function openEditModal(row: Course) {
 }
 
 async function handleSave() {
-  if (!form.value.title.trim()) {
-    message.warning('请填写课程标题')
+  if (!form.value.name.trim()) {
+    message.warning('请填写课程名')
     return
   }
 
@@ -162,7 +162,7 @@ async function handleSave() {
 function handleDelete(row: Course) {
   dialog.warning({
     title: '确认删除',
-    content: `确定要删除课程「${row.title}」吗？此操作不可恢复。`,
+    content: `确定要删除课程「${row.name}」吗？此操作不可恢复。`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
@@ -185,8 +185,8 @@ const columns: DataTableColumns<Course> = [
     width: 70,
   },
   {
-    title: '标题',
-    key: 'title',
+    title: '课程名',
+    key: 'name',
     render(row) {
       return h(
         'a',
@@ -194,16 +194,16 @@ const columns: DataTableColumns<Course> = [
           style: 'color: #2080f0; cursor: pointer;',
           onClick: () => navigateTo(`/admin/courses/${row.id}`),
         },
-        row.title,
+        row.name,
       )
     },
   },
   {
-    title: '描述',
-    key: 'description',
+    title: '公告',
+    key: 'notification',
     render(row) {
-      const desc = row.description || '-'
-      return h('span', desc.length > 50 ? desc.slice(0, 50) + '...' : desc)
+      const notification = row.notification || '-'
+      return h('span', notification.length > 50 ? notification.slice(0, 50) + '...' : notification)
     },
   },
   {
