@@ -121,7 +121,7 @@ const columns: DataTableColumns<Contest> = [
             navigateTo(`/contests/${row.id}`)
           },
         },
-        row.title || '-',
+        row.name || row.title || '-',
       )
     },
   },

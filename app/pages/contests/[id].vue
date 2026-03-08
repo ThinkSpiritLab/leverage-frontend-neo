@@ -7,7 +7,7 @@
     <!-- 顶部信息 -->
     <div class="contest-header">
       <div class="contest-title-row">
-        <NH2 style="margin: 0">{{ contest.title }}</NH2>
+        <NH2 style="margin: 0">{{ contest.name || contest.title }}</NH2>
         <NTag :type="statusType" size="medium" :bordered="false">{{ statusLabel }}</NTag>
       </div>
       <div class="contest-times">
@@ -254,7 +254,7 @@ const problemColumns: DataTableColumns = [
           type: 'primary',
           onClick: () => navigateTo(`/contests/${contest.value!.id}/problems/${row.problemId}`),
         },
-        { default: () => `${label}. ${row.title ?? ''}` },
+        { default: () => `${label}. ${row.name || row.title ?? ''}` },
       )
     },
   },
@@ -441,7 +441,7 @@ onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
 })
 
-useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title} — Leverage OJ` : '竞赛 — Leverage OJ' })))
+useHead(computed(() => ({ title: contest.value?.name || contest.value?.title ? `${contest.value.name || contest.value.title} — Leverage OJ` : '竞赛 — Leverage OJ' })))
 </script>
 
 <style scoped>
