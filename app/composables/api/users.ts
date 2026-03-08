@@ -19,5 +19,9 @@ export function useUsersApi() {
     delete: (id: number) => api.delete(`/users/${id}`),
     getSubmissions: (id: number, params?: { page?: number; perPage?: number }) =>
       api.get(`/users/${id}/submissions`, { params }),
+    banUser: (id: number, banned: boolean, reason?: string) =>
+      api.post(`/users/${id}/ban`, { banned, reason }),
+    changeUserPassword: (id: number, password: string) =>
+      api.post(`/users/${id}/password`, { password }),
   }
 }
