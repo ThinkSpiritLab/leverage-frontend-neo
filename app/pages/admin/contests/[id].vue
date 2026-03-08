@@ -481,11 +481,17 @@ const problemColumns: DataTableColumns<any> = [
     title: '标题',
     key: 'title',
     render(row) {
-      return h(
-        resolveComponent('NButton') as any,
-        { text: true, type: 'primary', onClick: () => navigateTo(`/problems/${row.problemId}`) },
-        { default: () => row.title ?? '-' },
-      )
+      return h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, [
+        h('span', { style: 'font-size:13px' }, row.title ?? '-'),
+        h('div', { style: 'display:flex;gap:8px;margin-top:2px' }, [
+          h(resolveComponent('NButton') as any,
+            { text: true, size: 'tiny', type: 'primary', onClick: () => navigateTo(`/problems/${row.problemId}`) },
+            { default: () => '查看' }),
+          h(resolveComponent('NButton') as any,
+            { text: true, size: 'tiny', type: 'warning', onClick: () => navigateTo(`/admin/problems/${row.problemId}`) },
+            { default: () => '编辑' }),
+        ]),
+      ])
     },
   },
   {
