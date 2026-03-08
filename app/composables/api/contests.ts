@@ -30,7 +30,7 @@ export interface ContestUserItem {
 export function useContestsApi() {
   const api = useApi()
   return {
-    list: (params?: { page?: number; perPage?: number; state?: 'upcoming' | 'ongoing' | 'ended' }) =>
+    list: (params?: { page?: number; perPage?: number; state?: 'upcoming' | 'ongoing' | 'ended'; type?: string }) =>
       api.get<{ items: Contest[]; total: number }>('/contests', { params }),
     get: (id: number) => api.get<Contest>(`/contests/${id}`),
     getRanking: (id: number, page: number, perPage: number) =>

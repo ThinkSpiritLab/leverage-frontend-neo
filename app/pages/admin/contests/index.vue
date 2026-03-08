@@ -1,11 +1,18 @@
 <template>
   <div class="admin-contests">
     <div class="page-header">
-      <NH2 style="margin: 0">竞赛管理</NH2>
+      <NH2 style="margin: 0">竞赛 / 考试管理</NH2>
       <NButton type="primary" @click="openCreateModal">
-        + 新增竞赛
+        + 新增
       </NButton>
     </div>
+
+    <!-- 类型 Tab 过滤 -->
+    <NTabs v-model:value="activeTypeTab" type="segment" @update:value="onTypeTabChange">
+      <NTabPane name="all" tab="全部" />
+      <NTabPane name="contest" tab="竞赛" />
+      <NTabPane name="exam" tab="考试" />
+    </NTabs>
 
     <PaginatedTable
       :columns="columns"
@@ -19,16 +26,16 @@
     />
 
     <!-- 新增/编辑弹窗 -->
-    <NModal v-model:show="showModal" :title="editingId ? '编辑竞赛' : '新增竞赛'" preset="dialog" style="width: 560px">
+    <NModal v-model:show="showModal" :title="editingId ? (isExamMode ? '编辑考试' : '编辑竞赛') : (isExamMode ? '新增考试' : '新增竞赛')" preset="dialog" style="width: 560px">
       <NForm :model="form" label-placement="left" label-width="90px" style="margin-top: 12px">
-        <NFormItem label="标题" required>
-          <NInput v-model:value="form.title" placeholder="输入竞赛标题" />
-        </NFormItem>
         <NFormItem label="类型">
           <NSelect
             v-model:value="form.type"
             :options="typeOptions"
           />
+        </NFormItem>
+        <NFormItem label="标题" required>
+          <NInput v-model:value="form.title" :placeholder="form.type === 'exam' ? '输入考试标题' : '输入竞赛标题'" />
         </NFormItem>
         <NFormItem label="开始时间" required>
           <NDatePicker
@@ -89,6 +96,9 @@ const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
 
+// 当前 Tab：all | contest | exam
+const activeTypeTab = ref<'all' | 'contest' | 'exam'>('all')
+
 const showModal = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
@@ -97,9 +107,12 @@ const startTimeMs = ref<number | null>(null)
 const endTimeMs = ref<number | null>(null)
 const problemIdsText = ref('')
 
+// 是否在考试 Tab 下（新增时默认 type=exam）
+const isExamMode = computed(() => activeTypeTab.value === 'exam')
+
 const defaultForm = (): CreateContestDto => ({
   title: '',
-  type: 'icpc',
+  type: activeTypeTab.value === 'exam' ? 'exam' : 'contest',
   startTime: '',
   endTime: '',
   problemIds: [],
@@ -108,23 +121,37 @@ const defaultForm = (): CreateContestDto => ({
 const form = ref<CreateContestDto>(defaultForm())
 
 const typeOptions = [
+  { label: '竞赛 (Contest)', value: 'contest' },
+  { label: '考试 (Exam)', value: 'exam' },
   { label: 'ICPC', value: 'icpc' },
   { label: 'IOI', value: 'ioi' },
   { label: 'OI', value: 'oi' },
   { label: 'Codeforces', value: 'cf' },
 ]
 
-const typeColorMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
+const typeColorMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error' | 'primary'> = {
+  contest: 'info',
+  exam: 'warning',
   icpc: 'info',
   ioi: 'success',
-  oi: 'warning',
+  oi: 'primary',
   cf: 'error',
+}
+
+const typeLabel: Record<string, string> = {
+  contest: '竞赛',
+  exam: '考试',
+  icpc: 'ICPC',
+  ioi: 'IOI',
+  oi: 'OI',
+  cf: 'CF',
 }
 
 async function fetchContests() {
   loading.value = true
   try {
-    const res = await contestsApi.list({ page: page.value, perPage: pageSize.value })
+    const typeFilter = activeTypeTab.value === 'all' ? undefined : activeTypeTab.value
+    const res = await contestsApi.list({ page: page.value, perPage: pageSize.value, type: typeFilter })
     contests.value = res.items
     total.value = res.total
   }
@@ -137,6 +164,11 @@ async function fetchContests() {
 }
 
 onMounted(fetchContests)
+
+function onTypeTabChange(_val: string) {
+  page.value = 1
+  fetchContests()
+}
 
 function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: number }) {
   page.value = p
@@ -165,7 +197,7 @@ function openEditModal(row: Contest) {
   editingId.value = row.id
   form.value = {
     title: row.title,
-    type: row.type,
+    type: row.type || 'contest',
     startTime: row.startTime,
     endTime: row.endTime,
     problemIds: row.problems?.map(p => p.id) || [],
@@ -178,7 +210,7 @@ function openEditModal(row: Contest) {
 
 async function handleSave() {
   if (!form.value.title.trim()) {
-    message.warning('请填写竞赛标题')
+    message.warning('请填写标题')
     return
   }
   if (!form.value.startTime || !form.value.endTime) {
@@ -186,7 +218,6 @@ async function handleSave() {
     return
   }
 
-  // Parse problemIds from text
   const ids = problemIdsText.value
     .split(',')
     .map(s => parseInt(s.trim()))
@@ -215,9 +246,10 @@ async function handleSave() {
 }
 
 function handleDelete(row: Contest) {
+  const label = row.type === 'exam' ? '考试' : '竞赛'
   dialog.warning({
     title: '确认删除',
-    content: `确定要删除竞赛「${row.title}」吗？此操作不可恢复。`,
+    content: `确定要删除${label}「${row.title}」吗？此操作不可恢复。`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
@@ -256,9 +288,9 @@ const columns: DataTableColumns<Contest> = [
   {
     title: '类型',
     key: 'type',
-    width: 100,
+    width: 110,
     render(row) {
-      const type = (row.type || '').toLowerCase()
+      const type = (row.type || 'contest').toLowerCase()
       return h(
         NTag,
         {
@@ -266,7 +298,7 @@ const columns: DataTableColumns<Contest> = [
           size: 'small',
           bordered: false,
         },
-        { default: () => row.type?.toUpperCase() || '-' },
+        { default: () => typeLabel[type] || type.toUpperCase() },
       )
     },
   },
