@@ -77,7 +77,10 @@
       <!-- 注册 -->
       <NTabPane name="register" tab="注册">
         <div class="register-panel">
-          <NCard style="max-width: 400px">
+          <NAlert v-if="registrationClosed" type="warning" title="报名已截止" style="max-width: 400px">
+            当前时间已超过报名截止时间，无法继续报名。
+          </NAlert>
+          <NCard v-else style="max-width: 400px">
             <div class="register-content">
               <NText>参加此竞赛可查看题目并参与排名。</NText>
               <NButton
@@ -125,6 +128,12 @@ const contestsApi = useContestsApi()
 const contest = ref<Contest | null>(null)
 const loading = ref(true)
 const activeTab = ref('problems')
+const nowTs = ref(Date.now())
+const registrationClosed = computed(() => {
+  const end = contest.value?.registrationEndTime
+  if (!end) return false
+  return nowTs.value > dayjs(end).valueOf()
+})
 
 // 竞赛状态
 const statusLabel = computed(() => {
@@ -148,8 +157,9 @@ const remainTime = ref('')
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 function updateCountdown() {
+  nowTs.value = Date.now()
   if (!contest.value) return
-  const now = dayjs()
+  const now = dayjs(nowTs.value)
   const start = dayjs(contest.value.startTime)
   const end = dayjs(contest.value.endTime)
   const target = now.isBefore(start) ? start : end
