@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NButton, NTag } from 'naive-ui'
+import { NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
 import type { Contest } from '~/types'
