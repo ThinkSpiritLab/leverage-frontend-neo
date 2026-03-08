@@ -3,6 +3,7 @@
     <NSpin size="large" />
   </div>
   <div v-else-if="course" class="course-detail">
+    <AdminViewBanner />
     <div class="course-header">
       <NH2 style="margin: 0">{{ course.name || course.title }}</NH2>
       <NText v-if="course.description" depth="3" style="font-size: 15px; margin-top: 8px">

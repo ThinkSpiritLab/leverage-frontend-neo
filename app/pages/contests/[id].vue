@@ -3,6 +3,7 @@
     <NSpin size="large" />
   </div>
   <div v-else-if="contest" class="contest-detail">
+    <AdminViewBanner />
     <!-- 顶部信息 -->
     <div class="contest-header">
       <div class="contest-title-row">

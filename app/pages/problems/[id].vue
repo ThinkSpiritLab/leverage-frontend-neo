@@ -2,7 +2,9 @@
   <div v-if="loading" class="loading-center">
     <NSpin size="large" />
   </div>
-  <div v-else-if="problem" class="problem-page" ref="pageRef">
+  <div v-else-if="problem">
+    <AdminViewBanner />
+  <div class="problem-page" ref="pageRef">
     <!-- 左侧：题目信息 -->
     <div class="problem-left" :style="{ flex: `0 0 ${leftWidth}px` }">
       <div class="problem-header">
@@ -136,6 +138,7 @@
         </div>
       </template>
     </div>
+  </div>
   </div>
   <div v-else>
     <NResult status="404" title="题目不存在" />
