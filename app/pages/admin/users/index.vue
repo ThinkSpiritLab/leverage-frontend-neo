@@ -86,17 +86,23 @@ const form = ref<UpdateUserDto>({})
 const roleOptions = [
   { label: '普通用户', value: 'user' },
   { label: '管理员', value: 'admin' },
-  { label: '监督员', value: 'supervisor' },
-  { label: '超级管理员', value: 'sa' },
+  { label: '超级管理员(sa)', value: 'sa' },
+  { label: '超级管理员(superadmin)', value: 'superadmin' },
 ]
 
 const roleTypeMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
   sa: 'error',
   superadmin: 'error',
   admin: 'warning',
-  supervisor: 'info',
   user: 'default',
   guest: 'default',
+}
+
+const roleLabelMap: Record<string, string> = {
+  user: 'user',
+  admin: 'admin',
+  sa: 'sa',
+  superadmin: 'superadmin',
 }
 
 async function fetchUsers() {
@@ -136,7 +142,7 @@ function openEditModal(row: User) {
   form.value = {
     email: row.email,
     studentId: row.studentId,
-    role: (row as any).authority || row.role,
+    role: (row as any).authority ?? row.role,
     password: '',
   }
   showModal.value = true
@@ -219,15 +225,16 @@ const columns: DataTableColumns<User> = [
     key: 'role',
     width: 100,
     render(row) {
-      const role = (row as any).authority || row.role || '-'
+      const authority = (row as any).authority ?? row.role
+      if (!authority) return h('span', '-')
       return h(
         NTag,
         {
-          type: roleTypeMap[role] || 'default',
+          type: roleTypeMap[authority] || 'default',
           size: 'small',
           bordered: false,
         },
-        { default: () => role },
+        { default: () => roleLabelMap[authority] ?? authority },
       )
     },
   },
