@@ -27,7 +27,14 @@
             <NIcon><MailOutline /></NIcon>
           </NButton>
         </NBadge>
+      </template>
 
+      <!-- 深色/浅色模式切换 -->
+      <NButton text style="font-size: 20px; line-height: 1" @click="toggle">
+        <NIcon><component :is="isDark ? SunnyOutline : MoonOutline" /></NIcon>
+      </NButton>
+
+      <template v-if="authStore.isLoggedIn">
         <!-- 登出按钮 -->
         <NButton size="small" @click="handleLogout">
           登出
@@ -44,10 +51,11 @@
 </template>
 
 <script setup lang="ts">
-import { MailOutline } from '@vicons/ionicons5'
+import { MailOutline, MoonOutline, SunnyOutline } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
 const msgApi = useMessageApi()
+const { isDark, toggle } = useTheme()
 
 const unreadCount = ref(0)
 
