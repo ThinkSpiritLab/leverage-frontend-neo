@@ -580,7 +580,10 @@ async function handleAddUser() {
     addUserId.value = null
     fetchContestUsers()
   }
-  catch (e: any) { message.error(e?.message || '添加失败') }
+  catch (e: any) {
+    const msg = e?.response?.data?.message || e?.message || '添加失败'
+    message.error(msg)
+  }
   finally { addingUser.value = false }
 }
 

@@ -53,6 +53,8 @@ export function useCoursesApi() {
       api.get(`/courses/${id}/submissions/export`, { params: { filters } }),
 
     // 成员管理（学生接口）
+    getStudents: (courseId: number) =>
+      api.get<any[]>(`/courses/${courseId}/students`),
     addStudents: (courseId: number, userIds: number[]) =>
       api.post(`/courses/${courseId}/students`, { userIds }),
     removeStudent: (courseId: number, userId: number) =>

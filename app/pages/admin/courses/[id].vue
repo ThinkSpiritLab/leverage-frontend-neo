@@ -370,9 +370,9 @@ async function handleUserSearch(keyword: string) {
 async function fetchMembers() {
   membersLoading.value = true
   try {
-    await fetchCourse()
-    const members = course.value?.members || []
-    courseMembers.value = members.map((m: any) => typeof m === 'object' ? m : { id: m })
+    const res = await coursesApi.getStudents(courseId)
+    const raw = Array.isArray(res.data) ? res.data : []
+    courseMembers.value = raw.map((cu: any) => cu.user ?? cu)
   }
   catch (e) { console.error(e) }
   finally { membersLoading.value = false }
@@ -387,7 +387,10 @@ async function handleAddMember() {
     addUserId.value = null
     fetchMembers()
   }
-  catch (e: any) { message.error(e?.message || '添加失败') }
+  catch (e: any) {
+    const msg = e?.response?.data?.message || e?.message || '添加失败'
+    message.error(msg)
+  }
   finally { addingMember.value = false }
 }
 
