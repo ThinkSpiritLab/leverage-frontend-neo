@@ -90,8 +90,8 @@
                     <NButton text type="primary" @click="navigateTo(`/users/${row.userId}`)">{{ row.username }}</NButton>
                     <div v-if="row.certifiedName" style="font-size:11px;color:#999">{{ row.certifiedName }}</div>
                   </td>
-                  <td class="col-solved" style="font-weight:700;color:#18a058">{{ row.solved }}</td>
-                  <td class="col-penalty" style="color:#666">{{ row.totalPenalty }}</td>
+                  <td class="col-solved" style="font-weight:700;color:#18a058">{{ row.solved ?? row.accepts ?? 0 }}</td>
+                  <td class="col-penalty" style="color:#666">{{ row.totalPenalty ?? row.penaltyMin ?? 0 }}</td>
                   <td v-for="cp in contest?.problems ?? []" :key="cp.problemId" class="col-problem-cell" :class="getCellClass(row, cp.problemId)">
                     <template v-if="row.problems?.[cp.problemId]">
                       <template v-if="row.problems[cp.problemId].frozen">
