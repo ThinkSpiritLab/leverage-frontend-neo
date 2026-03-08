@@ -23,10 +23,20 @@ export interface QueueHealth {
   [key: string]: any
 }
 
+export interface SystemInfo {
+  process: { pid: number; uptime: string; uptimeSec: number; nodeVersion: string; platform: string; arch: string }
+  memory: { heapUsed: string; heapTotal: string; rss: string; external: string; heapUsedBytes: number; rssBytes: number }
+  cpu: { userMs: number; systemMs: number }
+  latency: { dbMs: number; redisMs: number }
+  env: string
+  timestamp: string
+}
+
 export function useHealthApi() {
   const api = useApi()
   return {
     get: () => api.get<HealthStatus>('/health'),
     getQueues: () => api.get<QueueHealth>('/health/queues'),
+    getSystem: () => api.get<SystemInfo>('/health/system'),
   }
 }

@@ -67,48 +67,56 @@
       <NSpin :show="healthLoading">
         <NDescriptions :column="2" bordered>
           <NDescriptionsItem label="🗄️ 数据库">
-            <NTag
-              :type="dbStatus === 'up' ? 'success' : dbStatus === 'unknown' ? 'default' : 'error'"
-              size="small"
-            >
+            <NTag :type="dbStatus === 'up' ? 'success' : dbStatus === 'unknown' ? 'default' : 'error'" size="small">
               {{ dbStatus === 'up' ? '✅ 正常' : dbStatus === 'unknown' ? '未知' : '❌ 异常' }}
             </NTag>
-            <NText v-if="health?.info?.database?.message" depth="3" style="font-size: 12px; margin-left: 8px">
-              {{ health.info.database.message }}
+            <NText v-if="sysInfo?.latency?.dbMs !== undefined" depth="3" style="font-size: 12px; margin-left: 8px">
+              延迟 {{ sysInfo.latency.dbMs }}ms
             </NText>
           </NDescriptionsItem>
           <NDescriptionsItem label="🔴 Redis">
-            <NTag
-              :type="redisStatus === 'up' ? 'success' : redisStatus === 'unknown' ? 'default' : 'error'"
-              size="small"
-            >
+            <NTag :type="redisStatus === 'up' ? 'success' : redisStatus === 'unknown' ? 'default' : 'error'" size="small">
               {{ redisStatus === 'up' ? '✅ 正常' : redisStatus === 'unknown' ? '未知' : '❌ 异常' }}
             </NTag>
-            <NText v-if="health?.info?.redis?.message" depth="3" style="font-size: 12px; margin-left: 8px">
-              {{ health.info.redis.message }}
+            <NText v-if="sysInfo?.latency?.redisMs !== undefined" depth="3" style="font-size: 12px; margin-left: 8px">
+              延迟 {{ sysInfo.latency.redisMs }}ms
             </NText>
           </NDescriptionsItem>
-          <NDescriptionsItem label="🧠 内存 (Heap)">
-            <NTag
-              :type="heapStatus === 'up' ? 'success' : heapStatus === 'unknown' ? 'default' : 'warning'"
-              size="small"
-            >
+          <NDescriptionsItem label="🧠 Heap">
+            <NTag :type="heapStatus === 'up' ? 'success' : heapStatus === 'unknown' ? 'default' : 'warning'" size="small">
               {{ heapStatus === 'up' ? '✅ 正常' : heapStatus === 'unknown' ? '未知' : '⚠️ 偏高' }}
             </NTag>
             <NText v-if="health?.info?.memory_heap?.message" depth="3" style="font-size: 12px; margin-left: 8px">
               {{ health.info.memory_heap.message }}
             </NText>
           </NDescriptionsItem>
-          <NDescriptionsItem label="🧠 内存 (RSS)">
-            <NTag
-              :type="rssStatus === 'up' ? 'success' : rssStatus === 'unknown' ? 'default' : 'warning'"
-              size="small"
-            >
+          <NDescriptionsItem label="📦 RSS">
+            <NTag :type="rssStatus === 'up' ? 'success' : rssStatus === 'unknown' ? 'default' : 'warning'" size="small">
               {{ rssStatus === 'up' ? '✅ 正常' : rssStatus === 'unknown' ? '未知' : '⚠️ 偏高' }}
             </NTag>
-            <NText v-if="health?.info?.memory_rss?.message" depth="3" style="font-size: 12px; margin-left: 8px">
-              {{ health.info.memory_rss.message }}
+            <NText v-if="sysInfo?.memory?.rss" depth="3" style="font-size: 12px; margin-left: 8px">
+              {{ sysInfo.memory.rss }}
             </NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem v-if="sysInfo" label="⚙️ 进程">
+            <NText style="font-size: 12px">PID {{ sysInfo.process.pid }} · {{ sysInfo.process.nodeVersion }}</NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem v-if="sysInfo" label="⏱️ 运行时长">
+            <NText style="font-size: 12px">{{ sysInfo.process.uptime }}</NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem v-if="sysInfo" label="🖥️ 平台">
+            <NText style="font-size: 12px">{{ sysInfo.process.platform }}/{{ sysInfo.process.arch }}</NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem v-if="sysInfo" label="🌐 环境">
+            <NTag size="small" :type="sysInfo.env === 'production' ? 'error' : 'info'">{{ sysInfo.env }}</NTag>
+          </NDescriptionsItem>
+          <NDescriptionsItem v-if="sysInfo" label="💾 内存详情">
+            <NText style="font-size: 12px">
+              Heap {{ sysInfo.memory.heapUsed }} / {{ sysInfo.memory.heapTotal }} · Ext {{ sysInfo.memory.external }}
+            </NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem v-if="sysInfo" label="🔧 CPU 时间">
+            <NText style="font-size: 12px">user {{ sysInfo.cpu.userMs }}ms · sys {{ sysInfo.cpu.systemMs }}ms</NText>
           </NDescriptionsItem>
         </NDescriptions>
 
@@ -216,7 +224,7 @@
 </template>
 
 <script setup lang="ts">
-import type { HealthStatus, QueueHealth } from '~/composables/api/health'
+import type { HealthStatus, QueueHealth, SystemInfo } from '~/composables/api/health'
 import type { StatResult } from '~/composables/api/statistics'
 import type { Notification } from '~/composables/api/notifications'
 
@@ -287,6 +295,7 @@ const healthLoading = ref(false)
 const queues = ref<QueueHealth | null>(null)
 const queuesLoading = ref(false)
 const healthUpdatedAt = ref('')
+const sysInfo = ref<SystemInfo | null>(null)
 
 const dbStatus = computed(() => health.value?.info?.database?.status ?? 'unknown')
 const redisStatus = computed(() => health.value?.info?.redis?.status ?? 'unknown')
@@ -316,6 +325,13 @@ async function fetchHealth() {
     if (qRes.status === 'fulfilled') {
       queues.value = qRes.value.data
     }
+
+    // system info
+    try {
+      const sysRes = await healthApi.getSystem()
+      sysInfo.value = sysRes.data
+    }
+    catch (e) { /* non-critical */ }
 
     healthUpdatedAt.value = new Date().toLocaleTimeString('zh-CN')
   }
