@@ -105,7 +105,7 @@
         <CodeEditor
           v-model="code"
           :language="language"
-          height="450px"
+          :height="isMobile ? '300px' : '450px'"
         />
 
         <div class="submit-area">
@@ -150,6 +150,9 @@
 
 <script setup lang="ts">
 import type { Problem } from '~/types'
+
+const { width } = useWindowSize()
+const isMobile = computed(() => width.value < 768)
 
 definePageMeta({
   layout: 'default',
@@ -382,6 +385,26 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   background: #f5f5f5;
   color: #555;
   box-shadow: 0 1px 0 #ccc;
+}
+
+/* 移动端响应式 */
+@media (max-width: 767px) {
+  .problem-page {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .problem-left {
+    flex: none;
+    width: 100%;
+  }
+
+  .problem-right {
+    flex: none;
+    width: 100%;
+    position: static; /* 移除 sticky，避免移动端滚动问题 */
+    min-height: 200px;
+  }
 }
 
 /* 全屏模式 */

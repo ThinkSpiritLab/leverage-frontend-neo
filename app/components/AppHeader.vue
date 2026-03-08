@@ -5,8 +5,8 @@
       Leverage OJ
     </NButton>
 
-    <!-- 右侧用户区域 -->
-    <div style="display: flex; align-items: center; gap: 12px">
+    <!-- 桌面端：右侧用户区域 -->
+    <div v-if="!isMobile" style="display: flex; align-items: center; gap: 12px">
       <template v-if="authStore.isLoggedIn">
         <!-- 用户名 -->
         <span style="font-size: 14px; color: #333">{{ authStore.user?.username }}</span>
@@ -47,16 +47,93 @@
         </NButton>
       </template>
     </div>
+
+    <!-- 移动端：深色模式 + 汉堡菜单 -->
+    <div v-else style="display: flex; align-items: center; gap: 4px">
+      <!-- 深色/浅色模式切换（移动端保留在顶栏） -->
+      <NButton text style="font-size: 20px; line-height: 1" @click="toggle">
+        <NIcon><component :is="isDark ? SunnyOutline : MoonOutline" /></NIcon>
+      </NButton>
+
+      <!-- 汉堡菜单按钮 -->
+      <NButton text @click="mobileMenuOpen = true">
+        <NIcon :component="MenuOutline" size="24" />
+      </NButton>
+
+      <!-- 移动端抽屉菜单 -->
+      <NDrawer v-model:show="mobileMenuOpen" :width="280" placement="right">
+        <NDrawerContent title="菜单">
+          <template v-if="authStore.isLoggedIn">
+            <!-- 用户信息 -->
+            <div class="mobile-user-info">
+              <div class="mobile-username">{{ authStore.user?.username }}</div>
+              <NTag
+                v-if="authStore.user?.role"
+                :type="roleBadgeType"
+                size="small"
+                round
+              >
+                {{ roleLabel }}
+              </NTag>
+            </div>
+
+            <NDivider style="margin: 12px 0" />
+
+            <!-- 导航链接 -->
+            <div class="mobile-nav">
+              <NButton
+                text
+                block
+                class="mobile-nav-item"
+                @click="navigateTo('/problems'); mobileMenuOpen = false"
+              >
+                题目列表
+              </NButton>
+              <NButton
+                text
+                block
+                class="mobile-nav-item"
+                @click="navigateTo('/messages'); mobileMenuOpen = false"
+              >
+                <template #icon>
+                  <NBadge :value="unreadCount" :max="99" :show="unreadCount > 0" :offset="[6, -4]">
+                    <NIcon><MailOutline /></NIcon>
+                  </NBadge>
+                </template>
+                消息
+              </NButton>
+            </div>
+
+            <NDivider style="margin: 12px 0" />
+
+            <NButton block @click="handleLogout">
+              登出
+            </NButton>
+          </template>
+
+          <template v-else>
+            <NButton type="primary" block @click="navigateTo('/login'); mobileMenuOpen = false">
+              登录
+            </NButton>
+          </template>
+        </NDrawerContent>
+      </NDrawer>
+    </div>
   </NLayoutHeader>
 </template>
 
 <script setup lang="ts">
-import { MailOutline, MoonOutline, SunnyOutline } from '@vicons/ionicons5'
+import { MailOutline, MenuOutline, MoonOutline, SunnyOutline } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
 const msgApi = useMessageApi()
 const { isDark, toggle } = useTheme()
 
+// 响应式移动端检测
+const { width } = useWindowSize()
+const isMobile = computed(() => width.value < 768)
+
+const mobileMenuOpen = ref(false)
 const unreadCount = ref(0)
 
 async function fetchUnreadCount() {
@@ -108,3 +185,29 @@ function handleLogout() {
   navigateTo('/login')
 }
 </script>
+
+<style scoped>
+.mobile-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.mobile-username {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-nav-item {
+  justify-content: flex-start !important;
+  padding: 8px 4px;
+  font-size: 15px;
+}
+</style>
