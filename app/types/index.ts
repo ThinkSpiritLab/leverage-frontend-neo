@@ -127,6 +127,16 @@ export interface RankItem {
 }
 
 // 内存单位转换：bytes → KB
+export const LANGUAGE_OPTIONS = [
+  { label: 'C', value: 0 },
+  { label: 'C++', value: 1 },
+  { label: 'Java', value: 6 },
+  { label: 'Python 2', value: 8 },
+  { label: 'Python 3', value: 9 },
+  { label: 'JavaScript', value: 10 },
+  { label: 'TypeScript', value: 11 },
+]
+
 export function memoryToKB(bytes: number): number {
   return Math.round(bytes / 1024)
 }
