@@ -135,10 +135,21 @@ const adminMenuOptions = [
     ],
   },
   {
-    label: '批量重判',
+    label: '重判',
     key: 'admin-rejudge',
     icon: renderIcon(RefreshOutline),
-    onClick: () => navigateTo('/admin/rejudge'),
+    children: [
+      {
+        label: '批量重判',
+        key: 'admin-rejudge-index',
+        onClick: () => navigateTo('/admin/rejudge'),
+      },
+      {
+        label: '重评测记录',
+        key: 'admin-rejudge-log',
+        onClick: () => navigateTo('/admin/rejudge/log'),
+      },
+    ],
   },
   {
     label: '标签管理',

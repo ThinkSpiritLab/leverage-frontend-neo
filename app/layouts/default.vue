@@ -74,6 +74,7 @@ import {
   SchoolOutline,
   SettingsOutline,
   LogOutOutline,
+  HelpCircleOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -101,6 +102,12 @@ const baseMenuOptions = [
     key: 'courses',
     icon: renderIcon(SchoolOutline),
     onClick: () => navigateTo('/courses'),
+  },
+  {
+    label: '帮助',
+    key: 'help',
+    icon: renderIcon(HelpCircleOutline),
+    onClick: () => navigateTo('/help'),
   },
 ]
 
