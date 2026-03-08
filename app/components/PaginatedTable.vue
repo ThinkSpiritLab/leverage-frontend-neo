@@ -6,10 +6,11 @@
       :loading="loading"
       :row-key="rowKey"
       v-bind="$attrs"
-    />
-    <div v-if="!loading && data.length === 0" class="empty-wrapper">
-      <NEmpty description="暂无数据" />
-    </div>
+    >
+      <template #empty>
+        <NEmpty description="暂无数据" style="padding: 24px 0" />
+      </template>
+    </NDataTable>
     <div v-if="total > 0" class="pagination-wrapper">
       <NPagination
         v-model:page="currentPage"
@@ -74,12 +75,6 @@ function onPageSizeChange(size: number) {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.empty-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
 }
 
 .pagination-wrapper {

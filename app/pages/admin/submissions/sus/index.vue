@@ -73,17 +73,14 @@ async function toggleChecked(row: any) {
 const columns: DataTableColumns = [
   {
     title: '提交ID',
-    key: 'id',
+    key: 'submissionId',
     width: 80,
     render(row: any) {
+      const id = row.submissionId ?? row.submission?.id
       return h(
         NButton,
-        {
-          text: true,
-          type: 'primary',
-          onClick: () => navigateTo(`/submissions/${row.id}`),
-        },
-        { default: () => `#${row.id}` },
+        { text: true, type: 'primary', onClick: () => navigateTo(`/submissions/${id}`) },
+        { default: () => `#${id}` },
       )
     },
   },
@@ -91,32 +88,29 @@ const columns: DataTableColumns = [
     title: '题目',
     key: 'problem',
     render(row: any) {
-      if (row.problem) {
-        return h('span', `${row.problem.prefix ?? ''}${row.problem.logicId ?? ''} ${row.problem.title ?? ''}`)
-      }
-      return h('span', String(row.problemId ?? '-'))
+      const p = row.submission?.problem ?? row.problem
+      if (p) return h('span', `${p.prefix ?? ''}${p.logicId ?? ''} ${p.title ?? ''}`)
+      return h('span', String(row.submission?.problemId ?? '-'))
     },
   },
   {
     title: '用户',
     key: 'user',
     render(row: any) {
-      return h('span', row.user?.username ?? String(row.userId ?? '-'))
+      const u = row.submission?.user ?? row.user
+      return h('span', u?.username ?? String(row.submission?.userId ?? '-'))
     },
   },
   {
     title: '相似哈希',
     key: 'hashsum',
     render(row: any) {
-      const hash = row.hashsum ?? row.ss_hashsum ?? ''
+      const hash = row.hashsum ?? ''
+      if (!hash) return h('span', { style: 'color:#aaa' }, '-')
       return h(
         NButton,
-        {
-          text: true,
-          type: 'info',
-          onClick: () => navigateTo(`/admin/submissions/sus/${hash}`),
-        },
-        { default: () => hash.slice(0, 8) },
+        { text: true, type: 'info', onClick: () => navigateTo(`/admin/submissions/sus/${hash}`) },
+        { default: () => hash.slice(0, 8) + '…' },
       )
     },
   },

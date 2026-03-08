@@ -19,8 +19,8 @@
         <NEmpty description="暂无相关提交" />
       </div>
 
-      <div v-for="sub in submissions" :key="sub.id" class="sub-card">
-        <NCard :title="`提交 #${sub.id} — 用户: ${sub.user?.username ?? sub.userId}`" size="small">
+      <div v-for="sub in submissions" :key="sub.submissionId ?? sub.id" class="sub-card">
+        <NCard :title="`提交 #${sub.submissionId ?? sub.id} — 用户: ${sub.submission?.user?.username ?? sub.user?.username ?? sub.submission?.userId ?? '-'}`" size="small">
           <template #header-extra>
             <NSpace align="center">
               <StatusTag :status="sub.status" />
@@ -35,8 +35,8 @@
             </NSpace>
           </template>
           <CodeEditor
-            :model-value="sub.code ?? '// 暂无代码'"
-            :language="sub.language ?? 'cpp'"
+            :model-value="sub.submission?.misc?.code ?? sub.code ?? '// 暂无代码'"
+            :language="sub.submission?.language !== undefined ? String(sub.submission.language) : (sub.language ?? 'cpp')"
             :readonly="true"
             height="300px"
           />
@@ -84,7 +84,8 @@ async function fetchDetail() {
 async function toggleChecked(sub: any, value: boolean) {
   sub._loading = true
   try {
-    await suspicionsApi.markChecked(sub.id, value)
+    const sid = sub.submissionId ?? sub.id
+    await suspicionsApi.markChecked(sid, value)
     sub.checked = value
     message.success('已更新')
   }
@@ -101,7 +102,8 @@ async function markAllChecked() {
   try {
     for (const sub of submissions.value) {
       if (!sub.checked) {
-        await suspicionsApi.markChecked(sub.id, true)
+        const sid = sub.submissionId ?? sub.id
+        await suspicionsApi.markChecked(sid, true)
         sub.checked = true
       }
     }

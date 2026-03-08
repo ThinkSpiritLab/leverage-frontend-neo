@@ -5,8 +5,8 @@ export function useSuspicionsApi() {
   return {
     list: (params?: { page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/suspicion', { params }),
-    get: (hashsum: string) => api.get(`/suspicion/${hashsum}`),
+    get: (hashsum: string) => api.get(`/suspicion/hash/${hashsum}`),
     markChecked: (submissionId: number, checked: boolean) =>
-      api.patch(`/suspicion/${submissionId}`, { checked }),
+      api.patch(`/suspicion/${submissionId}/checked`, { checked }),
   }
 }
