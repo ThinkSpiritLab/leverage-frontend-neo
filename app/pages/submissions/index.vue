@@ -145,7 +145,8 @@ const columns: DataTableColumns<Submission> = [
     key: 'language',
     width: 100,
     render(row) {
-      return h('span', {}, LANGUAGE_LABEL[row.language] ?? String(row.language))
+      const language = Number(row.language)
+      return h('span', {}, LANGUAGE_LABEL[language] ?? String(row.language))
     },
   },
   {

@@ -45,7 +45,7 @@ import { h, ref } from 'vue'
 import { NButton, NSpace, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import type { Submission } from '~/types'
-import { STATUS_LABEL } from '~/types'
+import { LANGUAGE_LABEL, STATUS_LABEL } from '~/types'
 
 definePageMeta({
   layout: 'admin',
@@ -157,6 +157,10 @@ const columns: DataTableColumns<Submission> = [
     title: '语言',
     key: 'language',
     width: 100,
+    render(row) {
+      const language = Number(row.language)
+      return LANGUAGE_LABEL[language] ?? String(row.language)
+    },
   },
   {
     title: '状态',
