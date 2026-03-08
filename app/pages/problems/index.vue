@@ -56,8 +56,8 @@ async function fetchProblems() {
       perPage: pageSize.value,
       search: searchText.value || undefined,
     })
-    problems.value = res.items
-    total.value = res.total
+    problems.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

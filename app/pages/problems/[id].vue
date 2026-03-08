@@ -129,7 +129,7 @@ const languageOptions = [
 
 onMounted(async () => {
   try {
-    problem.value = await problemsApi.get(problemId.value)
+    problem.value = (await problemsApi.get(problemId.value)).data
   }
   catch (e) {
     console.error(e)
