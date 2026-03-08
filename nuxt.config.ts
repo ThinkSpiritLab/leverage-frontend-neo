@@ -10,6 +10,10 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
   ],
 
+  imports: {
+    dirs: ['composables/**'],
+  },
+
   css: [
     'katex/dist/katex.min.css',
   ],
