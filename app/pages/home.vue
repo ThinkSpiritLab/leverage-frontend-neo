@@ -17,6 +17,18 @@
       </div>
     </NCard>
 
+    <NAlert
+      v-if="siteAnnouncement"
+      type="warning"
+      class="site-announcement"
+      :show-icon="false"
+    >
+      <template #header>
+        <span class="announcement-header">📢 全站公告</span>
+      </template>
+      <span class="announcement-text">{{ siteAnnouncement }}</span>
+    </NAlert>
+
     <div class="stats-row">
       <NCard class="stat-card stat-blue" :bordered="false">
         <NStatistic label="总题目数" :value="stats?.problem ?? '-'" />
@@ -80,10 +92,12 @@ definePageMeta({
 
 const statisticsApi = useStatisticsApi()
 const notificationsApi = useNotificationsApi()
+const settingsApi = useSettingsApi()
 
 const stats = ref<StatResult | null>(null)
 const notifications = ref<Notification[]>([])
 const notifLoading = ref(false)
+const siteAnnouncement = ref('')
 
 function formatDate(date: string) {
   return dayjs(date).format('MM-DD HH:mm')
@@ -96,6 +110,14 @@ onMounted(async () => {
   }
   catch {
     // 静默失败
+  }
+
+  try {
+    const res = await settingsApi.get('site.announcement')
+    siteAnnouncement.value = res.data?.valueString?.trim() || ''
+  }
+  catch {
+    siteAnnouncement.value = ''
   }
 
   notifLoading.value = true
@@ -172,6 +194,24 @@ useHead({ title: '首页 — Leverage OJ' })
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+}
+
+.site-announcement {
+  border-radius: 12px;
+  border: 1px solid #f59e0b;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+}
+
+.announcement-header {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.announcement-text {
+  color: #7c2d12;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .stat-card {

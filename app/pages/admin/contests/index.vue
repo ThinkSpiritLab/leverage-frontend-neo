@@ -327,6 +327,35 @@ const columns: DataTableColumns<Contest> = [
     },
   },
   {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    render(row) {
+      const now = Date.now()
+      const start = dayjs(row.startTime).valueOf()
+      const end = dayjs(row.endTime).valueOf()
+      if (now < start) {
+        return h(NTag, { type: 'default', size: 'small' }, { default: () => '未开始' })
+      }
+      if (now <= end) {
+        return h(NTag, { type: 'success', size: 'small' }, { default: () => '进行中' })
+      }
+      return h(NTag, { type: 'error', size: 'small' }, { default: () => '已结束' })
+    },
+  },
+  {
+    title: '公开',
+    key: 'public',
+    width: 80,
+    render(row) {
+      return h(
+        NTag,
+        { type: row.public ? 'info' : 'default', size: 'small' },
+        { default: () => (row.public ? '公开' : '私有') },
+      )
+    },
+  },
+  {
     title: '操作',
     key: 'actions',
     width: 140,

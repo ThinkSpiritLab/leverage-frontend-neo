@@ -500,7 +500,15 @@ async function fetchRanking() {
 
 const rankingColumns: DataTableColumns<CourseRankItem> = [
   { title: '排名', key: 'rank', width: 80 },
-  { title: '用户', key: 'username' },
+  {
+    title: '用户',
+    key: 'username',
+    render: (r: any) => {
+      const userText = `${r.user?.username || r.username || 'unknown'}(#${r.userId})`
+      const certifiedName = r.user?.certifiedName || r.certifiedName
+      return certifiedName ? `${certifiedName} · ${userText}` : userText
+    },
+  },
   { title: '分数', key: 'score', width: 100 },
 ]
 

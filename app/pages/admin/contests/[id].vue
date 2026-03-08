@@ -680,8 +680,8 @@ async function handleMarkDelivered(bid: number) {
 
 const balloonColumns: DataTableColumns<any> = [
   { title: 'ID', key: 'id', width: 70 },
-  { title: '用户', key: 'username', render: r => r.username || r.userId },
-  { title: '题目', key: 'problemLabel', render: r => r.problemLabel || r.problemId },
+  { title: '用户', key: 'username', render: r => r.username ? `${r.username}(#${r.userId})` : r.userId },
+  { title: '题目', key: 'problemLabel', render: r => r.problemLabel ? `${r.problemLabel}` : r.problemId },
   {
     title: '状态',
     key: 'delivered',
@@ -697,7 +697,7 @@ const balloonColumns: DataTableColumns<any> = [
       if (row.delivered) return h('span', '-')
       return h(NButton, {
         size: 'small', type: 'primary', ghost: true,
-        onClick: () => handleMarkDelivered(row.id),
+        onClick: () => handleMarkDelivered(row.contestProblemId || row.id),
       }, { default: () => '标记送达' })
     },
   },
@@ -728,8 +728,8 @@ async function fetchSubmissions() {
 
 const submissionColumns: DataTableColumns<any> = [
   { title: 'ID', key: 'id', width: 70 },
-  { title: '用户', key: 'user', render: r => r.user?.username || r.userId },
-  { title: '题目', key: 'problem', render: r => r.problem?.title || r.problemId },
+  { title: '用户', key: 'user', render: r => r.user?.username ? `${r.user.username}(#${r.userId})` : r.userId },
+  { title: '题目', key: 'problem', render: r => r.problem?.title ? `${r.problemLabel || ''} · ${r.problem.title}` : r.problemId },
   {
     title: '状态',
     key: 'status',
