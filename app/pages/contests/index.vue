@@ -45,18 +45,18 @@ const allContests = ref<Contest[]>([])
 const total = ref(0)
 const loading = ref(false)
 
+function getContestStatus(contest: Contest, now: Date): 'upcoming' | 'ongoing' | 'ended' {
+  const start = new Date(contest.startTime)
+  const end = new Date(contest.endTime)
+
+  if (start > now) return 'upcoming'
+  if (start <= now && end > now) return 'ongoing'
+  return 'ended'
+}
+
 function filterByTab(items: Contest[]): Contest[] {
-  const now = Date.now()
-  return items.filter((c) => {
-    const start = new Date(c.startTime).getTime()
-    const end = new Date(c.endTime).getTime()
-    switch (activeTab.value) {
-      case 'upcoming': return start > now
-      case 'ongoing': return start <= now && end > now
-      case 'ended': return end <= now
-      default: return true
-    }
-  })
+  const now = new Date()
+  return items.filter(contest => getContestStatus(contest, now) === activeTab.value)
 }
 
 const contests = computed(() => filterByTab(allContests.value))
