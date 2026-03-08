@@ -37,7 +37,7 @@
 
       <NDivider />
 
-      <MarkdownView :content="problem.description" />
+      <MarkdownView :content="problem.content ?? problem.description ?? ''" />
     </div>
 
     <!-- 右侧：代码编辑器 + 提交 -->
