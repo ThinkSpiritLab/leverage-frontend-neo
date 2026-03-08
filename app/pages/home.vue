@@ -179,14 +179,14 @@ useHead({ title: '首页 — Leverage OJ' })
   color: #fff;
 }
 
-.stat-card :deep(.n-statistic .n-statistic-value) {
-  color: #fff;
+.stat-card :deep(.n-statistic__value) {
+  color: #fff !important;
   font-size: 34px;
   font-weight: 700;
 }
 
-.stat-card :deep(.n-statistic .n-statistic-label) {
-  color: #fff;
+.stat-card :deep(.n-statistic__label) {
+  color: #fff !important;
   font-weight: 600;
   font-size: 13px;
   letter-spacing: 0.3px;
