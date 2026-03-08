@@ -101,6 +101,17 @@ export const STATUS_COLOR: Record<number, string> = {
   13: 'warning', // SC
 }
 
+// 语言枚举（后端 language 字段为数字）
+export const LANGUAGE_LABEL: Record<number | string, string> = {
+  0: 'C', 1: 'C++', 6: 'Java', 7: 'Kotlin',
+  8: 'Python2', 9: 'Python3', 10: 'JavaScript', 11: 'TypeScript',
+}
+
+export const LANGUAGE_NAME: Record<number, string> = {
+  0: 'c', 1: 'cpp', 6: 'java', 7: 'kotlin',
+  8: 'python', 9: 'python', 10: 'javascript', 11: 'typescript',
+}
+
 export interface Tag {
   id: number
   name: string

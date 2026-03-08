@@ -64,7 +64,7 @@
     <NCard title="提交代码">
       <CodeEditor
         v-model="codeContent"
-        :language="submission.language"
+        :language="LANGUAGE_NAME[submission.language] ?? 'cpp'"
         :readonly="true"
         height="500px"
       />
@@ -100,14 +100,7 @@ const submission = ref<Submission | null>(null)
 const loading = ref(true)
 const codeContent = ref('')
 
-// 后端 language 是数字枚举，与原版兼容
-const LANGUAGE_LABEL: Record<number | string, string> = {
-  0: 'C', 1: 'C++', 6: 'Java', 7: 'Kotlin',
-  8: 'Python2', 9: 'Python3', 10: 'JavaScript', 11: 'TypeScript',
-  // 兼容字符串形式
-  c: 'C', cpp: 'C++', java: 'Java', python: 'Python',
-  javascript: 'JavaScript', typescript: 'TypeScript',
-}
+import { LANGUAGE_LABEL, LANGUAGE_NAME } from '~/types'
 
 onMounted(async () => {
   try {

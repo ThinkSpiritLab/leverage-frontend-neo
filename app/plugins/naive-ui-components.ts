@@ -87,6 +87,8 @@ import {
   NUl,
   NOl,
   NEllipsis,
+  NInputGroup,
+  NInputGroupLabel,
 } from 'naive-ui'
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -179,6 +181,8 @@ export default defineNuxtPlugin((nuxtApp) => {
     NUl,
     NOl,
     NEllipsis,
+    NInputGroup,
+    NInputGroupLabel,
   ].filter(Boolean) // 过滤不存在的组件
   // Naive UI 组件的 .name 属性是不带 N 前缀的（如 NInput.name === 'Input'），
   // 但模板中使用 <NInput>，所以需要加上 'N' 前缀才能正确注册。
