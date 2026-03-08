@@ -249,12 +249,29 @@ const columns: DataTableColumns<Problem> = [
     key: 'logicId',
     width: 100,
     render(row) {
-      return h('span', { style: 'font-weight: 600;' }, `${row.prefix}${row.logicId}`)
+      return h(
+        'a',
+        {
+          style: 'font-weight: 600; color: #2080f0; cursor: pointer; text-decoration: none;',
+          onClick: () => navigateTo(`/admin/problems/${row.id}`),
+        },
+        `${row.prefix}${row.logicId}`,
+      )
     },
   },
   {
     title: '标题',
     key: 'title',
+    render(row) {
+      return h(
+        'a',
+        {
+          style: 'color: inherit; cursor: pointer; text-decoration: none;',
+          onClick: () => navigateTo(`/admin/problems/${row.id}`),
+        },
+        row.title,
+      )
+    },
   },
   {
     title: '时限(ms)',
