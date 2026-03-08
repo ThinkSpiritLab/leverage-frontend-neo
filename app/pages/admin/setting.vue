@@ -44,10 +44,13 @@ async function fetchSettings() {
   loading.value = true
   try {
     const res = await settingsApi.list()
-    settings.value = (Array.isArray(res.data) ? res.data : []).map((s: any) => ({
-      ...s,
-      _editValue: s.value,
-    }))
+    settings.value = (Array.isArray(res.data) ? res.data : []).map((s: any) => {
+      const rawValue = s.valueString ?? ''
+      return {
+        ...s,
+        _editValue: s.type === 'boolean' ? rawValue === 'true' : rawValue,
+      }
+    })
   }
   catch (e) {
     console.error(e)
@@ -66,8 +69,9 @@ async function saveAll() {
     // save all rows that have been touched
     if (dirtyKeys.value.has(row.key)) {
       try {
-        await settingsApi.update(row.key, row._editValue)
-        row.value = row._editValue
+        const payload = row.type === 'boolean' ? String(!!row._editValue) : String(row._editValue ?? '')
+        await settingsApi.update(row.key, payload)
+        row.valueString = payload
         success++
       }
       catch {
