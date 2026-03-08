@@ -9,10 +9,32 @@
           抄袭详情 — {{ hashsum.slice(0, 8) }}
         </NH2>
       </NSpace>
-      <NButton type="warning" :loading="checkingAll" @click="markAllChecked">
-        全部标记为已审查
-      </NButton>
+      <NSpace>
+        <NButton type="error" :loading="banningAll" @click="showBanModal = true">
+          批量封禁本组用户
+        </NButton>
+        <NButton type="warning" :loading="checkingAll" @click="markAllChecked">
+          全部标记为已审查
+        </NButton>
+      </NSpace>
     </div>
+
+    <NModal
+      v-model:show="showBanModal"
+      preset="dialog"
+      title="批量封禁本组用户"
+      positive-text="确认封禁"
+      negative-text="取消"
+      :loading="banningAll"
+      @positive-click="handleBatchBan"
+    >
+      <NInput
+        v-model:value="banReason"
+        type="textarea"
+        placeholder="请输入封禁原因"
+        :rows="3"
+      />
+    </NModal>
 
     <NSpin :show="loading">
       <div v-if="!loading && submissions.length === 0">
@@ -48,7 +70,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useMessage } from 'naive-ui'
+import { NModal, NInput, useMessage } from 'naive-ui'
 
 definePageMeta({
   layout: 'admin',
@@ -58,11 +80,15 @@ definePageMeta({
 const route = useRoute()
 const message = useMessage()
 const suspicionsApi = useSuspicionsApi()
+const usersApi = useUsersApi()
 
 const hashsum = computed(() => route.params.hashsum as string)
 const submissions = ref<any[]>([])
 const loading = ref(false)
 const checkingAll = ref(false)
+const showBanModal = ref(false)
+const banReason = ref('')
+const banningAll = ref(false)
 
 async function fetchDetail() {
   loading.value = true
@@ -114,6 +140,28 @@ async function markAllChecked() {
   }
   finally {
     checkingAll.value = false
+  }
+}
+
+async function handleBatchBan() {
+  const userIds = [...new Set(submissions.value.map(sub => sub.submission?.userId ?? sub.userId).filter(Boolean))]
+  if (userIds.length === 0) {
+    message.warning('未找到可封禁的用户')
+    return false
+  }
+  banningAll.value = true
+  try {
+    await Promise.all(userIds.map(uid => usersApi.update(uid, { status: 2, remarks: banReason.value })))
+    message.success(`已封禁 ${userIds.length} 人`)
+    showBanModal.value = false
+    banReason.value = ''
+  }
+  catch (e: any) {
+    message.error(e?.response?.data?.message || e?.message || '封禁失败')
+    return false
+  }
+  finally {
+    banningAll.value = false
   }
 }
 

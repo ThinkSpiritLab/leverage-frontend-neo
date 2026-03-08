@@ -6,6 +6,8 @@ export interface UpdateUserDto {
   studentId?: string
   password?: string
   role?: User['role']
+  status?: number
+  remarks?: string
 }
 
 export function useUsersApi() {

@@ -1,15 +1,20 @@
 <template>
   <div class="admin-sus">
-    <div class="page-header" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+    <div class="page-header">
       <NH2 style="margin: 0">抄袭检测列表</NH2>
-      <NSelect
-        v-model:value="selectedCourseId"
-        :options="courseOptions"
-        placeholder="按课程过滤（可选）"
-        clearable
-        style="width:220px"
-        @update:value="onCourseChange"
-      />
+      <NSpace>
+        <NSelect
+          v-model:value="selectedCourseId"
+          :options="courseOptions"
+          placeholder="按课程过滤（可选）"
+          clearable
+          style="width: 240px"
+          @update:value="onCourseChange"
+        />
+        <NButton type="error" :disabled="checkedKeys.length === 0" @click="showBanModal = true">
+          批量封禁选中用户 ({{ checkedKeys.length }})
+        </NButton>
+      </NSpace>
     </div>
 
     <PaginatedTable
@@ -20,14 +25,33 @@
       :page="page"
       :page-size="pageSize"
       :row-key="(row: any) => row.id"
+      :checked-row-keys="checkedKeys"
+      @update:checked-row-keys="(keys: any[]) => checkedKeys = keys"
       @page-change="onPageChange"
     />
+
+    <NModal
+      v-model:show="showBanModal"
+      preset="dialog"
+      title="批量封禁选中用户"
+      positive-text="确认封禁"
+      negative-text="取消"
+      :loading="banning"
+      @positive-click="handleBatchBan"
+    >
+      <NInput
+        v-model:value="banReason"
+        type="textarea"
+        placeholder="请输入封禁原因"
+        :rows="3"
+      />
+    </NModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { h, ref, onMounted, computed } from 'vue'
-import { NSwitch, NButton, NSelect, useMessage  } from 'naive-ui'
+import { h, ref } from 'vue'
+import { NSwitch, NButton, NSpace, NSelect, NModal, NInput, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 definePageMeta({
@@ -36,6 +60,7 @@ definePageMeta({
 })
 
 const suspicionsApi = useSuspicionsApi()
+const usersApi = useUsersApi()
 const coursesApi = useCoursesApi()
 const message = useMessage()
 
@@ -44,20 +69,25 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
-const selectedCourseId = ref<number | null>(null)
-const courseOptions = ref<{ label: string; value: number }[]>([])
 
-async function loadCourses() {
+const checkedKeys = ref<Array<string | number>>([])
+const showBanModal = ref(false)
+const banReason = ref('')
+const banning = ref(false)
+
+const selectedCourseId = ref<number | null>(null)
+const courseOptions = ref<Array<{ label: string; value: number }>>([])
+
+async function fetchCourses() {
   try {
     const res = await coursesApi.list({ page: 1, perPage: 100 })
     const list = res.data?.items ?? res.data ?? []
-    courseOptions.value = list.map((c: any) => ({ label: c.name || c.title || `课程${c.id}`, value: c.id }))
-  } catch { /* ignore */ }
-}
-
-function onCourseChange() {
-  page.value = 1
-  fetchItems()
+    courseOptions.value = list.map((c: any) => ({
+      label: c.name || c.title || `课程 #${c.id}`,
+      value: c.id,
+    }))
+  }
+  catch { /* ignore */ }
 }
 
 async function fetchItems() {
@@ -79,12 +109,45 @@ async function fetchItems() {
   }
 }
 
-onMounted(() => { loadCourses(); fetchItems() })
+onMounted(() => {
+  fetchCourses()
+  fetchItems()
+})
 
 function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: number }) {
   page.value = p
   pageSize.value = ps
   fetchItems()
+}
+
+function onCourseChange() {
+  page.value = 1
+  checkedKeys.value = []
+  fetchItems()
+}
+
+async function handleBatchBan() {
+  const selectedRows = items.value.filter(row => checkedKeys.value.includes(row.id))
+  const userIds = [...new Set(selectedRows.map(row => row.submission?.userId ?? row.userId).filter(Boolean))]
+  if (userIds.length === 0) {
+    message.warning('未找到可封禁的用户')
+    return false
+  }
+  banning.value = true
+  try {
+    await Promise.all(userIds.map(uid => usersApi.update(uid, { status: 2, remarks: banReason.value })))
+    message.success(`已封禁 ${userIds.length} 人`)
+    showBanModal.value = false
+    banReason.value = ''
+    checkedKeys.value = []
+  }
+  catch (e: any) {
+    message.error(e?.response?.data?.message || e?.message || '封禁失败')
+    return false
+  }
+  finally {
+    banning.value = false
+  }
 }
 
 async function toggleChecked(row: any) {
@@ -99,6 +162,9 @@ async function toggleChecked(row: any) {
 }
 
 const columns: DataTableColumns = [
+  {
+    type: 'selection',
+  },
   {
     title: '提交ID',
     key: 'submissionId',
