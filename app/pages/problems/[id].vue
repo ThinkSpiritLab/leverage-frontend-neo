@@ -6,7 +6,10 @@
     <!-- 左侧：题目信息 -->
     <div class="problem-left">
       <div class="problem-header">
-        <NH2 style="margin: 0">{{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}</NH2>
+        <NH2 style="margin: 0; display: flex; align-items: center; gap: 8px">
+          {{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}
+          <span v-if="isAcceptedByCurrentUser" class="ac-flag">✓</span>
+        </NH2>
         <div class="problem-meta">
           <NTag type="info" :bordered="false">
             ⏱ 时间限制: {{ problem.timeLimit }}ms
@@ -137,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Problem } from '~/types'
+import { isFinalStatus, type Problem } from '~/types'
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
@@ -152,6 +155,8 @@ const problemId = computed(() => Number(route.params.id))
 
 const problemsApi = useProblemsApi()
 const submissionsApi = useSubmissionsApi()
+const usersApi = useUsersApi()
+const authStore = useAuthStore()
 
 const problem = ref<Problem | null>(null)
 const loading = ref(true)
@@ -162,6 +167,7 @@ const submitting = ref(false)
 const submissionId = ref<number | null>(null)
 const submissionStatus = ref(0)
 const polling = ref(false)
+const isAcceptedByCurrentUser = ref(false)
 
 // 全屏状态
 const isFullscreen = ref(false)
@@ -189,6 +195,12 @@ const languageName = computed(() => LANGUAGE_INT_TO_NAME[language.value] ?? 'cpp
 onMounted(async () => {
   try {
     problem.value = (await problemsApi.get(problemId.value)).data
+
+    if (authStore.user?.id) {
+      const acRes = await usersApi.getAcceptedProblems(authStore.user.id)
+      const accepted = acRes.data?.items ?? []
+      isAcceptedByCurrentUser.value = accepted.some((p: any) => Number(p.id) === problemId.value)
+    }
   }
   catch (e) {
     console.error(e)
@@ -248,8 +260,6 @@ async function handleSubmit() {
     submissionId.value = newSub.id
     submissionStatus.value = newSub.status
     startPolling(newSub.id)
-    // 提交成功后跳转到提交详情页
-    navigateTo(`/submissions/${newSub.id}`)
   }
   catch (e) {
     console.error(e)
@@ -260,15 +270,14 @@ async function handleSubmit() {
 }
 
 function startPolling(id: number) {
-  if (submissionStatus.value >= 2) return
+  if (isFinalStatus(submissionStatus.value)) return
   polling.value = true
 
   const poll = async () => {
     try {
       const res = await submissionsApi.getStatus(id)
       submissionStatus.value = res.data.status
-      // status >= 9 表示仍在评测中（PENDING=9, JUDGING=10, COMPILING=11）
-      if (res.data.status >= 9) {
+      if (!isFinalStatus(res.data.status)) {
         pollTimer = setTimeout(poll, 2000)
       }
       else {
@@ -280,7 +289,7 @@ function startPolling(id: number) {
     }
   }
 
-  pollTimer = setTimeout(poll, 2000)
+  pollTimer = setTimeout(poll, 1000)
 }
 
 useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} — Leverage OJ` : '题目 — Leverage OJ' })))
@@ -301,12 +310,12 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
 }
 
 .problem-left {
-  flex: 0 0 55%;
+  flex: 0 0 60%;
   min-width: 0;
 }
 
 .problem-right {
-  flex: 0 0 calc(45% - 24px);
+  flex: 0 0 calc(40% - 24px);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -325,6 +334,12 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.ac-flag {
+  color: #18a058;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .problem-tags {
