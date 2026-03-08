@@ -112,6 +112,29 @@
           </NDescriptionsItem>
         </NDescriptions>
 
+        <!-- 评测机状态 -->
+        <NDivider style="margin: 16px 0" />
+        <div class="queue-title">
+          <NText strong>⚖️ 评测机</NText>
+          <NButton text size="tiny" style="margin-left: 8px" @click="fetchJudgers">🔄</NButton>
+        </div>
+        <div v-if="judgersLoading" style="margin-top: 8px">
+          <NText depth="3">正在加载评测机…</NText>
+        </div>
+        <NList v-else-if="judgers.length > 0" style="margin-top: 8px" bordered size="small">
+          <NListItem v-for="j in judgers" :key="j.name">
+            <NSpace align="center">
+              <NTag :type="j.ttl > 0 ? 'success' : 'error'" size="small">
+                {{ j.ttl > 0 ? '🟢 在线' : '🔴 离线' }}
+              </NTag>
+              <NText strong>{{ j.name }}</NText>
+              <NText depth="3" style="font-size: 12px">v{{ j.version }}</NText>
+              <NText v-if="j.ttl > 0" depth="3" style="font-size: 12px">TTL {{ j.ttl }}s</NText>
+            </NSpace>
+          </NListItem>
+        </NList>
+        <NEmpty v-else description="暂无在线评测机" style="margin-top: 8px" />
+
         <!-- 评测队列 -->
         <div v-if="queues" class="queue-section">
           <NDivider style="margin: 16px 0" />
@@ -184,6 +207,7 @@ const authStore = useAuthStore()
 const statisticsApi = useStatisticsApi()
 const healthApi = useHealthApi()
 const notificationsApi = useNotificationsApi()
+const transmitApi = useTransmitApi()
 
 // ── 统计数字 ─────────────────────────────────────────────────────────────────
 const stat = ref<StatResult | null>(null)
@@ -200,6 +224,25 @@ async function fetchStat() {
   }
   finally {
     statLoading.value = false
+  }
+}
+
+// ── 评测机 ───────────────────────────────────────────────────────────────────
+interface Judger { name: string; version: string; ttl: number }
+const judgers = ref<Judger[]>([])
+const judgersLoading = ref(false)
+
+async function fetchJudgers() {
+  judgersLoading.value = true
+  try {
+    const res = await transmitApi.getJudgers()
+    judgers.value = res.data ?? []
+  }
+  catch (e) {
+    console.error('judgers error', e)
+  }
+  finally {
+    judgersLoading.value = false
   }
 }
 
@@ -282,6 +325,7 @@ function formatTime(ts: string) {
 onMounted(() => {
   fetchStat()
   fetchHealth()
+  fetchJudgers()
   fetchNotifications()
 })
 
