@@ -30,6 +30,19 @@ export default defineNuxtConfig({
     },
   },
 
+  // 开发模式：将 /api/* 代理到后端，与生产 Nginx 行为一致
+  vite: {
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          rewrite: (path: string) => path.replace(/^\/api/, ''),
+          changeOrigin: true,
+        },
+      },
+    },
+  },
+
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 })
