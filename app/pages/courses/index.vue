@@ -78,7 +78,7 @@ async function fetchCourses() {
   loading.value = true
   try {
     const res = await coursesApi.list({ page: page.value, perPage: pageSize.value })
-    const data = res.data
+    const data = (res as any).data
     courses.value = data.items ?? data
     total.value = data.total ?? courses.value.length
   }

@@ -134,7 +134,7 @@ const editorLanguage = computed(() => {
 onMounted(async () => {
   try {
     const res = await problemsApi.get(problemId.value)
-    problem.value = res.data ?? res
+    problem.value = (res as any).data ?? res
   }
   catch (e) {
     console.error(e)
@@ -160,7 +160,7 @@ async function handleSubmit() {
       code: code.value,
       courseId: courseId.value,
     })
-    const sub = res.data ?? res
+    const sub = (res as any).data ?? res
     submissionId.value = sub.id
     submissionStatus.value = sub.status
     startPolling(sub.id)
@@ -180,7 +180,7 @@ function startPolling(id: number) {
   const poll = async () => {
     try {
       const res = await submissionsApi.getStatus(id)
-      const data = res.data ?? res
+      const data = (res as any).data ?? res
       submissionStatus.value = data.status
       if (!isFinalStatus(data.status)) {
         pollTimer = setTimeout(poll, 2000)

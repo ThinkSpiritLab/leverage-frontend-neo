@@ -86,7 +86,7 @@ async function fetchNotifications() {
   loading.value = true
   try {
     const res = await notificationsApi.list({ page: page.value, perPage: pageSize })
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     notifications.value = data.items ?? data
     total.value = data.total ?? 0
   }

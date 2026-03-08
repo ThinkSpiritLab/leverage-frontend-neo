@@ -126,7 +126,7 @@ async function fetchMessages() {
   loading.value = true
   try {
     const res = await msgApi.getInbox({ page: page.value, perPage: pageSize })
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     messages.value = data.items ?? data
     total.value = data.total ?? 0
   }

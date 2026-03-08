@@ -139,7 +139,7 @@ async function fetchProblems() {
     const items = await Promise.all(
       (course.value.problems as unknown as number[]).map(async (id: number) => {
         const res = await problemsApi.get(id)
-        return res.data ?? res
+        return (res as any).data ?? res
       }),
     )
     problems.value = items
@@ -166,7 +166,7 @@ async function fetchSubmissions() {
       page: submissionsPage.value,
       perPage: submissionsPageSize.value,
     })
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     submissions.value = (data as any).items ?? (Array.isArray(data) ? data : [])
     submissionsTotal.value = (data as any).total ?? submissions.value.length
   }
@@ -251,7 +251,7 @@ async function fetchRanking() {
   rankLoading.value = true
   try {
     const res = await coursesApi.getRanking(courseId.value)
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     rankData.value = Array.isArray(data) ? data : (data as any).items ?? []
   }
   catch (e) {
@@ -300,7 +300,7 @@ watch(activeTab, (tab) => {
 onMounted(async () => {
   try {
     const res = await coursesApi.get(courseId.value)
-    course.value = res.data ?? res
+    course.value = (res as any).data ?? res
     await fetchProblems()
   }
   catch (e) {

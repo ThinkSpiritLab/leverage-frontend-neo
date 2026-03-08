@@ -113,7 +113,7 @@ async function fetchMessage() {
   loading.value = true
   try {
     const res = await msgApi.getMessage(id.value)
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     allMessages.value = Array.isArray(data) ? data : [data]
   }
   catch (e) {
@@ -139,7 +139,7 @@ async function handleReply() {
   sending.value = true
   try {
     const res = await msgApi.reply(id.value, replyContent.value.trim())
-    const newReply = res.data ?? res
+    const newReply = (res as any).data ?? res
     allMessages.value = [newReply, ...allMessages.value.filter(m => m.sessionId !== null), session.value!]
     replyContent.value = ''
     uiMsg.success('回复已发送')

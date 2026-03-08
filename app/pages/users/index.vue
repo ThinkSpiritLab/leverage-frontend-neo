@@ -91,7 +91,7 @@ async function fetchUsers() {
       perPage: pageSize.value,
       search: searchText.value || undefined,
     })
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     users.value = data.items ?? data
     total.value = data.total ?? 0
   }
@@ -108,7 +108,7 @@ const debouncedFetch = useDebounceFn(() => {
   fetchUsers()
 }, 400)
 
-function onPageChange(p: number) {
+function onPageChange({ page: p }: { page: number; pageSize: number }) {
   page.value = p
   fetchUsers()
 }
