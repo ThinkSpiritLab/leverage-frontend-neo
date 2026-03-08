@@ -47,7 +47,8 @@ const error = ref(false)
 
 onMounted(async () => {
   try {
-    const data = await submissionsApi.getCE(submissionId.value)
+    const res = await submissionsApi.getCE(submissionId.value)
+    const data = (res as any).data ?? res
     // The API may return an object with stderr or a plain string
     if (typeof data === 'string') {
       ceContent.value = data

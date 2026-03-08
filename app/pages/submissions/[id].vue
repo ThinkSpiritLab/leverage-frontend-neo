@@ -29,14 +29,14 @@
         </NDescriptionsItem>
 
         <NDescriptionsItem label="语言">
-          {{ LANGUAGE_LABEL[submission.language] || submission.language }}
+          {{ LANGUAGE_LABEL[submission.language] ?? submission.language }}
         </NDescriptionsItem>
 
         <NDescriptionsItem label="状态">
           <NSpace align="center">
             <StatusTag :status="submission.status" />
             <NButton
-              v-if="submission.status === 7"
+              v-if="submission.status === SubmissionStatus.CE"
               text
               type="error"
               size="small"
@@ -48,11 +48,11 @@
         </NDescriptionsItem>
 
         <NDescriptionsItem label="执行时间">
-          {{ submission.time !== undefined && submission.time !== null ? `${submission.time}ms` : '-' }}
+          {{ submission.time != null ? `${submission.time}ms` : '-' }}
         </NDescriptionsItem>
 
         <NDescriptionsItem label="内存使用">
-          {{ submission.memory !== undefined && submission.memory !== null ? `${submission.memory}KB` : '-' }}
+          {{ memoryToKB(submission.memory) }}
         </NDescriptionsItem>
 
         <NDescriptionsItem label="提交时间" :span="2">
@@ -64,7 +64,7 @@
     <NCard title="提交代码">
       <CodeEditor
         v-model="codeContent"
-        :language="submission.language"
+        :language="editorLang"
         :readonly="true"
         height="500px"
       />
@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 import type { Submission } from '~/types'
+import { LANGUAGE_LABEL, Language, SubmissionStatus, memoryToKB } from '~/types'
 import dayjs from 'dayjs'
 
 definePageMeta({
@@ -93,22 +94,26 @@ const submission = ref<Submission | null>(null)
 const loading = ref(true)
 const codeContent = ref('')
 
-const LANGUAGE_LABEL: Record<string, string> = {
-  cpp: 'C++',
-  java: 'Java',
-  python: 'Python',
-  javascript: 'JavaScript',
-  c: 'C',
-  python2: 'Python2',
-  python3: 'Python3',
-  typescript: 'TypeScript',
-}
+// 数字语言 ID → 编辑器语言名
+const editorLang = computed(() => {
+  if (!submission.value) return 'cpp'
+  const map: Record<number, string> = {
+    [Language.C]: 'c',
+    [Language.CPP]: 'cpp',
+    [Language.Java]: 'java',
+    [Language.Python2]: 'python',
+    [Language.Python3]: 'python',
+    [Language.JavaScript]: 'javascript',
+  }
+  return map[submission.value.language] || 'cpp'
+})
 
 onMounted(async () => {
   try {
-    submission.value = await submissionsApi.get(submissionId.value)
-    // 代码内容从 submission 中获取（如果后端返回 code 字段）
-    codeContent.value = (submission.value as any).code || ''
+    const res = await submissionsApi.get(submissionId.value)
+    const data = res.data ?? res
+    submission.value = data
+    codeContent.value = (data as any).code || ''
   }
   catch (e) {
     console.error(e)
