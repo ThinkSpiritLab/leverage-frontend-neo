@@ -6,7 +6,7 @@ export interface CreateProblemDto {
   prefix: string
   title: string
   description: string
-  content: string
+  content?: string
   timeLimit: number
   memoryLimit: number
   tags?: number[]

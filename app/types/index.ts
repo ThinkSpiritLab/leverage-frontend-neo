@@ -5,6 +5,13 @@ export interface User {
   role: 'sa' | 'admin' | 'supervisor' | 'user' | 'guest'
   studentId?: string
   email?: string
+  certifiedName?: string
+  nickname?: string
+  college?: string
+  profession?: string
+  grade?: string
+  status?: number
+  banned?: boolean
   submits?: number
   accepts?: number
   createdAt: string
@@ -17,12 +24,16 @@ export interface Problem {
   prefix: string
   title: string
   description: string
+  content?: string
   timeLimit: number
   memoryLimit: number
   submits: number
   accepts: number
   tags: Tag[]
   hidden: boolean
+  problemId?: number
+  label?: string
+  color?: string
 }
 
 // 提交
@@ -123,6 +134,21 @@ export const LANGUAGE_LABEL: Record<number | string, string> = {
 export const LANGUAGE_NAME: Record<number, string> = {
   0: 'c', 1: 'cpp', 6: 'java', 7: 'kotlin',
   8: 'python', 9: 'python', 10: 'javascript', 11: 'typescript',
+}
+
+export enum Language {
+  C = 0,
+  CPP = 1,
+  Java = 6,
+  Kotlin = 7,
+  Python2 = 8,
+  Python3 = 9,
+  JavaScript = 10,
+  TypeScript = 11,
+}
+
+export function isFinalStatus(status: number): boolean {
+  return status >= 0 && status <= 8
 }
 
 export interface Tag {

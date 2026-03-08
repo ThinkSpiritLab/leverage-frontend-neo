@@ -30,7 +30,7 @@
 import type { DataTableColumns } from 'naive-ui'
 
 const props = withDefaults(defineProps<{
-  columns: DataTableColumns
+  columns: DataTableColumns<any>
   data: Record<string, unknown>[]
   loading?: boolean
   total?: number

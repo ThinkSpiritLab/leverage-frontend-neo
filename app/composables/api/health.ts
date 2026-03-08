@@ -3,9 +3,9 @@ import { useApi } from '~/composables/useApi'
 export interface HealthStatus {
   status: string
   info?: {
-    database?: { status: string }
-    redis?: { status: string }
-    [key: string]: { status: string } | undefined
+    database?: { status: string; message?: string }
+    redis?: { status: string; message?: string }
+    [key: string]: { status: string; message?: string } | undefined
   }
   error?: Record<string, any>
   details?: Record<string, any>
