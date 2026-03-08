@@ -1,4 +1,10 @@
 <script setup lang="ts">
-// 重定向到题目列表
-navigateTo('/problems', { replace: true })
+const authStore = useAuthStore()
+
+if (authStore.isLoggedIn) {
+  navigateTo('/home', { replace: true })
+}
+else {
+  navigateTo('/login', { replace: true })
+}
 </script>
