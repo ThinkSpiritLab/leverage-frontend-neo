@@ -3,7 +3,7 @@
     <div class="auth-layout">
       <div class="auth-container">
         <div class="auth-header">
-          <h1 class="auth-logo">LevOJ</h1>
+          <h1 class="auth-logo">Leverage OJ</h1>
           <p class="auth-subtitle">在线评测系统</p>
         </div>
         <NCard class="auth-card">
