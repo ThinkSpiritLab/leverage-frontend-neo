@@ -9,6 +9,7 @@ export interface Course {
   startTime?: string
   endTime?: string
   notification?: string
+  enabledLanguageJSON?: string | null
   createdAt: string
   problems?: number[]
   members?: number[]
@@ -17,6 +18,7 @@ export interface Course {
 export interface CreateCourseDto {
   name: string
   notification?: string
+  enabledLanguageJSON?: string | null
   problemIds?: number[]
 }
 

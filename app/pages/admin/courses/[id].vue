@@ -129,6 +129,9 @@
         <NFormItem label="公告">
           <NInput v-model:value="editForm.notification" type="textarea" placeholder="输入课程公告" :rows="4" />
         </NFormItem>
+        <NFormItem label="允许语言">
+          <NSelect v-model:value="editEnabledLanguages" :options="LANGUAGE_OPTIONS" multiple clearable />
+        </NFormItem>
       </NForm>
       <template #action>
         <NSpace justify="end">
@@ -145,7 +148,7 @@ import { h } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns, SelectOption, UploadCustomRequestOptions } from 'naive-ui'
 import dayjs from 'dayjs'
-import { STATUS_LABEL, STATUS_COLOR } from '~/types'
+import { STATUS_LABEL, STATUS_COLOR, LANGUAGE_OPTIONS } from '~/types'
 import type { Course, CourseRankItem } from '~/composables/api/courses'
 
 definePageMeta({
@@ -183,13 +186,23 @@ onMounted(fetchCourse)
 
 const showEditModal = ref(false)
 const saving = ref(false)
-const editForm = ref({ name: '', notification: '' })
+const editEnabledLanguages = ref<number[]>([])
+const editForm = ref({ name: '', notification: '', enabledLanguageJSON: null as string | null })
 
 function openEditModal() {
   if (!course.value) return
+  let enabledLanguages: number[] = []
+  try {
+    enabledLanguages = course.value.enabledLanguageJSON ? JSON.parse(course.value.enabledLanguageJSON) : []
+  }
+  catch {
+    enabledLanguages = []
+  }
+  editEnabledLanguages.value = Array.isArray(enabledLanguages) ? enabledLanguages : []
   editForm.value = {
     name: course.value.name || '',
     notification: course.value.notification || '',
+    enabledLanguageJSON: course.value.enabledLanguageJSON ?? null,
   }
   showEditModal.value = true
 }
@@ -197,7 +210,11 @@ function openEditModal() {
 async function handleSaveEdit() {
   saving.value = true
   try {
-    await coursesApi.update(courseId, editForm.value)
+    const updateData = {
+      ...editForm.value,
+      enabledLanguageJSON: editEnabledLanguages.value.length > 0 ? JSON.stringify(editEnabledLanguages.value) : null,
+    }
+    await coursesApi.update(courseId, updateData)
     message.success('更新成功')
     showEditModal.value = false
     fetchCourse()
