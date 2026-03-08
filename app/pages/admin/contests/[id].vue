@@ -125,7 +125,10 @@
 
         <NTabPane name="scoreboard" tab="排行榜">
           <div style="margin-top: 16px">
-            <NButton style="margin-bottom: 12px" @click="fetchRanking">刷新</NButton>
+            <NSpace style="margin-bottom: 12px">
+              <NButton @click="fetchRanking">刷新</NButton>
+              <NButton @click="exportCsv">导出 CSV</NButton>
+            </NSpace>
             <NDataTable
               :columns="rankingColumns"
               :data="ranking"
@@ -254,6 +257,8 @@ const contestId = Number(route.params.id)
 const contestsApi = useContestsApi()
 const problemsApi = useProblemsApi()
 const usersApi = useUsersApi()
+const authStore = useAuthStore()
+const runtimeConfig = useRuntimeConfig()
 const message = useMessage()
 const dialog = useDialog()
 
@@ -738,6 +743,12 @@ async function fetchRanking() {
   }
   catch (e) { console.error(e) }
   finally { rankingLoading.value = false }
+}
+
+const exportCsv = async () => {
+  const token = authStore.accessToken
+  const url = `${runtimeConfig.public.apiBase}/contests/${contestId}/results/export?token=${token}`
+  window.open(url, '_blank')
 }
 
 const rankingColumns: DataTableColumns<RankItem> = [
