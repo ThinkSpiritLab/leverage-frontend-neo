@@ -4,7 +4,7 @@
   </div>
   <div v-else-if="course" class="course-detail">
     <div class="course-header">
-      <NH2 style="margin: 0">{{ course.title }}</NH2>
+      <NH2 style="margin: 0">{{ course.name || course.title }}</NH2>
       <NText v-if="course.description" depth="3" style="font-size: 15px; margin-top: 8px">
         {{ course.description }}
       </NText>
@@ -311,7 +311,7 @@ onMounted(async () => {
   }
 })
 
-useHead(computed(() => ({ title: course.value?.title ? `${course.value.title} — Leverage OJ` : '课程 — Leverage OJ' })))
+useHead(computed(() => ({ title: (course.value?.name || course.value?.title) ? `${course.value?.name || course.value?.title} — Leverage OJ` : '课程 — Leverage OJ' })))
 </script>
 
 <style scoped>
