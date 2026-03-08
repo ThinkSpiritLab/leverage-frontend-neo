@@ -40,13 +40,22 @@ definePageMeta({
 })
 
 const problemsApi = useProblemsApi()
+const route = useRoute()
+const router = useRouter()
 
 const searchText = ref('')
 const page = ref(1)
 const pageSize = ref(20)
+const selectedTagId = ref<number | null>(null)
 const problems = ref<Problem[]>([])
 const total = ref(0)
 const loading = ref(false)
+
+function syncTagIdFromRoute() {
+  const raw = route.query.tagId
+  const tagId = Number(Array.isArray(raw) ? raw[0] : raw)
+  selectedTagId.value = Number.isFinite(tagId) && tagId > 0 ? tagId : null
+}
 
 async function fetchProblems() {
   loading.value = true
@@ -55,6 +64,7 @@ async function fetchProblems() {
       page: page.value,
       perPage: pageSize.value,
       search: searchText.value || undefined,
+      tagId: selectedTagId.value || undefined,
     })
     problems.value = res.data.items
     total.value = res.data.total
@@ -74,7 +84,19 @@ watch(searchText, () => {
   debouncedFetch()
 })
 
-onMounted(fetchProblems)
+watch(
+  () => route.query.tagId,
+  () => {
+    syncTagIdFromRoute()
+    page.value = 1
+    fetchProblems()
+  },
+)
+
+onMounted(() => {
+  syncTagIdFromRoute()
+  fetchProblems()
+})
 
 function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: number }) {
   page.value = p
@@ -93,6 +115,10 @@ function tagColor(tag: Tag) {
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']
   const hash = [...tag.name].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
   return colors[hash % colors.length]
+}
+
+function filterByTag(tag: Tag) {
+  router.push({ path: '/problems', query: { ...route.query, tagId: String(tag.id) } })
 }
 
 const columns: DataTableColumns<Problem> = [
@@ -143,7 +169,7 @@ const columns: DataTableColumns<Problem> = [
           type: 'line',
           percentage: rate,
           height: 8,
-          indicatorPlacement: 'inside',
+          showIndicator: false,
           processing: false,
           status: progressStatus,
           borderRadius: 6,
@@ -157,7 +183,7 @@ const columns: DataTableColumns<Problem> = [
     title: '标签',
     key: 'tags',
     render(row) {
-      if (!row.tags || row.tags.length === 0) return h('span', { style: 'color: #94a3b8;' }, '无')
+      if (!row.tags || row.tags.length === 0) return h('span', { style: 'color: #94a3b8;' }, '-')
       return h(
         NSpace,
         { size: 6 },
@@ -174,7 +200,9 @@ const columns: DataTableColumns<Problem> = [
                   style: {
                     color: '#fff',
                     background: tagColor(tag),
+                    cursor: 'pointer',
                   },
+                  onClick: () => filterByTag(tag),
                 },
                 { default: () => tag.name },
               ),
