@@ -14,7 +14,7 @@
               @collapse="uiStore.toggleSidebar"
               @expand="uiStore.toggleSidebar"
             >
-              <div class="logo-area" :class="{ collapsed: uiStore.sidebarCollapsed }">
+              <div class="logo-area" :class="{ collapsed: uiStore.sidebarCollapsed }" style="cursor:pointer" @click="navigateTo('/')">
                 <div class="logo-main">
                   <span v-if="!uiStore.sidebarCollapsed" class="logo-text">Leverage OJ</span>
                   <span v-else class="logo-icon">OJ</span>
