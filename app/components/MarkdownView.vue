@@ -18,7 +18,7 @@ const md = new MarkdownIt({
   typographer: true,
 }).use(texmath, {
   engine: katex,
-  delimiters: 'dollars',
+  delimiters: ['dollars', 'brackets'],  // 支持 $...$ 和 \(...\) 两种格式
   katexOptions: { throwOnError: false },
 })
 
