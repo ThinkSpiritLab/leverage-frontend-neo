@@ -14,8 +14,12 @@
           <NSpace size="small" style="margin-top:6px">
             <NText depth="3">姓名：{{ user.certifiedName || '-' }}</NText>
             <NText depth="3">学院：{{ user.college || '-' }}</NText>
+            <NText depth="3">专业：{{ user.profession || '-' }}</NText>
             <NText depth="3">等级：{{ user.rank ?? '-' }}</NText>
             <NText depth="3">AC/提交：{{ user.accepts ?? 0 }}/{{ user.submits ?? 0 }}</NText>
+          </NSpace>
+          <NSpace v-if="isOwnProfile" size="small" style="margin-top:8px">
+            <NButton size="small" quaternary @click="openProfileEditModal">编辑学院/专业</NButton>
           </NSpace>
         </div>
       </div>
@@ -51,6 +55,31 @@
         :single-line="false"
       />
     </NCard>
+    <!-- 编辑学院/专业弹窗 -->
+    <NModal v-model:show="showProfileEdit" title="编辑学院/专业" preset="dialog" style="width: 420px">
+      <NForm :model="profileForm" label-placement="left" label-width="60px" style="margin-top: 12px">
+        <NFormItem label="学院">
+          <NAutoComplete
+            v-model:value="profileForm.college"
+            :options="collegeAutoOptions"
+            placeholder="请输入学院名称"
+          />
+        </NFormItem>
+        <NFormItem label="专业">
+          <NAutoComplete
+            v-model:value="profileForm.profession"
+            :options="professionAutoOptions"
+            placeholder="请输入专业名称"
+          />
+        </NFormItem>
+      </NForm>
+      <template #action>
+        <NSpace justify="end">
+          <NButton @click="showProfileEdit = false">取消</NButton>
+          <NButton type="primary" :loading="profileSaving" @click="handleProfileSave">保存</NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
   <div v-else class="loading-center"><NResult status="404" title="用户不存在" /></div>
 </template>
@@ -58,7 +87,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import { h } from 'vue'
-import { NButton } from 'naive-ui'
+import { NButton, NSpace, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 definePageMeta({ layout: 'default' })
@@ -66,6 +95,12 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const userId = computed(() => Number(route.params.id))
 const usersApi = useUsersApi()
+const collegesApi = useCollegesApi()
+const professionsApi = useProfessionsApi()
+const authStore = useAuthStore()
+const message = useMessage()
+
+const isOwnProfile = computed(() => authStore.isLoggedIn && authStore.user?.id === userId.value)
 
 const user = ref<any>(null)
 const loading = ref(true)
@@ -137,6 +172,56 @@ const acColumns: DataTableColumns<{ id: number; title: string; logicId: string; 
     },
   },
 ]
+
+// 编辑学院/专业
+const showProfileEdit = ref(false)
+const profileSaving = ref(false)
+const profileForm = ref({ college: '', profession: '' })
+const allColleges = ref<any[]>([])
+const allProfessions = ref<any[]>([])
+
+const collegeAutoOptions = computed(() =>
+  allColleges.value.map(c => c.college).filter(Boolean).map(name => ({ label: name, value: name })),
+)
+const professionAutoOptions = computed(() =>
+  allProfessions.value.map(p => p.profession).filter(Boolean).map(name => ({ label: name, value: name })),
+)
+
+function openProfileEditModal() {
+  profileForm.value = {
+    college: user.value?.college || '',
+    profession: user.value?.profession || '',
+  }
+  showProfileEdit.value = true
+  // load options
+  collegesApi.list().then((res) => {
+    const d = res.data
+    allColleges.value = Array.isArray(d) ? d : (d?.items ?? [])
+  }).catch(() => {})
+  professionsApi.list().then((res) => {
+    const d = res.data
+    allProfessions.value = Array.isArray(d) ? d : (d?.items ?? [])
+  }).catch(() => {})
+}
+
+async function handleProfileSave() {
+  profileSaving.value = true
+  try {
+    await usersApi.update(userId.value, {
+      college: profileForm.value.college || undefined,
+      profession: profileForm.value.profession || undefined,
+    } as any)
+    message.success('更新成功')
+    user.value = { ...user.value, college: profileForm.value.college, profession: profileForm.value.profession }
+    showProfileEdit.value = false
+  }
+  catch (e: any) {
+    message.error(e?.response?.data?.message || e?.message || '更新失败')
+  }
+  finally {
+    profileSaving.value = false
+  }
+}
 
 async function loadAcProblems() {
   acLoading.value = true

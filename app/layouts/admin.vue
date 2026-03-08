@@ -75,6 +75,8 @@ import {
   SettingsOutline,
   NotificationsOutline,
   PricetagsOutline,
+  LibraryOutline,
+  BriefcaseOutline,
   ListOutline,
   ServerOutline,
 } from '@vicons/ionicons5'
@@ -156,6 +158,18 @@ const adminMenuOptions = [
     key: 'admin-tags',
     icon: renderIcon(PricetagsOutline),
     onClick: () => navigateTo('/admin/tags'),
+  },
+  {
+    label: '学院管理',
+    key: 'admin-colleges',
+    icon: renderIcon(LibraryOutline),
+    onClick: () => navigateTo('/admin/colleges'),
+  },
+  {
+    label: '专业管理',
+    key: 'admin-professions',
+    icon: renderIcon(BriefcaseOutline),
+    onClick: () => navigateTo('/admin/professions'),
   },
   {
     label: '通知管理',
