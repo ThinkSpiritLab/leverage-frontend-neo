@@ -28,5 +28,9 @@ export function useSubmissionsApi() {
       params: count ? { count: true } : undefined,
     }),
     getCE: (id: number) => api.get<string>(`/submissions/ce/${id}`),
+    userProblemStatusBatch: (userId: number, problemIds: number[]) =>
+      api.get<Record<string, number>>('/submissions/user-problem-status/batch', {
+        params: { userId, problemIds: problemIds.join(',') },
+      }),
   }
 }

@@ -40,6 +40,8 @@ definePageMeta({
 })
 
 const problemsApi = useProblemsApi()
+const submissionsApi = useSubmissionsApi()
+const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -66,8 +68,27 @@ async function fetchProblems() {
       search: searchText.value || undefined,
       tagId: selectedTagId.value || undefined,
     })
-    problems.value = res.data.items
+    const items = res.data.items
     total.value = res.data.total
+
+    // 已登录时批量查做题状态（1=AC, 2=尝试过, undefined=未做）
+    if (authStore.isLoggedIn && authStore.user?.id && items.length > 0) {
+      try {
+        const ids = items.map((p: any) => p.id)
+        const statusRes = await submissionsApi.userProblemStatusBatch(authStore.user.id, ids)
+        const statusMap: Record<string, number> = statusRes.data ?? {}
+        problems.value = items.map((p: any) => ({
+          ...p,
+          _userStatus: statusMap[String(p.id)] ?? 0,
+        }))
+      }
+      catch {
+        problems.value = items
+      }
+    }
+    else {
+      problems.value = items
+    }
   }
   catch (e) {
     console.error(e)
@@ -105,8 +126,9 @@ function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: numbe
 }
 
 function getStatusInfo(status: unknown) {
-  if (status === 0 || status === 'ac') return { text: '已 AC', color: '#18a058' }
-  if (status === 1 || status === 'tried' || status === 'attempted') return { text: '尝试过', color: '#f0a020' }
+  // backend UserProblemStatus: 1=AC, 2=tried, 0/undefined=untried
+  if (status === 1) return { text: '已 AC', color: '#18a058' }
+  if (status === 2) return { text: '尝试过', color: '#f0a020' }
   return { text: '未做', color: '#b0b8c2' }
 }
 
@@ -127,7 +149,7 @@ const columns: DataTableColumns<Problem> = [
     key: 'status',
     width: 110,
     render(row) {
-      const info = getStatusInfo((row as any).status)
+      const info = getStatusInfo((row as any)._userStatus)
       return h('div', { class: 'status-cell' }, [
         h('span', { class: 'status-dot', style: `background:${info.color}` }),
         h('span', { class: 'status-text' }, info.text),
