@@ -121,7 +121,7 @@ async function handleRejudge(row: Submission) {
       try {
         await submissionsApi.rejudge(row.id)
         message.success('重判已提交')
-        fetchSubmissions()
+        await fetchSubmissions()
       }
       catch (e: any) {
         message.error(e?.response?.data?.message || '重判失败')

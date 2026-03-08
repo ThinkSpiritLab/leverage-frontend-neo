@@ -1,6 +1,9 @@
 <template>
   <NTag :bordered="false" :style="tagStyle">
-    {{ label }}
+    <span class="status-tag-content">
+      <span v-if="isRunning" class="status-spinner" />
+      <span>{{ label }}</span>
+    </span>
   </NTag>
 </template>
 
@@ -12,6 +15,7 @@ const props = defineProps<{
 }>()
 
 const label = computed(() => STATUS_LABEL[props.status] ?? '未知')
+const isRunning = computed(() => props.status >= 9)
 
 const statusColorMap: Record<number, { bg: string; text: string }> = {
   0: { bg: '#e8f7ef', text: '#18a058' }, // AC
@@ -39,3 +43,26 @@ const tagStyle = computed(() => {
   }
 })
 </script>
+
+<style scoped>
+.status-tag-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: status-spin 0.9s linear infinite;
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
