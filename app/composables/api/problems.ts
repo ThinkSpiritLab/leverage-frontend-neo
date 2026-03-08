@@ -22,6 +22,7 @@ export function useProblemsApi() {
     create: (dto: CreateProblemDto) => api.post<Problem>('/problems', dto),
     update: (id: number, dto: Partial<CreateProblemDto>) => api.patch<Problem>(`/problems/${id}`, dto),
     delete: (id: number) => api.delete(`/problems/${id}`),
+    fork: (id: number) => api.post(`/problems/${id}/fork`),
     uploadTestData: (id: number, file: File) => {
       const form = new FormData()
       form.append('file', file)

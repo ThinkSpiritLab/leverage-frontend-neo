@@ -195,6 +195,18 @@ async function handleSave() {
   }
 }
 
+async function handleFork(row: Problem) {
+  try {
+    const res = await problemsApi.fork(row.id)
+    const newProblem = (res as any).data ?? res
+    message.success(`Fork 成功！新题目 ID: ${newProblem.id}，logicId: ${newProblem.logicId}`)
+    fetchProblems()
+  }
+  catch (e: any) {
+    message.error(e?.response?.data?.message || e?.message || 'Fork 失败')
+  }
+}
+
 function handleDelete(row: Problem) {
   dialog.warning({
     title: '确认删除',
@@ -337,6 +349,16 @@ const columns: DataTableColumns<Problem> = [
                 onClick: () => openUploadModal(row),
               },
               { default: () => '上传数据' },
+            ),
+            h(
+              NButton,
+              {
+                size: 'small',
+                type: 'warning',
+                ghost: true,
+                onClick: () => handleFork(row),
+              },
+              { default: () => 'Fork' },
             ),
             h(
               NButton,
