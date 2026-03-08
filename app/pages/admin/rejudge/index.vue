@@ -2,64 +2,76 @@
   <div class="admin-rejudge">
     <NH2>批量重判</NH2>
 
-    <NCard title="筛选条件" style="max-width: 600px">
-      <NForm :model="filterForm" label-placement="left" label-width="100px">
-        <NFormItem label="题目ID">
-          <NInputNumber v-model:value="filterForm.problemId" :min="1" placeholder="输入题目ID" clearable style="width: 100%" />
-        </NFormItem>
-        <NFormItem label="竞赛ID">
-          <NInputNumber v-model:value="filterForm.contestId" :min="1" placeholder="输入竞赛ID" clearable style="width: 100%" />
-        </NFormItem>
-        <NFormItem label="状态筛选">
-          <NSelect
-            v-model:value="filterForm.status"
-            :options="statusOptions"
-            placeholder="全部状态（留空则选全部）"
-            clearable
-          />
-        </NFormItem>
+    <NCard title="筛选条件" style="max-width: 980px">
+      <NForm :model="filterForm" label-placement="left" label-width="110px">
+        <NGrid :cols="2" :x-gap="24" responsive="screen" item-responsive>
+          <NGi>
+            <NFormItem label="用户ID">
+              <NInputNumber v-model:value="filterForm.userId" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+            <NFormItem label="题目ID">
+              <NInputNumber v-model:value="filterForm.problemId" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+            <NFormItem label="课程ID">
+              <NInputNumber v-model:value="filterForm.courseId" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+            <NFormItem label="竞赛ID">
+              <NInputNumber v-model:value="filterForm.contestId" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="起始SID">
+              <NInputNumber v-model:value="filterForm.idStart" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+            <NFormItem label="终止SID">
+              <NInputNumber v-model:value="filterForm.idEnd" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+            <NFormItem label="起始日期">
+              <NDatePicker
+                v-model:value="filterForm.dateStart"
+                type="datetime"
+                clearable
+                placeholder="可留空"
+                style="width: 100%"
+              />
+            </NFormItem>
+            <NFormItem label="终止日期">
+              <NDatePicker
+                v-model:value="filterForm.dateEnd"
+                type="datetime"
+                clearable
+                placeholder="可留空"
+                style="width: 100%"
+              />
+            </NFormItem>
+            <NFormItem label="状态筛选">
+              <NSelect
+                v-model:value="filterForm.status"
+                :options="statusOptions"
+                placeholder="全部状态（留空则全选）"
+                clearable
+              />
+            </NFormItem>
+          </NGi>
+        </NGrid>
+
         <NFormItem>
-          <NButton type="primary" :loading="searching" @click="handleSearch">
-            查询提交
+          <NButton type="primary" :loading="counting" @click="handleQueryCount">
+            查询数量
           </NButton>
         </NFormItem>
       </NForm>
     </NCard>
 
-    <div v-if="submissions.length > 0" class="result-section">
-      <NCard :title="`找到 ${submissions.length} 条提交`">
-        <template #header-extra>
-          <NButton type="error" :loading="rejudging" @click="handleBatchRejudge">
-            全部重判（{{ submissions.length }} 条）
-          </NButton>
-        </template>
-
-        <NDataTable
-          :columns="columns"
-          :data="submissions"
-          :pagination="{ pageSize: 20 }"
-          :row-key="(row: any) => row.id"
-          size="small"
-          max-height="500px"
-        />
-      </NCard>
-
-      <NProgress
-        v-if="rejudging"
-        type="line"
-        :percentage="rejudgeProgress"
-        :indicator-placement="'inside'"
-        style="margin-top: 12px"
-      />
-    </div>
+    <NModal v-model:show="showConfirm" preset="dialog" title="确认批量重判" positive-text="确认重判" negative-text="取消" :positive-button-props="{ type: 'error', loading: rejudging }" @positive-click="handleConfirmRejudge">
+      将重判 {{ pendingCount }} 条提交。
+    </NModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { h, ref } from 'vue'
-import type { DataTableColumns } from 'naive-ui'
+import { ref } from 'vue'
 import { useMessage } from 'naive-ui'
-import type { Submission } from '~/types'
 import { STATUS_LABEL } from '~/types'
 
 definePageMeta({
@@ -71,8 +83,14 @@ const submissionsApi = useSubmissionsApi()
 const message = useMessage()
 
 const filterForm = ref({
+  userId: null as number | null,
   problemId: null as number | null,
+  idStart: null as number | null,
+  idEnd: null as number | null,
+  dateStart: null as number | null,
+  dateEnd: null as number | null,
   contestId: null as number | null,
+  courseId: null as number | null,
   status: null as number | null,
 })
 
@@ -81,103 +99,60 @@ const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({
   value: Number(value),
 }))
 
-const submissions = ref<Submission[]>([])
-const searching = ref(false)
+const counting = ref(false)
 const rejudging = ref(false)
-const rejudgeProgress = ref(0)
+const showConfirm = ref(false)
+const pendingCount = ref(0)
 
-async function handleSearch() {
-  if (!filterForm.value.problemId && !filterForm.value.contestId) {
-    message.warning('请至少输入题目ID或竞赛ID')
-    return
-  }
-  searching.value = true
-  submissions.value = []
+function buildPayload() {
+  const payload: Record<string, number> = {}
+  const form = filterForm.value
+  if (form.userId !== null) payload.userId = form.userId
+  if (form.problemId !== null) payload.problemId = form.problemId
+  if (form.idStart !== null) payload.idStart = form.idStart
+  if (form.idEnd !== null) payload.idEnd = form.idEnd
+  if (form.dateStart !== null) payload.dateStart = form.dateStart
+  if (form.dateEnd !== null) payload.dateEnd = form.dateEnd
+  if (form.contestId !== null) payload.contestId = form.contestId
+  if (form.courseId !== null) payload.courseId = form.courseId
+  if (form.status !== null) payload.status = form.status
+  return payload
+}
+
+async function handleQueryCount() {
+  counting.value = true
   try {
-    // 分页抓取所有匹配提交
-    const params: any = { page: 1, perPage: 100 }
-    if (filterForm.value.problemId) params.problemId = filterForm.value.problemId
-    if (filterForm.value.status !== null) params.status = filterForm.value.status
-
-    let allItems: Submission[] = []
-    let hasMore = true
-    while (hasMore) {
-      const res = await submissionsApi.list(params)
-      allItems = allItems.concat(res.data.items)
-      if (allItems.length >= res.data.total || res.data.items.length === 0) {
-        hasMore = false
-      }
-      else {
-        params.page++
-      }
+    const res = await submissionsApi.batchRejudge(buildPayload(), true)
+    const raw = res.data
+    pendingCount.value = typeof raw === 'number' ? raw : Number(raw?.count || 0)
+    if (pendingCount.value <= 0) {
+      message.info('没有匹配的提交，无需重判')
+      return
     }
-    submissions.value = allItems
-    message.success(`共找到 ${allItems.length} 条提交`)
+    showConfirm.value = true
   }
   catch (e: any) {
-    message.error(e?.response?.data?.message || '查询失败')
+    message.error(e?.response?.data?.message || '查询数量失败')
   }
   finally {
-    searching.value = false
+    counting.value = false
   }
 }
 
-async function handleBatchRejudge() {
-  if (submissions.value.length === 0) return
+async function handleConfirmRejudge() {
   rejudging.value = true
-  rejudgeProgress.value = 0
-  let success = 0
-  let failed = 0
-
-  for (let i = 0; i < submissions.value.length; i++) {
-    try {
-      await submissionsApi.rejudge(submissions.value[i].id)
-      success++
-    }
-    catch {
-      failed++
-    }
-    rejudgeProgress.value = Math.round(((i + 1) / submissions.value.length) * 100)
+  try {
+    await submissionsApi.batchRejudge(buildPayload())
+    showConfirm.value = false
+    message.success(`已加入重判队列：${pendingCount.value} 条`)
   }
-
-  rejudging.value = false
-  message.success(`重判完成：${success} 成功，${failed} 失败`)
+  catch (e: any) {
+    message.error(e?.response?.data?.message || '批量重判失败')
+  }
+  finally {
+    rejudging.value = false
+  }
 }
-
-const columns: DataTableColumns<Submission> = [
-  { title: '#', key: 'id', width: 80 },
-  {
-    title: '用户',
-    key: 'user',
-    render(row) {
-      return h('span', row.user?.username ?? String(row.userId))
-    },
-  },
-  {
-    title: '题目',
-    key: 'problem',
-    render(row) {
-      if (row.problem) return h('span', `${row.problem.prefix}${row.problem.logicId} - ${row.problem.title}`)
-      return h('span', String(row.problemId))
-    },
-  },
-  { title: '语言', key: 'language', width: 100 },
-  {
-    title: '状态',
-    key: 'status',
-    width: 120,
-    render(row) {
-      return h(resolveComponent('StatusTag'), { status: row.status })
-    },
-  },
-  {
-    title: '提交时间',
-    key: 'createdAt',
-    render(row) {
-      return new Date(row.createdAt).toLocaleString('zh-CN')
-    },
-  },
-]
 
 useHead({ title: '重测' })
 </script>
@@ -187,11 +162,5 @@ useHead({ title: '重测' })
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.result-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 </style>
