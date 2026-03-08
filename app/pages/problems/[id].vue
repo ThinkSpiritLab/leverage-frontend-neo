@@ -2,9 +2,9 @@
   <div v-if="loading" class="loading-center">
     <NSpin size="large" />
   </div>
-  <div v-else-if="problem" class="problem-page">
+  <div v-else-if="problem" class="problem-page" ref="pageRef">
     <!-- 左侧：题目信息 -->
-    <div class="problem-left">
+    <div class="problem-left" :style="{ flex: `0 0 ${leftWidth}px` }">
       <div class="problem-header">
         <NH2 style="margin: 0; display: flex; align-items: center; gap: 8px">
           {{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}
@@ -36,8 +36,11 @@
       <MarkdownView :content="problem.content ?? problem.description ?? ''" />
     </div>
 
+    <!-- 拖拽分隔条 -->
+    <div class="drag-divider" @mousedown="startDrag" />
+
     <!-- 右侧：代码编辑器 + 提交 -->
-    <div class="problem-right">
+    <div class="problem-right" style="flex: 1; min-width: 300px;">
       <div class="editor-header">
         <NSelect
           v-model:value="language"
@@ -140,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick } from 'vue'
 import { isFinalStatus, type Problem } from '~/types'
 
 const { width } = useWindowSize()
@@ -160,6 +164,45 @@ const authStore = useAuthStore()
 
 const problem = ref<Problem | null>(null)
 const loading = ref(true)
+
+// 拖拽分隔条
+const pageRef = ref<HTMLElement | null>(null)
+const leftWidth = ref(0)
+let dragging = false
+
+function initLeftWidth() {
+  if (pageRef.value) {
+    leftWidth.value = pageRef.value.clientWidth * 0.6
+  }
+}
+
+function startDrag(e: MouseEvent) {
+  dragging = true
+  e.preventDefault()
+  const onMove = (ev: MouseEvent) => {
+    if (!dragging || !pageRef.value) return
+    const rect = pageRef.value.getBoundingClientRect()
+    const newLeft = ev.clientX - rect.left
+    const total = pageRef.value.clientWidth
+    leftWidth.value = Math.min(Math.max(newLeft, 280), total - 300)
+  }
+  const onUp = () => {
+    dragging = false
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
+onMounted(() => {
+  nextTick(initLeftWidth)
+  window.addEventListener('resize', initLeftWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', initLeftWidth)
+})
 
 const language = ref(1) // 1=C++
 const code = ref('')
@@ -305,23 +348,38 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
 
 .problem-page {
   display: flex;
-  gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+  gap: 0;
 }
 
 .problem-left {
-  flex: 0 0 60%;
-  min-width: 0;
+  min-width: 280px;
+  overflow-y: auto;
+  padding-right: 16px;
+}
+
+.drag-divider {
+  flex: 0 0 6px;
+  background: #e8e8e8;
+  cursor: col-resize;
+  transition: background 0.15s;
+  user-select: none;
+  border-radius: 3px;
+}
+.drag-divider:hover,
+.drag-divider:active {
+  background: #18a058;
 }
 
 .problem-right {
-  flex: 0 0 calc(40% - 24px);
-  min-width: 0;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 24px;
+  overflow-y: auto;
+  padding-left: 16px;
 }
 
 .problem-header {
