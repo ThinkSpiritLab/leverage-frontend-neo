@@ -20,6 +20,9 @@
         style="width: 160px"
         @update:value="onFilterChange"
       />
+      <NButton v-if="authStore.isAdmin" @click="exportCsv">
+        ⬇ 导出 CSV
+      </NButton>
     </div>
 
     <PaginatedTable
@@ -48,6 +51,25 @@ definePageMeta({
 })
 
 const submissionsApi = useSubmissionsApi()
+const authStore = useAuthStore()
+const runtimeConfig = useRuntimeConfig()
+
+async function exportCsv() {
+  const token = authStore.accessToken
+  const params = new URLSearchParams()
+  if (filterProblemId.value) params.set('problemId', filterProblemId.value)
+  if (filterStatus.value !== null && filterStatus.value !== undefined) params.set('status', String(filterStatus.value))
+  const res = await fetch(`${runtimeConfig.public.apiBase}/submissions/export?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'submissions.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 const filterProblemId = ref('')
 const filterStatus = ref<number | null>(null)
