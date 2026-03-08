@@ -4,7 +4,6 @@
       <NH2>提交记录</NH2>
     </div>
 
-    <!-- 筛选栏 -->
     <div class="filter-bar">
       <NInput
         v-model:value="filterProblemId"
@@ -31,6 +30,7 @@
       :page="page"
       :page-size="pageSize"
       :row-key="(row: any) => row.id"
+      :row-class-name="() => 'submission-row'"
       @page-change="onPageChange"
     />
   </div>
@@ -160,17 +160,19 @@ const columns: DataTableColumns<Submission> = [
   {
     title: '时间',
     key: 'time',
-    width: 100,
+    width: 110,
+    align: 'right',
     render(row) {
-      return h('span', {}, row.time != null ? `${row.time}ms` : '-')
+      return h('span', { class: 'metric-value' }, row.time != null ? `${row.time}ms` : '-')
     },
   },
   {
     title: '内存',
     key: 'memory',
-    width: 100,
+    width: 110,
+    align: 'right',
     render(row) {
-      return h('span', {}, memoryToKB(row.memory))
+      return h('span', { class: 'metric-value' }, memoryToKB(row.memory))
     },
   },
   {
@@ -206,5 +208,18 @@ useHead({ title: '评测记录 — Leverage OJ' })
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+:deep(.submission-row td) {
+  transition: background-color 0.18s ease;
+}
+
+:deep(.submission-row:hover td) {
+  background: #f7fbff;
+}
+
+:deep(.metric-value) {
+  color: #334155;
+  font-variant-numeric: tabular-nums;
 }
 </style>
