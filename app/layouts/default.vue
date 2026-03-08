@@ -3,7 +3,7 @@
     <NDialogProvider>
       <NNotificationProvider>
         <NLoadingBarProvider>
-          <NLayout has-sider style="min-height: 100vh">
+          <NLayout has-sider style="height: 100vh">
             <!-- 侧边栏 -->
             <NLayoutSider
               :collapsed="uiStore.sidebarCollapsed"
@@ -28,7 +28,7 @@
               />
             </NLayoutSider>
 
-            <NLayout>
+            <NLayout style="height: 100%">
               <!-- 顶栏 -->
               <NLayoutHeader bordered style="padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 56px">
                 <div class="header-left">
@@ -54,7 +54,7 @@
               </NLayoutHeader>
 
               <!-- 主内容区 -->
-              <NLayoutContent style="padding: 24px">
+              <NLayoutContent style="padding: 24px; height: 100%">
                 <slot />
               </NLayoutContent>
             </NLayout>
@@ -75,6 +75,9 @@ import {
   SettingsOutline,
   LogOutOutline,
   HelpCircleOutline,
+  ListOutline,
+  PodiumOutline,
+  ChatbubbleOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -101,6 +104,24 @@ const baseMenuOptions = [
     key: 'courses',
     icon: renderIcon(SchoolOutline),
     onClick: () => navigateTo('/courses'),
+  },
+  {
+    label: '提交记录',
+    key: 'submissions',
+    icon: renderIcon(ListOutline),
+    onClick: () => navigateTo('/submissions'),
+  },
+  {
+    label: '排行榜',
+    key: 'ranklist',
+    icon: renderIcon(PodiumOutline),
+    onClick: () => navigateTo('/ranklist'),
+  },
+  {
+    label: '消息',
+    key: 'messages',
+    icon: renderIcon(ChatbubbleOutline),
+    onClick: () => navigateTo('/messages'),
   },
   {
     label: '帮助',

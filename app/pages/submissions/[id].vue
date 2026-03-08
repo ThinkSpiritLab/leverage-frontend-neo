@@ -29,14 +29,14 @@
         </NDescriptionsItem>
 
         <NDescriptionsItem label="语言">
-          {{ LANGUAGE_LABEL[submission.language] ?? submission.language }}
+          {{ LANGUAGE_LABEL[submission.language] || submission.language }}
         </NDescriptionsItem>
 
         <NDescriptionsItem label="状态">
           <NSpace align="center">
             <StatusTag :status="submission.status" />
             <NButton
-              v-if="submission.status === SubmissionStatus.CE"
+              v-if="submission.status === 7"
               text
               type="error"
               size="small"
@@ -48,11 +48,11 @@
         </NDescriptionsItem>
 
         <NDescriptionsItem label="执行时间">
-          {{ submission.time != null ? `${submission.time}ms` : '-' }}
+          {{ submission.time !== undefined && submission.time !== null ? `${submission.time}ms` : '-' }}
         </NDescriptionsItem>
 
         <NDescriptionsItem label="内存使用">
-          {{ memoryToKB(submission.memory) }}
+          {{ submission.memory !== undefined && submission.memory !== null ? formatMemory(submission.memory) : '-' }}
         </NDescriptionsItem>
 
         <NDescriptionsItem label="提交时间" :span="2">
@@ -64,7 +64,7 @@
     <NCard title="提交代码">
       <CodeEditor
         v-model="codeContent"
-        :language="editorLang"
+        :language="submission.language"
         :readonly="true"
         height="500px"
       />
@@ -77,7 +77,6 @@
 
 <script setup lang="ts">
 import type { Submission } from '~/types'
-import { LANGUAGE_LABEL, Language, SubmissionStatus, memoryToKB } from '~/types'
 import dayjs from 'dayjs'
 
 definePageMeta({
@@ -88,32 +87,37 @@ definePageMeta({
 const route = useRoute()
 const submissionId = computed(() => Number(route.params.id))
 
+// 后端 memory 单位为 bytes，自动换算显示
+function formatMemory(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${bytes} B`
+}
+
 const submissionsApi = useSubmissionsApi()
 
 const submission = ref<Submission | null>(null)
 const loading = ref(true)
 const codeContent = ref('')
 
-// 数字语言 ID → 编辑器语言名
-const editorLang = computed(() => {
-  if (!submission.value) return 'cpp'
-  const map: Record<number, string> = {
-    [Language.C]: 'c',
-    [Language.CPP]: 'cpp',
-    [Language.Java]: 'java',
-    [Language.Python2]: 'python',
-    [Language.Python3]: 'python',
-    [Language.JavaScript]: 'javascript',
-  }
-  return map[submission.value.language] || 'cpp'
-})
+// 后端 language 是数字枚举，与原版兼容
+const LANGUAGE_LABEL: Record<number | string, string> = {
+  0: 'C', 1: 'C++', 6: 'Java', 7: 'Kotlin',
+  8: 'Python2', 9: 'Python3', 10: 'JavaScript', 11: 'TypeScript',
+  // 兼容字符串形式
+  c: 'C', cpp: 'C++', java: 'Java', python: 'Python',
+  javascript: 'JavaScript', typescript: 'TypeScript',
+}
 
 onMounted(async () => {
   try {
     const res = await submissionsApi.get(submissionId.value)
-    const data = res.data ?? res
-    submission.value = data
-    codeContent.value = (data as any).code || ''
+    submission.value = res.data
+    codeContent.value = (res.data as any).misc?.code || (res.data as any).code || ''
+    // 若仍在评测中，开始轮询状态
+    if (res.data.status >= 9) {
+      startPolling()
+    }
   }
   catch (e) {
     console.error(e)
@@ -121,6 +125,35 @@ onMounted(async () => {
   finally {
     loading.value = false
   }
+})
+
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+
+function startPolling() {
+  if (pollTimer) return
+  const poll = async () => {
+    try {
+      const res = await submissionsApi.getStatus(submissionId.value)
+      if (submission.value) {
+        submission.value = { ...submission.value, status: res.data.status }
+      }
+      // status < 9 表示已评测完成
+      if (res.data.status < 9) {
+        // 再拉一次完整信息（time/memory 等）
+        const full = await submissionsApi.get(submissionId.value)
+        submission.value = full.data
+        codeContent.value = (full.data as any).misc?.code || (full.data as any).code || codeContent.value
+        return
+      }
+      pollTimer = setTimeout(poll, 1500)
+    }
+    catch { /* ignore */ }
+  }
+  pollTimer = setTimeout(poll, 1500)
+}
+
+onUnmounted(() => {
+  if (pollTimer) clearTimeout(pollTimer)
 })
 
 useHead(computed(() => ({ title: `提交 #${submissionId.value} — Leverage OJ` })))

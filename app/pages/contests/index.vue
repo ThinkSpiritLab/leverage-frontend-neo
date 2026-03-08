@@ -18,6 +18,7 @@
       :page="page"
       :page-size="pageSize"
       :row-key="(row: any) => row.id"
+      :row-props="getRowProps"
       @page-change="onPageChange"
     />
   </div>
@@ -97,6 +98,13 @@ const typeColorMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 
   ioi: 'success',
   oi: 'warning',
   cf: 'error',
+}
+
+function getRowProps(row: Contest) {
+  return {
+    style: 'cursor: pointer;',
+    onClick: () => navigateTo(`/contests/${row.id}`),
+  }
 }
 
 const columns: DataTableColumns<Contest> = [

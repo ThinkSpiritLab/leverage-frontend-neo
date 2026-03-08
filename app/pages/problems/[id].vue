@@ -8,11 +8,11 @@
       <div class="problem-header">
         <NH2 style="margin: 0">{{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}</NH2>
         <div class="problem-meta">
-          <NTag size="small" :bordered="false" type="info">
-            时间限制: {{ problem.timeLimit }}ms
+          <NTag type="info" :bordered="false">
+            ⏱ 时间限制: {{ problem.timeLimit }}ms
           </NTag>
-          <NTag size="small" :bordered="false" type="warning">
-            内存限制: {{ problem.memoryLimit }}MB
+          <NTag type="warning" :bordered="false">
+            💾 内存限制: {{ problem.memoryLimit }}MB
           </NTag>
         </div>
         <div v-if="problem.tags && problem.tags.length" class="problem-tags">
@@ -30,7 +30,7 @@
 
       <NDivider />
 
-      <MarkdownView :content="problem.description" />
+      <MarkdownView :content="problem.content ?? problem.description ?? ''" />
     </div>
 
     <!-- 右侧：代码编辑器 + 提交 -->
@@ -67,7 +67,7 @@
           <div class="fullscreen-body">
             <CodeEditor
               v-model="code"
-              :language="editorLanguage"
+              :language="languageName"
               height="100%"
             />
           </div>
@@ -92,7 +92,7 @@
       <template v-if="!isFullscreen">
         <CodeEditor
           v-model="code"
-          :language="editorLanguage"
+          :language="languageName"
           :height="isMobile ? '300px' : '450px'"
         />
 
@@ -138,7 +138,6 @@
 
 <script setup lang="ts">
 import type { Problem } from '~/types'
-import { LANGUAGE_OPTIONS, Language, isFinalStatus, SubmissionStatus } from '~/types'
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
@@ -157,11 +156,11 @@ const submissionsApi = useSubmissionsApi()
 const problem = ref<Problem | null>(null)
 const loading = ref(true)
 
-const language = ref(Language.CPP)
+const language = ref(1) // 1=C++
 const code = ref('')
 const submitting = ref(false)
 const submissionId = ref<number | null>(null)
-const submissionStatus = ref(SubmissionStatus.PENDING)
+const submissionStatus = ref(0)
 const polling = ref(false)
 
 // 全屏状态
@@ -171,24 +170,25 @@ function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value
 }
 
-const languageOptions = LANGUAGE_OPTIONS
+// 语言枚举数字与原版兼容：cpp=1, java=6, python3=9, javascript=10
+const languageOptions = [
+  { label: '🔵 C++', value: 1 },
+  { label: '☕ Java', value: 6 },
+  { label: '🐍 Python 3', value: 9 },
+  { label: '🟡 JavaScript', value: 10 },
+]
 
-const editorLanguage = computed(() => {
-  const map: Record<number, string> = {
-    [Language.C]: 'c',
-    [Language.CPP]: 'cpp',
-    [Language.Java]: 'java',
-    [Language.Python2]: 'python',
-    [Language.Python3]: 'python',
-    [Language.JavaScript]: 'javascript',
-  }
-  return map[language.value] || 'cpp'
-})
+const LANGUAGE_INT_TO_NAME: Record<number, string> = {
+  0: 'c', 1: 'cpp', 6: 'java', 7: 'kotlin',
+  8: 'python', 9: 'python', 10: 'javascript', 11: 'typescript',
+}
+
+// CodeEditor 组件需要字符串形式的语言名
+const languageName = computed(() => LANGUAGE_INT_TO_NAME[language.value] ?? 'cpp')
 
 onMounted(async () => {
   try {
-    const res = await problemsApi.get(problemId.value)
-    problem.value = res.data ?? res
+    problem.value = (await problemsApi.get(problemId.value)).data
   }
   catch (e) {
     console.error(e)
@@ -235,19 +235,21 @@ async function handleSubmit() {
   if (!code.value.trim()) return
   submitting.value = true
   submissionId.value = null
-  submissionStatus.value = SubmissionStatus.PENDING
+  submissionStatus.value = 0
   if (pollTimer) clearTimeout(pollTimer)
 
   try {
-    const res = await submissionsApi.create({
+    const sub = await submissionsApi.create({
       problemId: problemId.value,
       language: language.value,
       code: code.value,
     })
-    const sub = res.data ?? res
-    submissionId.value = sub.id
-    submissionStatus.value = sub.status
-    startPolling(sub.id)
+    const newSub = sub.data
+    submissionId.value = newSub.id
+    submissionStatus.value = newSub.status
+    startPolling(newSub.id)
+    // 提交成功后跳转到提交详情页
+    navigateTo(`/submissions/${newSub.id}`)
   }
   catch (e) {
     console.error(e)
@@ -258,15 +260,15 @@ async function handleSubmit() {
 }
 
 function startPolling(id: number) {
-  if (isFinalStatus(submissionStatus.value)) return
+  if (submissionStatus.value >= 2) return
   polling.value = true
 
   const poll = async () => {
     try {
       const res = await submissionsApi.getStatus(id)
-      const data = res.data ?? res
-      submissionStatus.value = data.status
-      if (!isFinalStatus(data.status)) {
+      submissionStatus.value = res.data.status
+      // status >= 9 表示仍在评测中（PENDING=9, JUDGING=10, COMPILING=11）
+      if (res.data.status >= 9) {
         pollTimer = setTimeout(poll, 2000)
       }
       else {
@@ -401,7 +403,7 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   .problem-right {
     flex: none;
     width: 100%;
-    position: static;
+    position: static; /* 移除 sticky，避免移动端滚动问题 */
     min-height: 200px;
   }
 }
@@ -411,7 +413,7 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #282c34;
+  background: #282c34; /* oneDark 背景色 */
   display: flex;
   flex-direction: column;
 }
