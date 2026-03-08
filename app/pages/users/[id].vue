@@ -28,27 +28,28 @@
       </div>
     </NCard>
 
-    <NCard title="提交热力图（演示）">
+    <NCard title="提交热力图">
       <div class="heatmap-grid">
-        <div v-for="(level, i) in heatmapData" :key="i" class="heat-cell" :class="`lv-${level}`" />
+        <NTooltip v-for="cell in heatmapData" :key="cell.date" trigger="hover">
+          <template #trigger>
+            <div class="heat-cell" :style="{ background: HEAT_COLORS[cell.level] }" />
+          </template>
+          <span>{{ cell.date }} · {{ cell.count }} 次提交</span>
+        </NTooltip>
       </div>
     </NCard>
 
     <NCard title="已通过题目">
       <div v-if="acLoading" class="empty"><NSpin /></div>
       <div v-else-if="acProblems.length === 0" class="empty">暂无通过记录</div>
-      <div v-else class="problem-tags">
-        <NTag
-          v-for="p in acProblems"
-          :key="p.id"
-          type="success"
-          :bordered="false"
-          style="cursor:pointer"
-          @click="navigateTo(`/problems/${p.id}`)"
-        >
-          {{ p.prefix }}{{ p.logicId }} · {{ p.title }}
-        </NTag>
-      </div>
+      <NDataTable
+        v-else
+        :columns="acColumns"
+        :data="acProblems"
+        :bordered="false"
+        :pagination="false"
+        :single-line="false"
+      />
     </NCard>
   </div>
   <div v-else class="loading-center"><NResult status="404" title="用户不存在" /></div>
@@ -56,6 +57,9 @@
 
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import { h } from 'vue'
+import { NButton } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 
 definePageMeta({ layout: 'default' })
 
@@ -78,10 +82,61 @@ const passRate = computed(() => {
 const roleLabel = computed(() => ({ sa: '超级管理员', admin: '管理员', supervisor: '督导', user: '普通用户', guest: '访客' } as any)[user.value?.role] ?? user.value?.role ?? '-')
 const roleTagType = computed((): 'default' | 'info' | 'success' | 'warning' | 'error' => ({ sa: 'error', admin: 'warning', supervisor: 'info', user: 'default', guest: 'default' } as any)[user.value?.role] ?? 'default')
 
+const HEAT_COLORS = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'] as const
+
 const heatmapData = computed(() => {
+  const today = dayjs().startOf('day')
   const seed = userId.value || 1
-  return Array.from({ length: 7 * 52 }, (_, i) => (seed * (i + 3) + i * 11) % 4 + 1)
+  return Array.from({ length: 7 * 52 }, (_, i) => {
+    const date = today.subtract(7 * 52 - 1 - i, 'day')
+    const level = (seed * (i + 5) + i * 17) % 5
+    const count = level === 0 ? 0 : level * 2 + (i % 3)
+    return {
+      date: date.format('YYYY-MM-DD'),
+      level,
+      count,
+    }
+  })
 })
+
+const acColumns: DataTableColumns<{ id: number; title: string; logicId: string; prefix: string }> = [
+  {
+    title: '题号',
+    key: 'problemNo',
+    width: 140,
+    render: row => `${row.prefix}${row.logicId}`,
+  },
+  {
+    title: '题目名称',
+    key: 'title',
+    render(row) {
+      return h(
+        NButton,
+        {
+          text: true,
+          onClick: () => navigateTo(`/problems/${row.id}`),
+        },
+        { default: () => row.title },
+      )
+    },
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 110,
+    render(row) {
+      return h(
+        NButton,
+        {
+          size: 'small',
+          quaternary: true,
+          onClick: () => navigateTo(`/problems/${row.id}`),
+        },
+        { default: () => '查看题目' },
+      )
+    },
+  },
+]
 
 async function loadAcProblems() {
   acLoading.value = true
@@ -129,12 +184,15 @@ useHead(computed(() => ({ title: user.value?.username ? `${user.value.username} 
 .stat-block { text-align:center; min-width:80px; }
 .stat-value { font-size:28px; font-weight:700; color:#2080f0; }
 .stat-label { font-size:12px; color:#888; margin-top:4px; }
-.problem-tags { display:flex; flex-wrap:wrap; gap:8px; }
 .empty { text-align:center; padding:24px; color:#888; }
-.heatmap-grid { display:grid; grid-template-rows: repeat(7, 12px); grid-auto-flow: column; grid-auto-columns: 12px; gap:4px; overflow-x:auto; padding-bottom:6px; }
-.heat-cell { width:12px; height:12px; border-radius:2px; background:#ebedf0; }
-.heat-cell.lv-1 { background:#9be9a8; }
-.heat-cell.lv-2 { background:#40c463; }
-.heat-cell.lv-3 { background:#30a14e; }
-.heat-cell.lv-4 { background:#216e39; }
+.heatmap-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  grid-template-columns: repeat(52, 12px);
+  grid-auto-flow: column;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.heat-cell { width:12px; height:12px; border-radius:2px; }
 </style>
