@@ -186,7 +186,10 @@ useHead({ title: '首页 — Leverage OJ' })
 }
 
 .stat-card :deep(.n-statistic .n-statistic-label) {
-  color: rgba(255, 255, 255, 0.88);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.3px;
 }
 
 .stat-blue {
