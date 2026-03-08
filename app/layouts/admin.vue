@@ -76,6 +76,8 @@ import {
   NotificationsOutline,
   PricetagsOutline,
   AlertCircleOutline,
+  ListOutline,
+  ServerOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -155,6 +157,18 @@ const adminMenuOptions = [
     key: 'admin-setting',
     icon: renderIcon(SettingsOutline),
     onClick: () => navigateTo('/admin/setting'),
+  },
+  {
+    label: '系统日志',
+    key: 'admin-log',
+    icon: renderIcon(ListOutline),
+    onClick: () => navigateTo('/admin/log'),
+  },
+  {
+    label: '系统任务',
+    key: 'admin-task',
+    icon: renderIcon(ServerOutline),
+    onClick: () => navigateTo('/admin/task'),
   },
 ]
 
