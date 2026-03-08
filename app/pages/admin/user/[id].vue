@@ -239,6 +239,10 @@ async function fetchUser() {
     const rawRole = res.data.role ?? res.data.authority ?? 'user'
     roleForm.value.role = rawRole === 'superadmin' ? 'sa' : rawRole
     isBanned.value = res.data.status === 2 || !!res.data.banned
+    // 显示已有的封禁原因
+    if (isBanned.value && res.data.remarks) {
+      banReason.value = res.data.remarks
+    }
   }
   catch (e) { console.error(e) }
   finally { loading.value = false }
