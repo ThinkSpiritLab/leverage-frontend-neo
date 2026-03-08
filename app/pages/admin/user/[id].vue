@@ -103,11 +103,15 @@
                 <NSelect
                   v-model:value="roleForm.role"
                   :options="roleOptions"
+                  :disabled="isEditingSelf"
                   style="width: 200px"
                 />
               </NFormItem>
             </NForm>
-            <NButton type="primary" :loading="roleSaving" @click="handleSaveRole">保存权限</NButton>
+            <NText v-if="isEditingSelf" depth="3" style="display: block; margin-bottom: 8px">
+              不能修改自己的角色，避免误降级。
+            </NText>
+            <NButton type="primary" :loading="roleSaving" :disabled="isEditingSelf" @click="handleSaveRole">保存权限</NButton>
           </NCard>
         </NTabPane>
 
@@ -197,6 +201,7 @@ const route = useRoute()
 const userId = Number(route.params.id)
 const usersApi = useUsersApi()
 const submissionsApi = useSubmissionsApi()
+const authStore = useAuthStore()
 const message = useMessage()
 
 // ── 基本数据 ──
@@ -294,14 +299,19 @@ const roleForm = ref<{ role: User['role'] }>({ role: 'user' })
 const roleSaving = ref(false)
 
 const roleOptions = [
-  { label: '超级管理员 (SA)', value: 'sa' },
   { label: '管理员 (Admin)', value: 'admin' },
   { label: '二级管理员 (Supervisor)', value: 'supervisor' },
   { label: '普通用户 (User)', value: 'user' },
   { label: '访客 (Guest)', value: 'guest' },
 ]
 
+const isEditingSelf = computed(() => authStore.user?.id === userId)
+
 async function handleSaveRole() {
+  if (isEditingSelf.value) {
+    message.warning('不能修改自己的角色')
+    return
+  }
   roleSaving.value = true
   try {
     await usersApi.update(userId, { role: roleForm.value.role })

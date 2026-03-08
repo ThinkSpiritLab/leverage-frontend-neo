@@ -38,6 +38,7 @@
           <NSelect
             v-model:value="form.role"
             :options="roleOptions"
+            :disabled="isEditingSelf"
           />
         </NFormItem>
         <NFormItem label="新密码">
@@ -68,6 +69,7 @@ definePageMeta({
 })
 
 const usersApi = useUsersApi()
+const authStore = useAuthStore()
 const message = useMessage()
 const dialog = useDialog()
 
@@ -86,9 +88,10 @@ const form = ref<UpdateUserDto>({})
 const roleOptions = [
   { label: '普通用户', value: 'user' },
   { label: '管理员', value: 'admin' },
-  { label: '超级管理员(sa)', value: 'sa' },
   { label: '超级管理员(superadmin)', value: 'superadmin' },
 ]
+
+const isEditingSelf = computed(() => authStore.user?.id === editingUser.value?.id)
 
 const roleTypeMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
   sa: 'error',
@@ -150,6 +153,10 @@ function openEditModal(row: User) {
 
 async function handleSave() {
   if (!editingUser.value) return
+  if (isEditingSelf.value && form.value.role && form.value.role !== editingUser.value.role) {
+    message.warning('不能修改自己的角色')
+    return
+  }
   saving.value = true
   try {
     const dto: UpdateUserDto = { ...form.value }
