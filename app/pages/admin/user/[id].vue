@@ -136,6 +136,15 @@
                     :rows="3"
                   />
                 </NFormItem>
+                <NFormItem v-if="!isBanned" label="截止时间">
+                  <NDatePicker
+                    v-model:value="banEndsAt"
+                    type="datetime"
+                    clearable
+                    style="width: 100%"
+                    placeholder="选择封禁截止时间（可选）"
+                  />
+                </NFormItem>
               </NForm>
 
               <NSpace>
@@ -227,7 +236,7 @@ async function fetchUser() {
     editForm.value.profession = res.data.profession || ''
     editForm.value.grade = res.data.grade || ''
     roleForm.value.role = res.data.role
-    isBanned.value = !!res.data.banned
+    isBanned.value = res.data.status === 2 || !!res.data.banned
   }
   catch (e) { console.error(e) }
   finally { loading.value = false }
@@ -324,15 +333,21 @@ async function handleSaveRole() {
 
 // ── 封号 ──
 const banReason = ref('')
+const banEndsAt = ref<number | null>(null)
 const banLoading = ref(false)
 
 async function handleBan(banned: boolean) {
   banLoading.value = true
   try {
-    await usersApi.banUser(userId, banned, banReason.value || undefined)
+    await usersApi.update(userId, {
+      status: banned ? 2 : 0,
+      remarks: banned ? (banReason.value || undefined) : undefined,
+      statusEndsAt: banned ? (banEndsAt.value ? dayjs(banEndsAt.value).toISOString() : null) : null,
+    } as any)
     message.success(banned ? '用户已封禁' : '用户已解封')
     isBanned.value = banned
     banReason.value = ''
+    banEndsAt.value = null
   }
   catch (e: any) { message.error(e?.message || '操作失败') }
   finally { banLoading.value = false }
