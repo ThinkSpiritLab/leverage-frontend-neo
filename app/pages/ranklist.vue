@@ -87,10 +87,14 @@ const columns: DataTableColumns = [
 async function fetchUsers() {
   loading.value = true
   try {
-    const res = await usersApi.list({ page: page.value, perPage: pageSize })
-    const data = res.data ?? res
-    users.value = data.items ?? data
-    total.value = data.total ?? 0
+    const res = await usersApi.list({
+      page: page.value,
+      perPage: pageSize,
+      orderBy: 'accepts',
+      order: 'desc',
+    })
+    users.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

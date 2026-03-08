@@ -26,7 +26,7 @@
         >
           <template #header>
             <NButton text type="primary" style="font-size: 16px; font-weight: 600">
-              {{ course.title }}
+              {{ course.title || course.name || '未命名课程' }}
             </NButton>
           </template>
           <div class="course-desc">

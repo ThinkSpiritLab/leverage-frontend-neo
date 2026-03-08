@@ -95,7 +95,7 @@ const columns: DataTableColumns<Contest> = [
           type: 'primary',
           onClick: () => navigateTo(`/contests/${row.id}`),
         },
-        { default: () => row.title },
+        { default: () => row.title || row.name || '-' },
       )
     },
   },

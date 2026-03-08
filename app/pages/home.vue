@@ -21,22 +21,22 @@
     <!-- 平台统计 -->
     <div class="stats-row">
       <NCard class="stat-card">
-        <NStatistic label="总题目数" :value="stats?.problems ?? '-'">
+        <NStatistic label="总题目数" :value="stats?.problem ?? '-'">
           <template #prefix>📚</template>
         </NStatistic>
       </NCard>
       <NCard class="stat-card">
-        <NStatistic label="注册用户" :value="stats?.users ?? '-'">
+        <NStatistic label="注册用户" :value="stats?.user ?? '-'">
           <template #prefix>👤</template>
         </NStatistic>
       </NCard>
       <NCard class="stat-card">
-        <NStatistic label="总提交数" :value="stats?.submissions ?? '-'">
+        <NStatistic label="总提交数" :value="stats?.submission ?? '-'">
           <template #prefix>📤</template>
         </NStatistic>
       </NCard>
       <NCard class="stat-card">
-        <NStatistic label="通过次数" :value="stats?.accepts ?? '-'">
+        <NStatistic label="竞赛数" :value="stats?.contest ?? '-'">
           <template #prefix>✅</template>
         </NStatistic>
       </NCard>
@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Statistics } from '~/composables/api/statistics'
+import type { StatResult } from '~/composables/api/statistics'
 import type { Notification } from '~/composables/api/notifications'
 import dayjs from 'dayjs'
 
@@ -93,7 +93,7 @@ definePageMeta({
 const statisticsApi = useStatisticsApi()
 const notificationsApi = useNotificationsApi()
 
-const stats = ref<Statistics | null>(null)
+const stats = ref<StatResult | null>(null)
 const notifications = ref<Notification[]>([])
 const notifLoading = ref(false)
 
@@ -105,7 +105,7 @@ onMounted(async () => {
   // 加载统计数据
   try {
     const res = await statisticsApi.get()
-    stats.value = res.data ?? res
+    stats.value = res.data
   }
   catch {
     // 静默失败
@@ -115,8 +115,7 @@ onMounted(async () => {
   notifLoading.value = true
   try {
     const res = await notificationsApi.list({ page: 1, perPage: 5 })
-    const data = res.data ?? res
-    notifications.value = data.items ?? []
+    notifications.value = res.data.items ?? []
   }
   catch {
     notifications.value = []

@@ -2,7 +2,8 @@ import { useApi } from '~/composables/useApi'
 
 export interface Course {
   id: number
-  title: string
+  title?: string
+  name?: string
   description?: string
   createdAt: string
   problems?: number[]

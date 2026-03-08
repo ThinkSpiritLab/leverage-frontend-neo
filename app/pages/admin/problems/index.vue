@@ -66,16 +66,10 @@
         <NUpload
           :max="1"
           accept=".zip"
+          :default-upload="false"
           @change="onFileChange"
         >
-          <NUploadDragger>
-            <div style="padding: 24px 0; text-align: center">
-              <NIcon size="32" color="#666">
-                <CloudUploadOutline />
-              </NIcon>
-              <NText style="display: block; margin-top: 8px">点击或拖拽 ZIP 文件到此处</NText>
-            </div>
-          </NUploadDragger>
+          <NButton>点击选择 ZIP 文件</NButton>
         </NUpload>
       </div>
 
@@ -93,7 +87,6 @@
 import { h, ref } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns, UploadFileInfo } from 'naive-ui'
-import { CloudUploadOutline } from '@vicons/ionicons5'
 import type { Problem } from '~/types'
 import type { CreateProblemDto } from '~/composables/api/problems'
 

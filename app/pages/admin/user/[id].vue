@@ -34,20 +34,41 @@
       <NTabs v-model:value="activeTab" type="line" animated>
         <!-- ===== 基本信息 Tab ===== -->
         <NTabPane name="info" tab="基本信息">
-          <NCard v-if="user" style="max-width: 600px; margin-top: 16px">
+          <NCard v-if="user" style="max-width: 700px; margin-top: 16px">
             <NForm :model="editForm" label-placement="left" label-width="90px">
-              <NFormItem label="用户名">
-                <NInput :value="user.username" disabled />
-              </NFormItem>
-              <NFormItem label="邮箱">
-                <NInput v-model:value="editForm.email" placeholder="输入邮箱" />
-              </NFormItem>
-              <NFormItem label="学号">
-                <NInput v-model:value="editForm.studentId" placeholder="输入学号" />
-              </NFormItem>
-              <NFormItem label="注册时间">
-                <NInput :value="fmtTime(user.createdAt)" disabled />
-              </NFormItem>
+              <NGrid :cols="2" :x-gap="24">
+                <NGridItem>
+                  <NFormItem label="用户名">
+                    <NInput :value="user.username" disabled />
+                  </NFormItem>
+                  <NFormItem label="邮箱">
+                    <NInput v-model:value="editForm.email" placeholder="输入邮箱" />
+                  </NFormItem>
+                  <NFormItem label="学号">
+                    <NInput v-model:value="editForm.studentId" placeholder="输入学号" />
+                  </NFormItem>
+                  <NFormItem label="注册时间">
+                    <NInput :value="fmtTime(user.createdAt)" disabled />
+                  </NFormItem>
+                </NGridItem>
+                <NGridItem>
+                  <NFormItem label="真实姓名">
+                    <NInput v-model:value="editForm.certifiedName" placeholder="输入真实姓名" />
+                  </NFormItem>
+                  <NFormItem label="昵称">
+                    <NInput v-model:value="editForm.nickname" placeholder="输入昵称" />
+                  </NFormItem>
+                  <NFormItem label="学院">
+                    <NInput v-model:value="editForm.college" placeholder="输入学院" />
+                  </NFormItem>
+                  <NFormItem label="专业">
+                    <NInput v-model:value="editForm.profession" placeholder="输入专业" />
+                  </NFormItem>
+                  <NFormItem label="年级">
+                    <NInput v-model:value="editForm.grade" placeholder="输入年级" />
+                  </NFormItem>
+                </NGridItem>
+              </NGrid>
             </NForm>
             <NSpace>
               <NButton type="primary" :loading="saving" @click="handleSaveInfo">保存信息</NButton>
@@ -195,7 +216,13 @@ async function fetchUser() {
     user.value = res.data
     editForm.value.email = res.data.email || ''
     editForm.value.studentId = res.data.studentId || ''
+    editForm.value.certifiedName = res.data.certifiedName || ''
+    editForm.value.nickname = res.data.nickname || ''
+    editForm.value.college = res.data.college || ''
+    editForm.value.profession = res.data.profession || ''
+    editForm.value.grade = res.data.grade || ''
     roleForm.value.role = res.data.role
+    isBanned.value = !!res.data.banned
   }
   catch (e) { console.error(e) }
   finally { loading.value = false }
@@ -204,7 +231,7 @@ async function fetchUser() {
 onMounted(fetchUser)
 
 // ── 基本信息编辑 ──
-const editForm = ref({ email: '', studentId: '' })
+const editForm = ref({ email: '', studentId: '', certifiedName: '', nickname: '', college: '', profession: '', grade: '' })
 const saving = ref(false)
 
 async function handleSaveInfo() {

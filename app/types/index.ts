@@ -5,10 +5,17 @@ export interface User {
   role: 'sa' | 'admin' | 'supervisor' | 'user' | 'guest'
   studentId?: string
   email?: string
+  nickname?: string
+  certifiedName?: string
+  college?: string
+  profession?: string
+  grade?: string
   submits?: number
   accepts?: number
+  banned?: boolean
   createdAt: string
 }
+
 
 // 题目
 export interface Problem {
@@ -42,7 +49,8 @@ export interface Submission {
 // 竞赛
 export interface Contest {
   id: number
-  title: string
+  title?: string
+  name?: string
   startTime: string
   endTime: string
   type: string

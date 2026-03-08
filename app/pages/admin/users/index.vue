@@ -193,30 +193,30 @@ const columns: DataTableColumns<User> = [
         'a',
         {
           style: 'color: #2080f0; cursor: pointer;',
-          onClick: () => navigateTo(`/users/${row.id}`),
+          onClick: () => navigateTo(`/admin/user/${row.id}`),
         },
         row.username,
       )
     },
   },
   {
-    title: '邮箱',
-    key: 'email',
+    title: '姓名',
+    key: 'certifiedName',
     render(row) {
-      return h('span', row.email || '-')
+      return h('span', row.certifiedName || row.nickname || '-')
     },
   },
   {
-    title: '学号',
-    key: 'studentId',
+    title: '学院',
+    key: 'college',
     render(row) {
-      return h('span', row.studentId || '-')
+      return h('span', row.college || '-')
     },
   },
   {
     title: '角色',
     key: 'role',
-    width: 120,
+    width: 100,
     render(row) {
       return h(
         NTag,
@@ -230,23 +230,41 @@ const columns: DataTableColumns<User> = [
     },
   },
   {
-    title: '提交/通过',
-    key: 'submits',
-    width: 120,
+    title: '通过数',
+    key: 'accepts',
+    width: 80,
     render(row) {
-      return h('span', { style: 'color: #666;' }, `${row.submits || 0} / ${row.accepts || 0}`)
+      return h('span', String(row.accepts ?? 0))
+    },
+  },
+  {
+    title: '提交数',
+    key: 'submits',
+    width: 80,
+    render(row) {
+      return h('span', String(row.submits ?? 0))
     },
   },
   {
     title: '操作',
     key: 'actions',
-    width: 160,
+    width: 200,
     render(row) {
       return h(
         NSpace,
         { size: 'small' },
         {
           default: () => [
+            h(
+              NButton,
+              {
+                size: 'small',
+                type: 'info',
+                ghost: true,
+                onClick: () => navigateTo(`/admin/user/${row.id}`),
+              },
+              { default: () => '详情' },
+            ),
             h(
               NButton,
               {

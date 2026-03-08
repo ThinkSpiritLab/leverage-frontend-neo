@@ -20,7 +20,7 @@ export interface StatResult {
 export function useStatisticsApi() {
   const api = useApi()
   return {
-    get: () => api.get<Statistics>('/statistics'),
+    get: () => api.get<StatResult>('/stat'),
     getStat: () => api.get<StatResult>('/stat'),
   }
 }

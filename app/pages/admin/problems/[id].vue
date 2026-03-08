@@ -80,19 +80,13 @@
             <NUpload
               :max="1"
               accept=".zip"
+              :default-upload="false"
               @change="onFileChange"
             >
-              <NUploadDragger>
-                <div style="padding: 32px 0; text-align: center">
-                  <NIcon size="40" color="#999">
-                    <CloudUploadOutline />
-                  </NIcon>
-                  <NText style="display: block; margin-top: 12px">点击或拖拽 ZIP 文件到此处</NText>
-                  <NText depth="3" style="display: block; margin-top: 4px; font-size: 12px">
-                    仅支持 .zip 格式
-                  </NText>
-                </div>
-              </NUploadDragger>
+              <NButton>点击选择 ZIP 文件</NButton>
+              <NText depth="3" style="display: block; margin-top: 4px; font-size: 12px">
+                仅支持 .zip 格式
+              </NText>
             </NUpload>
             <div style="margin-top: 16px">
               <NButton
@@ -156,7 +150,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useMessage, type UploadFileInfo } from 'naive-ui'
-import { CloudUploadOutline } from '@vicons/ionicons5'
 import type { Problem, Tag } from '~/types'
 
 definePageMeta({
