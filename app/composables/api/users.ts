@@ -1,5 +1,5 @@
 import { useApi } from '~/composables/useApi'
-import type { Problem, User } from '~/types'
+import type { User } from '~/types'
 
 export interface UpdateUserDto {
   email?: string
@@ -20,7 +20,7 @@ export function useUsersApi() {
     getSubmissions: (id: number, params?: { page?: number; perPage?: number }) =>
       api.get(`/users/${id}/submissions`, { params }),
     getAcceptedProblems: (id: number) =>
-      api.get<{ items?: Problem[] } | Problem[]>(`/users/${id}/accept`),
+      api.get<{ items: Array<{ id: number; logicId: string; prefix: string; title: string }> }>(`/users/${id}/accept`),
     banUser: (id: number, banned: boolean, reason?: string) =>
       api.post(`/users/${id}/ban`, { banned, reason }),
     changeUserPassword: (id: number, password: string) =>
