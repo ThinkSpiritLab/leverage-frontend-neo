@@ -97,7 +97,6 @@ import { LANGUAGE_OPTIONS, Language, isFinalStatus, SubmissionStatus } from '~/t
 
 definePageMeta({
   layout: 'default',
-  middleware: 'auth',
 })
 
 const route = useRoute()
