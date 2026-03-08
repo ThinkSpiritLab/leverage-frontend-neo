@@ -8,24 +8,12 @@
       <div class="problem-header">
         <NH2 style="margin: 0">{{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}</NH2>
         <div class="problem-meta">
-          <NBadge
-            type="info"
-            :value="`时间限制: ${problem.timeLimit}ms`"
-            :show-zero="true"
-            :processing="false"
-            color="#2080f0"
-          >
-            <template #default />
-          </NBadge>
-          <NBadge
-            type="warning"
-            :value="`内存限制: ${problem.memoryLimit}MB`"
-            :show-zero="true"
-            :processing="false"
-            color="#f0a020"
-          >
-            <template #default />
-          </NBadge>
+          <NTag size="small" :bordered="false" type="info">
+            时间限制: {{ problem.timeLimit }}ms
+          </NTag>
+          <NTag size="small" :bordered="false" type="warning">
+            内存限制: {{ problem.memoryLimit }}MB
+          </NTag>
         </div>
         <div v-if="problem.tags && problem.tags.length" class="problem-tags">
           <NTag
@@ -79,7 +67,7 @@
           <div class="fullscreen-body">
             <CodeEditor
               v-model="code"
-              :language="language"
+              :language="editorLanguage"
               height="100%"
             />
           </div>
@@ -104,7 +92,7 @@
       <template v-if="!isFullscreen">
         <CodeEditor
           v-model="code"
-          :language="language"
+          :language="editorLanguage"
           :height="isMobile ? '300px' : '450px'"
         />
 
@@ -150,6 +138,7 @@
 
 <script setup lang="ts">
 import type { Problem } from '~/types'
+import { LANGUAGE_OPTIONS, Language, isFinalStatus, SubmissionStatus } from '~/types'
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
@@ -168,11 +157,11 @@ const submissionsApi = useSubmissionsApi()
 const problem = ref<Problem | null>(null)
 const loading = ref(true)
 
-const language = ref('cpp')
+const language = ref(Language.CPP)
 const code = ref('')
 const submitting = ref(false)
 const submissionId = ref<number | null>(null)
-const submissionStatus = ref(0)
+const submissionStatus = ref(SubmissionStatus.PENDING)
 const polling = ref(false)
 
 // 全屏状态
@@ -182,16 +171,24 @@ function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value
 }
 
-const languageOptions = [
-  { label: '🔵 C++', value: 'cpp' },
-  { label: '☕ Java', value: 'java' },
-  { label: '🐍 Python', value: 'python' },
-  { label: '🟡 JavaScript', value: 'javascript' },
-]
+const languageOptions = LANGUAGE_OPTIONS
+
+const editorLanguage = computed(() => {
+  const map: Record<number, string> = {
+    [Language.C]: 'c',
+    [Language.CPP]: 'cpp',
+    [Language.Java]: 'java',
+    [Language.Python2]: 'python',
+    [Language.Python3]: 'python',
+    [Language.JavaScript]: 'javascript',
+  }
+  return map[language.value] || 'cpp'
+})
 
 onMounted(async () => {
   try {
-    problem.value = (await problemsApi.get(problemId.value)).data
+    const res = await problemsApi.get(problemId.value)
+    problem.value = res.data ?? res
   }
   catch (e) {
     console.error(e)
@@ -238,15 +235,16 @@ async function handleSubmit() {
   if (!code.value.trim()) return
   submitting.value = true
   submissionId.value = null
-  submissionStatus.value = 0
+  submissionStatus.value = SubmissionStatus.PENDING
   if (pollTimer) clearTimeout(pollTimer)
 
   try {
-    const sub = await submissionsApi.create({
+    const res = await submissionsApi.create({
       problemId: problemId.value,
       language: language.value,
       code: code.value,
     })
+    const sub = res.data ?? res
     submissionId.value = sub.id
     submissionStatus.value = sub.status
     startPolling(sub.id)
@@ -260,14 +258,15 @@ async function handleSubmit() {
 }
 
 function startPolling(id: number) {
-  if (submissionStatus.value >= 2) return
+  if (isFinalStatus(submissionStatus.value)) return
   polling.value = true
 
   const poll = async () => {
     try {
       const res = await submissionsApi.getStatus(id)
-      submissionStatus.value = res.status
-      if (res.status < 2) {
+      const data = res.data ?? res
+      submissionStatus.value = data.status
+      if (!isFinalStatus(data.status)) {
         pollTimer = setTimeout(poll, 2000)
       }
       else {
@@ -402,7 +401,7 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   .problem-right {
     flex: none;
     width: 100%;
-    position: static; /* 移除 sticky，避免移动端滚动问题 */
+    position: static;
     min-height: 200px;
   }
 }
@@ -412,7 +411,7 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #282c34; /* oneDark 背景色 */
+  background: #282c34;
   display: flex;
   flex-direction: column;
 }

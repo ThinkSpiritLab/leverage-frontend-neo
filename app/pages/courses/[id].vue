@@ -8,11 +8,26 @@
       <NText v-if="course.description" depth="3" style="font-size: 15px; margin-top: 8px">
         {{ course.description }}
       </NText>
+      <div v-if="course.teacher" style="margin-top: 4px">
+        <NText depth="3">教师：{{ course.teacher }}</NText>
+      </div>
+      <!-- 课程状态 -->
+      <NTag v-if="courseStatus" :type="courseStatus.type" size="small" :bordered="false" style="margin-top: 8px">
+        {{ courseStatus.label }}
+      </NTag>
     </div>
 
     <NDivider />
 
     <NTabs v-model:value="activeTab" type="line" animated>
+      <!-- 公告 -->
+      <NTabPane name="notification" tab="公告">
+        <div v-if="course.notification">
+          <MarkdownView :content="course.notification" />
+        </div>
+        <NEmpty v-else description="暂无公告" />
+      </NTabPane>
+
       <!-- 题目列表 -->
       <NTabPane name="problems" tab="题目">
         <div v-if="problemsLoading" class="loading-center">
@@ -26,7 +41,7 @@
             v-for="(problem, index) in problems"
             :key="problem.id"
             class="problem-item"
-            @click="navigateTo(`/problems/${problem.id}`)"
+            @click="navigateTo(`/course/${courseId}/problems/${problem.id}`)"
           >
             <div class="problem-row">
               <span class="problem-index">{{ index + 1 }}</span>
@@ -60,6 +75,17 @@
           @page-change="onSubmissionsPageChange"
         />
       </NTabPane>
+
+      <!-- 排名 -->
+      <NTabPane name="ranking" tab="排名">
+        <NDataTable
+          :columns="rankColumns"
+          :data="rankData"
+          :loading="rankLoading"
+          :bordered="true"
+          :row-key="(row: any) => row.userId"
+        />
+      </NTabPane>
     </NTabs>
   </div>
   <div v-else>
@@ -72,7 +98,8 @@ import { h } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
 import type { Problem, Submission } from '~/types'
-import type { Course } from '~/composables/api/courses'
+import { LANGUAGE_LABEL, memoryToKB } from '~/types'
+import type { Course, CourseRankItem } from '~/composables/api/courses'
 
 definePageMeta({
   layout: 'default',
@@ -87,7 +114,19 @@ const problemsApi = useProblemsApi()
 
 const course = ref<Course | null>(null)
 const loading = ref(true)
-const activeTab = ref('problems')
+const activeTab = ref('notification')
+
+// 课程状态
+const courseStatus = computed(() => {
+  if (!course.value) return null
+  const now = dayjs()
+  const start = course.value.startTime ? dayjs(course.value.startTime) : null
+  const end = course.value.endTime ? dayjs(course.value.endTime) : null
+  if (!start || !end) return null
+  if (now.isBefore(start)) return { label: '未开始', type: 'info' as const }
+  if (now.isAfter(end)) return { label: '已结束', type: 'default' as const }
+  return { label: '进行中', type: 'success' as const }
+})
 
 // 课程题目
 const problems = ref<Problem[]>([])
@@ -98,7 +137,10 @@ async function fetchProblems() {
   problemsLoading.value = true
   try {
     const items = await Promise.all(
-      (course.value.problems as unknown as number[]).map((id: number) => problemsApi.get(id)),
+      (course.value.problems as unknown as number[]).map(async (id: number) => {
+        const res = await problemsApi.get(id)
+        return res.data ?? res
+      }),
     )
     problems.value = items
   }
@@ -120,12 +162,13 @@ const submissionsTotal = ref(0)
 async function fetchSubmissions() {
   submissionsLoading.value = true
   try {
-    const res: any = await coursesApi.getSubmissions(courseId.value, {
+    const res = await coursesApi.getSubmissions(courseId.value, {
       page: submissionsPage.value,
       perPage: submissionsPageSize.value,
     })
-    submissions.value = res?.items || []
-    submissionsTotal.value = res?.total || 0
+    const data = res.data ?? res
+    submissions.value = (data as any).items ?? (Array.isArray(data) ? data : [])
+    submissionsTotal.value = (data as any).total ?? submissions.value.length
   }
   catch (e) {
     console.error(e)
@@ -168,6 +211,7 @@ const submissionColumns: DataTableColumns<Submission> = [
     title: '语言',
     key: 'language',
     width: 100,
+    render(row) { return LANGUAGE_LABEL[row.language] ?? String(row.language) },
   },
   {
     title: '状态',
@@ -176,6 +220,18 @@ const submissionColumns: DataTableColumns<Submission> = [
     render(row) {
       return h(resolveComponent('StatusTag'), { status: row.status })
     },
+  },
+  {
+    title: '时间',
+    key: 'time',
+    width: 100,
+    render(row) { return row.time != null ? `${row.time}ms` : '-' },
+  },
+  {
+    title: '内存',
+    key: 'memory',
+    width: 100,
+    render(row) { return memoryToKB(row.memory) },
   },
   {
     title: '提交时间',
@@ -187,16 +243,64 @@ const submissionColumns: DataTableColumns<Submission> = [
   },
 ]
 
-// Watch tab change to load submissions lazily
+// 排名
+const rankData = ref<CourseRankItem[]>([])
+const rankLoading = ref(false)
+
+async function fetchRanking() {
+  rankLoading.value = true
+  try {
+    const res = await coursesApi.getRanking(courseId.value)
+    const data = res.data ?? res
+    rankData.value = Array.isArray(data) ? data : (data as any).items ?? []
+  }
+  catch (e) {
+    console.error(e)
+  }
+  finally {
+    rankLoading.value = false
+  }
+}
+
+const rankColumns: DataTableColumns<CourseRankItem> = [
+  {
+    title: '排名',
+    key: 'rank',
+    width: 80,
+    render(row) { return h('span', { style: 'font-weight: 600;' }, `#${row.rank}`) },
+  },
+  {
+    title: '用户名',
+    key: 'username',
+    render(row) {
+      return h('a', { style: 'color: #2080f0; cursor: pointer;', onClick: () => navigateTo(`/users/${row.userId}`) }, row.username)
+    },
+  },
+  {
+    title: '得分',
+    key: 'score',
+    width: 100,
+    render(row) { return h('span', { style: 'font-weight: 600; color: #18a058;' }, String(row.score)) },
+  },
+]
+
+// Watch tab change to load data lazily
 watch(activeTab, (tab) => {
   if (tab === 'submissions' && submissions.value.length === 0) {
     fetchSubmissions()
+  }
+  if (tab === 'ranking' && rankData.value.length === 0) {
+    fetchRanking()
+  }
+  if (tab === 'problems' && problems.value.length === 0) {
+    fetchProblems()
   }
 })
 
 onMounted(async () => {
   try {
-    course.value = await coursesApi.get(courseId.value)
+    const res = await coursesApi.get(courseId.value)
+    course.value = res.data ?? res
     await fetchProblems()
   }
   catch (e) {

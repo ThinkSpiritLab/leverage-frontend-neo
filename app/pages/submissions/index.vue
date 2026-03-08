@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
-import { STATUS_LABEL, type Submission } from '~/types'
+import { STATUS_LABEL, LANGUAGE_LABEL, memoryToKB, type Submission } from '~/types'
 import dayjs from 'dayjs'
 
 definePageMeta({
@@ -96,17 +96,6 @@ function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: numbe
   fetchSubmissions()
 }
 
-const LANGUAGE_LABEL: Record<string, string> = {
-  cpp: 'C++',
-  java: 'Java',
-  python: 'Python',
-  javascript: 'JavaScript',
-  c: 'C',
-  python2: 'Python2',
-  python3: 'Python3',
-  typescript: 'TypeScript',
-}
-
 const columns: DataTableColumns<Submission> = [
   {
     title: 'ID',
@@ -156,7 +145,7 @@ const columns: DataTableColumns<Submission> = [
     key: 'language',
     width: 100,
     render(row) {
-      return h('span', {}, LANGUAGE_LABEL[row.language] || row.language)
+      return h('span', {}, LANGUAGE_LABEL[row.language] ?? String(row.language))
     },
   },
   {
@@ -172,7 +161,7 @@ const columns: DataTableColumns<Submission> = [
     key: 'time',
     width: 100,
     render(row) {
-      return h('span', {}, row.time !== undefined && row.time !== null ? `${row.time}ms` : '-')
+      return h('span', {}, row.time != null ? `${row.time}ms` : '-')
     },
   },
   {
@@ -180,7 +169,7 @@ const columns: DataTableColumns<Submission> = [
     key: 'memory',
     width: 100,
     render(row) {
-      return h('span', {}, row.memory !== undefined && row.memory !== null ? `${row.memory}KB` : '-')
+      return h('span', {}, memoryToKB(row.memory))
     },
   },
   {

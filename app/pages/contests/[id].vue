@@ -13,6 +13,15 @@
         <NText depth="3">开始：{{ dayjs(contest.startTime).format('YYYY-MM-DD HH:mm') }}</NText>
         <NText depth="3" style="margin-left: 24px">结束：{{ dayjs(contest.endTime).format('YYYY-MM-DD HH:mm') }}</NText>
       </div>
+      <!-- 倒计时 -->
+      <div v-if="statusLabel !== '已结束'" class="contest-countdown">
+        <NText v-if="statusLabel === '未开始'" type="info">
+          距开始还有：{{ remainTime }}
+        </NText>
+        <NText v-else type="success">
+          距结束还有：{{ remainTime }}
+        </NText>
+      </div>
     </div>
 
     <NDivider />
@@ -21,23 +30,36 @@
     <NTabs v-model:value="activeTab" type="line" animated>
       <!-- 题目 -->
       <NTabPane name="problems" tab="题目">
+        <!-- 公告 -->
+        <NAlert v-if="contest.description" type="info" title="公告" style="margin-bottom: 16px">
+          <MarkdownView :content="contest.description" />
+        </NAlert>
         <div class="problems-list">
-          <NList bordered>
-            <NListItem
-              v-for="(problem, index) in contest.problems"
-              :key="problem.id"
-              class="problem-item"
-              @click="navigateTo(`/contests/${contest.id}/problems/${problem.id}`)"
-            >
-              <div class="problem-row">
-                <span class="problem-letter">{{ String.fromCharCode(65 + index) }}</span>
-                <NButton text type="primary">{{ problem.title }}</NButton>
-              </div>
-            </NListItem>
-            <NListItem v-if="!contest.problems || contest.problems.length === 0">
-              <NEmpty description="暂无题目" />
-            </NListItem>
-          </NList>
+          <NDataTable
+            :columns="problemColumns"
+            :data="contest.problems || []"
+            :row-key="(row: any) => row.id"
+            :bordered="true"
+          />
+          <NEmpty v-if="!contest.problems || contest.problems.length === 0" description="暂无题目" />
+        </div>
+      </NTabPane>
+
+      <!-- 提交记录 -->
+      <NTabPane name="submissions" tab="提交记录">
+        <NDataTable
+          :columns="submissionColumns"
+          :data="mySubmissions"
+          :loading="submissionsLoading"
+          :bordered="true"
+          :row-key="(row: any) => row.id"
+        />
+        <div v-if="submissionsTotal > submissionsPageSize" style="display: flex; justify-content: center; margin-top: 16px">
+          <NPagination
+            v-model:page="submissionsPage"
+            :page-count="Math.ceil(submissionsTotal / submissionsPageSize)"
+            @update:page="fetchSubmissions"
+          />
         </div>
       </NTabPane>
 
@@ -87,7 +109,8 @@ import { h } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { useMessage } from 'naive-ui'
 import dayjs from 'dayjs'
-import type { Contest, RankItem } from '~/types'
+import type { Contest, RankItem, Submission } from '~/types'
+import { LANGUAGE_LABEL, isFinalStatus, memoryToKB } from '~/types'
 
 definePageMeta({
   layout: 'default',
@@ -119,6 +142,66 @@ const statusType = computed<'default' | 'info' | 'success' | 'warning' | 'error'
   if (statusLabel.value === '已结束') return 'default'
   return 'info'
 })
+
+// 倒计时
+const remainTime = ref('')
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+function updateCountdown() {
+  if (!contest.value) return
+  const now = dayjs()
+  const start = dayjs(contest.value.startTime)
+  const end = dayjs(contest.value.endTime)
+  const target = now.isBefore(start) ? start : end
+  const diff = target.diff(now, 'second')
+  if (diff <= 0) {
+    remainTime.value = '0秒'
+    return
+  }
+  const hours = Math.floor(diff / 3600)
+  const minutes = Math.floor((diff % 3600) / 60)
+  const seconds = diff % 60
+  remainTime.value = `${hours}小时 ${minutes}分 ${seconds}秒`
+}
+
+// 题目列表列
+const problemColumns: DataTableColumns = [
+  {
+    title: '序号',
+    key: 'label',
+    width: 60,
+    render(_row, index) {
+      return h('span', { style: 'font-weight: 700; color: #666;' }, String.fromCharCode(65 + index))
+    },
+  },
+  {
+    title: '标题',
+    key: 'title',
+    render(row: any, index: number) {
+      return h(
+        resolveComponent('NButton') as any,
+        {
+          text: true,
+          type: 'primary',
+          onClick: () => navigateTo(`/contests/${contest.value!.id}/problems/${row.id}`),
+        },
+        { default: () => `${String.fromCharCode(65 + index)}. ${row.title}` },
+      )
+    },
+  },
+  {
+    title: '通过',
+    key: 'accepts',
+    width: 80,
+    render(row: any) { return h('span', row.accepts ?? 0) },
+  },
+  {
+    title: '提交',
+    key: 'submits',
+    width: 80,
+    render(row: any) { return h('span', row.submits ?? 0) },
+  },
+]
 
 // 排行榜
 const rankData = ref<RankItem[]>([])
@@ -172,8 +255,9 @@ async function fetchRanking() {
   rankLoading.value = true
   try {
     const res = await contestsApi.getRanking(contestId.value, rankPage.value, rankPageSize.value)
-    rankData.value = Array.isArray(res) ? res : []
-    rankTotal.value = rankData.value.length
+    const data = res.data ?? res
+    rankData.value = Array.isArray(data) ? data : (data as any).items ?? []
+    rankTotal.value = (data as any).total ?? rankData.value.length
   }
   catch (e) {
     console.error(e)
@@ -188,6 +272,80 @@ function onRankPageChange(page: number) {
   fetchRanking()
 }
 
+// 我的提交记录
+const mySubmissions = ref<Submission[]>([])
+const submissionsLoading = ref(false)
+const submissionsPage = ref(1)
+const submissionsPageSize = ref(20)
+const submissionsTotal = ref(0)
+
+async function fetchSubmissions() {
+  submissionsLoading.value = true
+  try {
+    const res = await contestsApi.getContestSubmissions(contestId.value, {
+      page: submissionsPage.value,
+      perPage: submissionsPageSize.value,
+    })
+    const data = res.data ?? res
+    mySubmissions.value = (data as any).items ?? (Array.isArray(data) ? data : [])
+    submissionsTotal.value = (data as any).total ?? mySubmissions.value.length
+  }
+  catch (e) {
+    console.error(e)
+  }
+  finally {
+    submissionsLoading.value = false
+  }
+}
+
+const submissionColumns: DataTableColumns<Submission> = [
+  {
+    title: 'ID',
+    key: 'id',
+    width: 80,
+    render(row) {
+      return h(
+        resolveComponent('NButton') as any,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/submissions/${row.id}`) },
+        { default: () => `#${row.id}` },
+      )
+    },
+  },
+  {
+    title: '题目',
+    key: 'problem',
+    render(row) {
+      return row.problem ? `${row.problem.prefix || ''}${row.problem.logicId || ''} ${row.problem.title}` : '-'
+    },
+  },
+  {
+    title: '语言',
+    key: 'language',
+    width: 100,
+    render(row) { return LANGUAGE_LABEL[row.language] ?? String(row.language) },
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 120,
+    render(row) {
+      return h(resolveComponent('StatusTag') as any, { status: row.status })
+    },
+  },
+  {
+    title: '时间',
+    key: 'time',
+    width: 100,
+    render(row) { return row.time != null ? `${row.time}ms` : '-' },
+  },
+  {
+    title: '内存',
+    key: 'memory',
+    width: 100,
+    render(row) { return memoryToKB(row.memory) },
+  },
+]
+
 // 注册
 const registered = ref(false)
 const registering = ref(false)
@@ -200,23 +358,27 @@ async function handleRegister() {
     message.success('成功参加竞赛！')
   }
   catch (e: any) {
-    message.error(e?.message || '参加竞赛失败')
+    message.error(e?.response?.data?.message || e?.message || '参加竞赛失败')
   }
   finally {
     registering.value = false
   }
 }
 
-// Watch tab change to load ranking lazily
+// Watch tab change to load data lazily
 watch(activeTab, (tab) => {
   if (tab === 'ranking' && rankData.value.length === 0) {
     fetchRanking()
+  }
+  if (tab === 'submissions' && mySubmissions.value.length === 0) {
+    fetchSubmissions()
   }
 })
 
 onMounted(async () => {
   try {
-    contest.value = await contestsApi.get(contestId.value)
+    const res = await contestsApi.get(contestId.value)
+    contest.value = res.data ?? res
   }
   catch (e) {
     console.error(e)
@@ -224,6 +386,13 @@ onMounted(async () => {
   finally {
     loading.value = false
   }
+  // 启动倒计时
+  updateCountdown()
+  countdownTimer = setInterval(updateCountdown, 1000)
+})
+
+onUnmounted(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
 })
 
 useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title} — Leverage OJ` : '竞赛 — Leverage OJ' })))
@@ -261,29 +430,13 @@ useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title} 
   flex-wrap: wrap;
 }
 
+.contest-countdown {
+  font-size: 15px;
+  font-weight: 500;
+}
+
 .problems-list {
   margin-top: 8px;
-}
-
-.problem-item {
-  cursor: pointer;
-}
-
-.problem-item:hover {
-  background: #f5f5f5;
-}
-
-.problem-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.problem-letter {
-  font-weight: 700;
-  color: #666;
-  font-size: 16px;
-  min-width: 24px;
 }
 
 .register-panel {

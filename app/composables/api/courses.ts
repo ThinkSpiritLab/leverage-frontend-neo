@@ -5,6 +5,10 @@ export interface Course {
   title?: string
   name?: string
   description?: string
+  teacher?: string
+  startTime?: string
+  endTime?: string
+  notification?: string
   createdAt: string
   problems?: number[]
   members?: number[]

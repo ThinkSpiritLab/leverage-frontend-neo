@@ -15,24 +15,12 @@
         </div>
         <NH2 style="margin: 8px 0 0">{{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}</NH2>
         <div class="problem-meta">
-          <NBadge
-            type="info"
-            :value="`时间限制: ${problem.timeLimit}ms`"
-            :show-zero="true"
-            :processing="false"
-            color="#2080f0"
-          >
-            <template #default />
-          </NBadge>
-          <NBadge
-            type="warning"
-            :value="`内存限制: ${problem.memoryLimit}MB`"
-            :show-zero="true"
-            :processing="false"
-            color="#f0a020"
-          >
-            <template #default />
-          </NBadge>
+          <NTag size="small" :bordered="false" type="info">
+            时间限制: {{ problem.timeLimit }}ms
+          </NTag>
+          <NTag size="small" :bordered="false" type="warning">
+            内存限制: {{ problem.memoryLimit }}MB
+          </NTag>
         </div>
         <div v-if="problem.tags && problem.tags.length" class="problem-tags">
           <NTag
@@ -64,7 +52,7 @@
 
       <CodeEditor
         v-model="code"
-        :language="language"
+        :language="editorLanguage"
         height="450px"
       />
 
@@ -105,6 +93,7 @@
 
 <script setup lang="ts">
 import type { Problem } from '~/types'
+import { LANGUAGE_OPTIONS, Language, isFinalStatus, SubmissionStatus } from '~/types'
 
 definePageMeta({
   layout: 'default',
@@ -121,19 +110,26 @@ const submissionsApi = useSubmissionsApi()
 const problem = ref<Problem | null>(null)
 const loading = ref(true)
 
-const language = ref('cpp')
+const language = ref(Language.CPP)
 const code = ref('')
 const submitting = ref(false)
 const submissionId = ref<number | null>(null)
-const submissionStatus = ref(0)
+const submissionStatus = ref(SubmissionStatus.PENDING)
 const polling = ref(false)
 
-const languageOptions = [
-  { label: 'C++', value: 'cpp' },
-  { label: 'Java', value: 'java' },
-  { label: 'Python', value: 'python' },
-  { label: 'JavaScript', value: 'javascript' },
-]
+const languageOptions = LANGUAGE_OPTIONS
+
+const editorLanguage = computed(() => {
+  const map: Record<number, string> = {
+    [Language.C]: 'c',
+    [Language.CPP]: 'cpp',
+    [Language.Java]: 'java',
+    [Language.Python2]: 'python',
+    [Language.Python3]: 'python',
+    [Language.JavaScript]: 'javascript',
+  }
+  return map[language.value] || 'cpp'
+})
 
 onMounted(async () => {
   try {
@@ -154,7 +150,7 @@ async function handleSubmit() {
   if (!code.value.trim()) return
   submitting.value = true
   submissionId.value = null
-  submissionStatus.value = 0
+  submissionStatus.value = SubmissionStatus.PENDING
   if (pollTimer) clearTimeout(pollTimer)
 
   try {
@@ -178,7 +174,7 @@ async function handleSubmit() {
 }
 
 function startPolling(id: number) {
-  if (submissionStatus.value >= 2) return
+  if (isFinalStatus(submissionStatus.value)) return
   polling.value = true
 
   const poll = async () => {
@@ -186,7 +182,7 @@ function startPolling(id: number) {
       const res = await submissionsApi.getStatus(id)
       const data = res.data ?? res
       submissionStatus.value = data.status
-      if (data.status < 2) {
+      if (!isFinalStatus(data.status)) {
         pollTimer = setTimeout(poll, 2000)
       }
       else {

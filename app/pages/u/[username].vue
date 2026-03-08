@@ -15,7 +15,8 @@ const api = useApi()
 onMounted(async () => {
   const username = route.params.username as string
   try {
-    const id = await api.get<number>(`/users/u/${username}`)
+    const res = await api.get<number>(`/users/u/${username}`)
+    const id = res.data ?? res
     await navigateTo(`/users/${id}`, { replace: true })
   }
   catch {

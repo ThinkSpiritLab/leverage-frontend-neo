@@ -13,26 +13,14 @@
           <span class="breadcrumb-sep"> / </span>
           <span>{{ problemLetter }}. {{ problem.title }}</span>
         </div>
-        <NH2 style="margin: 8px 0 0">{{ problem.prefix }}{{ problem.logicId }}. {{ problem.title }}</NH2>
+        <NH2 style="margin: 8px 0 0">{{ problemLetter }}. {{ problem.title }}</NH2>
         <div class="problem-meta">
-          <NBadge
-            type="info"
-            :value="`时间限制: ${problem.timeLimit}ms`"
-            :show-zero="true"
-            :processing="false"
-            color="#2080f0"
-          >
-            <template #default />
-          </NBadge>
-          <NBadge
-            type="warning"
-            :value="`内存限制: ${problem.memoryLimit}MB`"
-            :show-zero="true"
-            :processing="false"
-            color="#f0a020"
-          >
-            <template #default />
-          </NBadge>
+          <NTag size="small" :bordered="false" type="info">
+            时间限制: {{ problem.timeLimit }}ms
+          </NTag>
+          <NTag size="small" :bordered="false" type="warning">
+            内存限制: {{ problem.memoryLimit }}MB
+          </NTag>
         </div>
         <div v-if="problem.tags && problem.tags.length" class="problem-tags">
           <NTag
@@ -64,7 +52,7 @@
 
       <CodeEditor
         v-model="code"
-        :language="language"
+        :language="editorLanguage"
         height="450px"
       />
 
@@ -104,7 +92,8 @@
 </template>
 
 <script setup lang="ts">
-import type { Problem } from '~/types'
+import type { Problem, Contest } from '~/types'
+import { LANGUAGE_OPTIONS, Language, isFinalStatus, SubmissionStatus } from '~/types'
 
 definePageMeta({
   layout: 'default',
@@ -120,31 +109,46 @@ const submissionsApi = useSubmissionsApi()
 const contestsApi = useContestsApi()
 
 const problem = ref<Problem | null>(null)
+const contestData = ref<Contest | null>(null)
 const loading = ref(true)
 
-const language = ref('cpp')
+const language = ref(Language.CPP)
 const code = ref('')
 const submitting = ref(false)
 const submissionId = ref<number | null>(null)
-const submissionStatus = ref(0)
+const submissionStatus = ref(SubmissionStatus.PENDING)
 const polling = ref(false)
 
-const languageOptions = [
-  { label: 'C++', value: 'cpp' },
-  { label: 'Java', value: 'java' },
-  { label: 'Python', value: 'python' },
-  { label: 'JavaScript', value: 'javascript' },
-]
+const languageOptions = LANGUAGE_OPTIONS
+
+// 编辑器语言映射（数字ID → 编辑器语言名）
+const editorLanguage = computed(() => {
+  const map: Record<number, string> = {
+    [Language.C]: 'c',
+    [Language.CPP]: 'cpp',
+    [Language.Java]: 'java',
+    [Language.Python2]: 'python',
+    [Language.Python3]: 'python',
+    [Language.JavaScript]: 'javascript',
+  }
+  return map[language.value] || 'cpp'
+})
 
 // 竞赛题目序号（A, B, C...）
 const problemLetter = computed(() => {
-  if (!contestsApi || !problem.value) return ''
-  return ''
+  if (!contestData.value?.problems || !problem.value) return ''
+  const idx = contestData.value.problems.findIndex((p: any) => p.id === problem.value!.id)
+  return idx >= 0 ? String.fromCharCode(65 + idx) : ''
 })
 
 onMounted(async () => {
   try {
-    problem.value = await problemsApi.get(problemId.value)
+    const [problemRes, contestRes] = await Promise.all([
+      problemsApi.get(problemId.value),
+      contestsApi.get(contestId.value),
+    ])
+    problem.value = problemRes.data ?? problemRes
+    contestData.value = contestRes.data ?? contestRes
   }
   catch (e) {
     console.error(e)
@@ -160,16 +164,17 @@ async function handleSubmit() {
   if (!code.value.trim()) return
   submitting.value = true
   submissionId.value = null
-  submissionStatus.value = 0
+  submissionStatus.value = SubmissionStatus.PENDING
   if (pollTimer) clearTimeout(pollTimer)
 
   try {
-    const sub = await submissionsApi.create({
+    const res = await submissionsApi.create({
       problemId: problemId.value,
       language: language.value,
       code: code.value,
       contestId: contestId.value,
     })
+    const sub = res.data ?? res
     submissionId.value = sub.id
     submissionStatus.value = sub.status
     startPolling(sub.id)
@@ -183,14 +188,15 @@ async function handleSubmit() {
 }
 
 function startPolling(id: number) {
-  if (submissionStatus.value >= 2) return
+  if (isFinalStatus(submissionStatus.value)) return
   polling.value = true
 
   const poll = async () => {
     try {
       const res = await submissionsApi.getStatus(id)
-      submissionStatus.value = res.status
-      if (res.status < 2) {
+      const data = res.data ?? res
+      submissionStatus.value = data.status
+      if (!isFinalStatus(data.status)) {
         pollTimer = setTimeout(poll, 2000)
       }
       else {
