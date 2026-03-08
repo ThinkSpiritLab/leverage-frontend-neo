@@ -108,6 +108,9 @@
 
         <NTabPane name="submissions" tab="提交记录">
           <div style="margin-top: 16px">
+            <NSpace style="margin-bottom: 12px">
+              <NButton @click="exportSubmissionsCsv">⬇ 导出提交记录 CSV</NButton>
+            </NSpace>
             <NDataTable
               :columns="submissionColumns"
               :data="submissions"
@@ -756,6 +759,20 @@ const exportCsv = async () => {
   const token = authStore.accessToken
   const url = `${runtimeConfig.public.apiBase}/contests/${contestId}/results/export?token=${token}`
   window.open(url, '_blank')
+}
+
+const exportSubmissionsCsv = async () => {
+  const token = authStore.accessToken
+  const res = await fetch(`${runtimeConfig.public.apiBase}/submissions/export?contestId=${contestId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `contest-${contestId}-submissions.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 const rankingColumns: DataTableColumns<RankItem> = [

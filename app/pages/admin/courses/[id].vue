@@ -90,6 +90,9 @@
 
         <NTabPane name="submissions" tab="提交记录">
           <div style="margin-top: 16px">
+            <NSpace style="margin-bottom: 12px">
+              <NButton @click="exportSubmissionsCsv">⬇ 导出提交记录 CSV</NButton>
+            </NSpace>
             <NDataTable
               :columns="submissionColumns"
               :data="submissions"
@@ -159,6 +162,22 @@ definePageMeta({
 const route = useRoute()
 const courseId = Number(route.params.id)
 const coursesApi = useCoursesApi()
+const authStore = useAuthStore()
+const runtimeConfig = useRuntimeConfig()
+
+const exportSubmissionsCsv = async () => {
+  const token = authStore.accessToken
+  const res = await fetch(`${runtimeConfig.public.apiBase}/submissions/export?courseId=${courseId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `course-${courseId}-submissions.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 const problemsApi = useProblemsApi()
 const usersApi = useUsersApi()
 const message = useMessage()
