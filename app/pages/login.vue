@@ -7,7 +7,11 @@
           placeholder="请输入用户名"
           :disabled="loading"
           @keydown.enter="handleLogin"
-        />
+        >
+          <template #prefix>
+            <NIcon><PersonOutline /></NIcon>
+          </template>
+        </NInput>
       </NFormItem>
       <NFormItem label="密码" path="password">
         <NInput
@@ -17,7 +21,11 @@
           placeholder="请输入密码"
           :disabled="loading"
           @keydown.enter="handleLogin"
-        />
+        >
+          <template #prefix>
+            <NIcon><LockClosedOutline /></NIcon>
+          </template>
+        </NInput>
       </NFormItem>
     </NForm>
 
@@ -33,10 +41,14 @@
     >
       登录
     </NButton>
+
+    <div class="powered-by">Powered by Leverage OJ v2.0</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { PersonOutline, LockClosedOutline } from '@vicons/ionicons5'
+
 definePageMeta({
   layout: 'auth',
   middleware: 'auth',
@@ -84,3 +96,12 @@ async function handleLogin() {
 
 useHead({ title: '登录 — Leverage OJ' })
 </script>
+
+<style scoped>
+.powered-by {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+</style>
