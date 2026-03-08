@@ -92,20 +92,20 @@ export enum SubmissionStatus {
 }
 
 export const STATUS_LABEL: Record<number, string> = {
-  0: 'AC',
-  1: '答案错误',
-  2: '超时',
-  3: '内存超限',
-  4: '编译错误',
-  5: '系统错误',
-  6: '运行错误',
-  7: '格式错误',
-  8: '自定义错误',
-  9: '等待中',
-  10: '评测中',
-  11: '编译中',
-  12: '输出超限',
-  13: '可疑',
+  0: '通过(AC)',
+  1: '答案错误(WA)',
+  2: '超时(TLE)',
+  3: '内存超限(MLE)',
+  4: '编译错误(CE)',
+  5: '系统错误(SE)',
+  6: '运行错误(RE)',
+  7: '格式错误(PE)',
+  8: '自定义错误(CRLE)',
+  9: '等待中(PENDING)',
+  10: '评测中(JUDGING)',
+  11: '编译中(COMPILING)',
+  12: '输出超限(OLE)',
+  13: '可疑(SC)',
 }
 
 export const STATUS_COLOR: Record<number, string> = {
