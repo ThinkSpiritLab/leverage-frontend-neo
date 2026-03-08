@@ -119,7 +119,12 @@ const columns: DataTableColumns = [
 async function fetchUsers() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, perPage: pageSize }
+    const params: Record<string, unknown> = {
+      page: page.value,
+      perPage: pageSize,
+      sort: 'accepts',
+      order: 'desc',
+    }
     if (gradeFilter.value) params.grade = gradeFilter.value
     const res = await usersApi.list(params as any)
     const data = res.data ?? res
