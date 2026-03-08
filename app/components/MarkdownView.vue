@@ -57,6 +57,21 @@ const rendered = computed(() => md.render(props.content || ''))
   border-radius: 3px;
 }
 
+/* KaTeX inline/display 公式 */
+.markdown-body :deep(eq) {
+  display: inline;
+}
+.markdown-body :deep(section.eqno),
+.markdown-body :deep(section.eq) {
+  display: block;
+  text-align: center;
+  margin: 12px 0;
+}
+.markdown-body :deep(.katex-display) {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .markdown-body :deep(blockquote) {
   border-left: 4px solid #ddd;
   margin: 0;

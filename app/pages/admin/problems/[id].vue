@@ -216,7 +216,7 @@ async function fetchProblem() {
       memoryLimit: res.data.memoryLimit,
       hidden: res.data.hidden,
     }
-    contentForm.value.description = res.data.description
+    contentForm.value.description = res.data.content || res.data.description || ''
     problemTags.value = res.data.tags || []
   }
   catch {
@@ -259,7 +259,7 @@ async function saveBasicInfo() {
 async function saveContent() {
   savingContent.value = true
   try {
-    await problemsApi.update(problemId.value, { description: contentForm.value.description })
+    await problemsApi.update(problemId.value, { content: contentForm.value.description })
     message.success('内容已保存')
   }
   catch (e: any) {
