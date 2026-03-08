@@ -49,7 +49,7 @@
               :columns="problemColumns"
               :data="courseProblems"
               :loading="loading"
-              :row-key="(row: any) => row.id || row"
+              :row-key="(row: any) => row.problemId || row.userId || row.id || row"
               size="small"
             />
           </div>
@@ -82,7 +82,7 @@
               :columns="memberColumns"
               :data="courseMembers"
               :loading="membersLoading"
-              :row-key="(row: any) => row.id || row"
+              :row-key="(row: any) => row.problemId || row.userId || row.id || row"
               size="small"
             />
           </div>
@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { h } from 'vue'
+import { h, resolveComponent } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns, SelectOption, UploadCustomRequestOptions } from 'naive-ui'
 import dayjs from 'dayjs'
@@ -286,8 +286,26 @@ async function handleRemoveProblem(problemId: number) {
 }
 
 const problemColumns: DataTableColumns<any> = [
-  { title: 'ID', key: 'id', width: 100 },
-  { title: '标题', key: 'title', render: r => r.title || '-' },
+  {
+    title: '题号',
+    key: 'problemId',
+    width: 90,
+    render(row) {
+      const num = row.logicId ? `${row.prefix ? row.prefix + '-' : ''}${row.logicId}` : String(row.problemId)
+      return h('div', { style: 'line-height:1.3' }, [
+        h('span', { style: 'font-weight:700' }, num),
+      ])
+    },
+  },
+  {
+    title: '标题',
+    key: 'title',
+    render(row) {
+      return h(resolveComponent('NButton') as any,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/problems/${row.problemId}`) },
+        { default: () => row.title ?? '-' })
+    },
+  },
   {
     title: '操作',
     key: 'actions',
@@ -295,7 +313,7 @@ const problemColumns: DataTableColumns<any> = [
     render(row) {
       return h(NButton, {
         size: 'small', type: 'error', ghost: true,
-        onClick: () => handleRemoveProblem(row.id),
+        onClick: () => handleRemoveProblem(row.problemId),
       }, { default: () => '移除' })
     },
   },

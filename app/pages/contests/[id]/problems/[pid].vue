@@ -137,7 +137,7 @@ const editorLanguage = computed(() => {
 // 竞赛题目序号（A, B, C...）
 const problemLetter = computed(() => {
   if (!contestData.value?.problems || !problem.value) return ''
-  const idx = contestData.value.problems.findIndex((p: any) => p.id === problem.value!.id)
+  const idx = contestData.value.problems.findIndex((p: any) => p.problemId === problem.value!.id)
   return idx >= 0 ? String.fromCharCode(65 + idx) : ''
 })
 
