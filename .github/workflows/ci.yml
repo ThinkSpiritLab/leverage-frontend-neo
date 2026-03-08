@@ -30,5 +30,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
       - name: E2E tests (Playwright)
-        run: npx playwright install --with-deps && pnpm test:e2e:fe
+        run: pnpm test:e2e:fe
+        env:
+          # 不设置 PLAYWRIGHT_BROWSERS_PATH，使用默认路径（与 install 一致）
+          NUXT_PUBLIC_API_BASE: http://localhost:3000

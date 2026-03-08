@@ -9,8 +9,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "test:e2e:fe": "PLAYWRIGHT_BROWSERS_PATH=/tmp/playwright-browsers playwright test",
-    "test:e2e:fe:ui": "PLAYWRIGHT_BROWSERS_PATH=/tmp/playwright-browsers playwright test --ui"
+    "test:e2e:fe": "playwright test",
+    "test:e2e:fe:ui": "playwright test --ui"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
