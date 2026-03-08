@@ -230,7 +230,9 @@ async function fetchProblem() {
 async function fetchAllTags() {
   try {
     const res = await tagsApi.list()
-    allTags.value = res.data.items || []
+    // GET /tags 直接返回数组
+    const data = res.data as any
+    allTags.value = Array.isArray(data) ? data : (data.items || [])
   }
   catch {
     // ignore
