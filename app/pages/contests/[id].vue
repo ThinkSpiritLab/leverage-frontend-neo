@@ -179,11 +179,15 @@ const problemColumns: DataTableColumns = [
   {
     title: '题号',
     key: 'label',
-    width: 90,
+    width: 100,
     render(row: any, index) {
       const label = String.fromCharCode(65 + index)
       const color = row.color ?? null
-      return h('div', { style: 'display: flex; align-items: center; gap: 6px;' }, [
+      const problemNum = row.logicId ? `${row.prefix ? row.prefix + '-' : ''}${row.logicId}` : ''
+      return h('div', {
+        style: 'display: flex; align-items: center; gap: 6px; cursor: pointer;',
+        onClick: () => navigateTo(`/contests/${contest.value!.id}/problems/${row.problemId}`),
+      }, [
         color
           ? h('span', {
               title: `气球颜色: ${color}`,
@@ -191,9 +195,9 @@ const problemColumns: DataTableColumns = [
             })
           : null,
         h('div', { style: 'line-height: 1.3' }, [
-          h('span', { style: 'font-weight: 700; font-size: 15px;' }, label),
+          h('span', { style: 'font-weight: 700; font-size: 15px; color: #2080f0' }, label),
           h('br'),
-          h('span', { style: 'color: #999; font-size: 11px;' }, row.logicId ? String(row.logicId) : ''),
+          h('span', { style: 'color: #999; font-size: 11px;' }, problemNum),
         ]),
       ])
     },

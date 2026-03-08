@@ -48,6 +48,8 @@ export function useContestsApi() {
       api.post(`/contests/${id}/problems`, { problemId }),
     removeProblem: (id: number, problemId: number) =>
       api.delete(`/contests/${id}/problems/${problemId}`),
+    updateProblem: (id: number, problemId: number, dto: { color?: string | null; weight?: number; label?: string }) =>
+      api.patch(`/contests/${id}/problems/${problemId}`, dto),
 
     // 气球相关
     getBalloons: (id: number) => api.get<BalloonItem[]>(`/contests/${id}/balloons`),

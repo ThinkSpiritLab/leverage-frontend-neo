@@ -202,6 +202,28 @@
         </NSpace>
       </template>
     </NModal>
+
+  <!-- 题目属性编辑弹窗 -->
+  <NModal v-model:show="showProblemEditModal" title="编辑题目属性" preset="dialog" style="width: 380px">
+    <NForm :model="problemEditForm" label-placement="left" label-width="70px" style="margin-top: 12px">
+      <NFormItem label="标签">
+        <NInput v-model:value="problemEditForm.label" placeholder="如 A" style="width: 60px" />
+      </NFormItem>
+      <NFormItem label="分值">
+        <NInputNumber v-model:value="problemEditForm.weight" :min="0" :step="1" style="width: 120px" />
+      </NFormItem>
+      <NFormItem label="气球颜色">
+        <NSpace align="center">
+          <NColorPicker v-model:value="problemEditForm.color" :show-alpha="false" style="width: 200px" />
+          <NButton text size="small" type="error" @click="problemEditForm.color = null">清除</NButton>
+        </NSpace>
+      </NFormItem>
+    </NForm>
+    <template #action>
+      <NButton @click="showProblemEditModal = false">取消</NButton>
+      <NButton type="primary" :loading="savingProblem" @click="saveProblemEdit">保存</NButton>
+    </template>
+  </NModal>
   </div>
 </template>
 
@@ -277,6 +299,35 @@ onMounted(fetchContest)
 
 const showEditModal = ref(false)
 const saving = ref(false)
+
+// 题目属性编辑
+const showProblemEditModal = ref(false)
+const editingProblem = ref<any>(null)
+const problemEditForm = ref({ color: '' as string | null, weight: 1, label: '' })
+const savingProblem = ref(false)
+
+function openProblemEdit(row: any) {
+  editingProblem.value = row
+  problemEditForm.value = { color: row.color ?? '', weight: row.weight ?? 1, label: row.label ?? '' }
+  showProblemEditModal.value = true
+}
+
+async function saveProblemEdit() {
+  if (!editingProblem.value) return
+  savingProblem.value = true
+  try {
+    await contestsApi.updateProblem(contestId, editingProblem.value.problemId, {
+      color: problemEditForm.value.color || null,
+      weight: problemEditForm.value.weight,
+      label: problemEditForm.value.label,
+    })
+    message.success('保存成功')
+    showProblemEditModal.value = false
+    await loadContest()
+  }
+  catch { message.error('保存失败') }
+  finally { savingProblem.value = false }
+}
 const editStartMs = ref<number | null>(null)
 const editEndMs = ref<number | null>(null)
 const editEnabledLanguages = ref<number[]>([])
@@ -437,12 +488,18 @@ const problemColumns: DataTableColumns<any> = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
+    width: 130,
     render(row) {
-      return h(NButton, {
-        size: 'small', type: 'error', ghost: true,
-        onClick: () => handleRemoveProblem(row.problemId),
-      }, { default: () => '移除' })
+      return h('div', { style: 'display:flex;gap:6px' }, [
+        h(NButton, {
+          size: 'small', type: 'primary', ghost: true,
+          onClick: () => openProblemEdit(row),
+        }, { default: () => '编辑' }),
+        h(NButton, {
+          size: 'small', type: 'error', ghost: true,
+          onClick: () => handleRemoveProblem(row.problemId),
+        }, { default: () => '移除' }),
+      ])
     },
   },
 ]
