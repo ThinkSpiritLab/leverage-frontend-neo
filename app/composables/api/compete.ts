@@ -5,6 +5,8 @@ export function useCompeteApi() {
   return {
     listGames: (params?: { page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/games', { params }),
+    getGame: (id: number) => api.get<any>(`/compete/games/${id}`),
+    updateGame: (id: number, dto: Record<string, any>) => api.patch<any>(`/compete/games/${id}`, dto),
     getLeaderboard: (gameId: number) =>
       api.get<any[]>(`/compete/games/${gameId}/leaderboard`),
     listGamers: (params: { gameId?: number; page?: number; perPage?: number }) =>

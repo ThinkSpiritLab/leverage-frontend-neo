@@ -1,0 +1,291 @@
+<template>
+  <div class="admin-game-detail">
+    <div class="page-header">
+      <NSpace align="center">
+        <NButton text @click="navigateTo('/admin/compete')">
+          ← 返回游戏列表
+        </NButton>
+        <NH2 style="margin: 0">
+          {{ game?.title || '游戏详情' }}
+        </NH2>
+        <NTag v-if="game" :type="game.disabled ? 'error' : 'success'" size="small">
+          {{ game.disabled ? '已禁用' : '已启用' }}
+        </NTag>
+      </NSpace>
+    </div>
+
+    <NSpin :show="loading">
+      <NTabs v-model:value="activeTab" type="line" animated>
+        <!-- ===== 基本信息 Tab ===== -->
+        <NTabPane name="info" tab="基本信息">
+          <NCard v-if="game" style="max-width: 640px; margin-top: 16px">
+            <NDescriptions :column="1" label-placement="left" bordered style="margin-bottom: 16px">
+              <NDescriptionsItem label="ID">{{ game.id }}</NDescriptionsItem>
+              <NDescriptionsItem label="游戏名称">{{ game.title }}</NDescriptionsItem>
+              <NDescriptionsItem label="玩家数量">{{ game.gamerQuantity ?? '-' }}</NDescriptionsItem>
+              <NDescriptionsItem label="时间限制">{{ game.timeLimit ? `${game.timeLimit} ms` : '-' }}</NDescriptionsItem>
+              <NDescriptionsItem label="内存限制">{{ game.memoryLimit ? `${Math.floor(game.memoryLimit / 1024 / 1024)} MB` : '-' }}</NDescriptionsItem>
+              <NDescriptionsItem label="状态">
+                <NTag :type="game.disabled ? 'error' : 'success'" size="small">
+                  {{ game.disabled ? '已禁用' : '已启用' }}
+                </NTag>
+              </NDescriptionsItem>
+            </NDescriptions>
+            <NButton type="primary" @click="openEditModal">编辑游戏</NButton>
+          </NCard>
+        </NTabPane>
+
+        <!-- ===== 排行榜 Tab ===== -->
+        <NTabPane name="leaderboard" tab="排行榜">
+          <div style="margin-top: 16px">
+            <NButton style="margin-bottom: 12px" @click="fetchLeaderboard">刷新</NButton>
+            <NDataTable
+              :columns="leaderboardColumns"
+              :data="leaderboard"
+              :loading="leaderboardLoading"
+              :row-key="(row: any) => row.userId ?? row.id"
+              size="small"
+            />
+          </div>
+        </NTabPane>
+
+        <!-- ===== 对局列表 Tab ===== -->
+        <NTabPane name="matches" tab="对局列表">
+          <div style="margin-top: 16px">
+            <NButton style="margin-bottom: 12px" @click="fetchMatches">刷新</NButton>
+            <NDataTable
+              :columns="matchColumns"
+              :data="matches"
+              :loading="matchesLoading"
+              :row-key="(row: any) => row.id"
+              size="small"
+            />
+            <NPagination
+              v-model:page="matchPage"
+              :page-count="matchPageCount"
+              style="margin-top: 12px; justify-content: flex-end"
+              @update:page="fetchMatches"
+            />
+          </div>
+        </NTabPane>
+      </NTabs>
+    </NSpin>
+
+    <!-- 编辑弹窗 -->
+    <NModal v-model:show="showEditModal" title="编辑游戏" preset="dialog" style="width: 560px">
+      <NForm :model="editForm" label-placement="left" label-width="100px" style="margin-top: 12px">
+        <NFormItem label="游戏名称" required>
+          <NInput v-model:value="editForm.title" placeholder="输入游戏名称" />
+        </NFormItem>
+        <NFormItem label="玩家数量">
+          <NInputNumber v-model:value="editForm.gamerQuantity" :min="1" :max="100" style="width: 100%" />
+        </NFormItem>
+        <NFormItem label="时间限制 (ms)">
+          <NInputNumber v-model:value="editForm.timeLimit" :min="100" :max="60000" style="width: 100%" />
+        </NFormItem>
+        <NFormItem label="内存限制 (MB)">
+          <NInputNumber v-model:value="editFormMemoryMB" :min="8" :max="1024" style="width: 100%" />
+        </NFormItem>
+        <NFormItem label="描述">
+          <NInput v-model:value="editForm.description" type="textarea" :rows="4" placeholder="游戏描述" />
+        </NFormItem>
+        <NFormItem label="启用">
+          <NSwitch v-model:value="editFormEnabled" />
+        </NFormItem>
+      </NForm>
+      <template #action>
+        <NSpace justify="end">
+          <NButton @click="showEditModal = false">取消</NButton>
+          <NButton type="primary" :loading="saving" @click="handleSaveEdit">保存</NButton>
+        </NSpace>
+      </template>
+    </NModal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { h } from 'vue'
+import { NTag, useMessage } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
+import dayjs from 'dayjs'
+
+definePageMeta({
+  layout: 'admin',
+  middleware: 'admin',
+})
+
+const route = useRoute()
+const gameId = Number(route.params.id)
+const competeApi = useCompeteApi()
+const message = useMessage()
+
+// ── 基本数据 ──
+const game = ref<any | null>(null)
+const loading = ref(false)
+const activeTab = ref('info')
+
+async function fetchGame() {
+  loading.value = true
+  try {
+    const res = await competeApi.getGame(gameId)
+    game.value = res.data
+  }
+  catch (e) { console.error(e) }
+  finally { loading.value = false }
+}
+
+onMounted(fetchGame)
+
+// ── 编辑弹窗 ──
+const showEditModal = ref(false)
+const saving = ref(false)
+const editForm = ref({
+  title: '',
+  gamerQuantity: 2,
+  timeLimit: 1000,
+  memoryLimit: 256 * 1024 * 1024,
+  description: '',
+  disabled: true,
+})
+
+// 内存以 MB 为单位进行交互
+const editFormMemoryMB = computed({
+  get: () => Math.floor(editForm.value.memoryLimit / 1024 / 1024),
+  set: (v: number) => { editForm.value.memoryLimit = v * 1024 * 1024 },
+})
+
+const editFormEnabled = computed({
+  get: () => !editForm.value.disabled,
+  set: (v: boolean) => { editForm.value.disabled = !v },
+})
+
+function openEditModal() {
+  if (!game.value) return
+  editForm.value = {
+    title: game.value.title || '',
+    gamerQuantity: game.value.gamerQuantity ?? 2,
+    timeLimit: game.value.timeLimit ?? 1000,
+    memoryLimit: game.value.memoryLimit ?? 256 * 1024 * 1024,
+    description: game.value.description || '',
+    disabled: !!game.value.disabled,
+  }
+  showEditModal.value = true
+}
+
+async function handleSaveEdit() {
+  if (!editForm.value.title) {
+    message.warning('游戏名称不能为空')
+    return
+  }
+  saving.value = true
+  try {
+    await competeApi.updateGame(gameId, editForm.value)
+    message.success('游戏信息已更新')
+    showEditModal.value = false
+    fetchGame()
+  }
+  catch (e: any) { message.error(e?.message || '更新失败') }
+  finally { saving.value = false }
+}
+
+// ── 排行榜 ──
+const leaderboard = ref<any[]>([])
+const leaderboardLoading = ref(false)
+
+async function fetchLeaderboard() {
+  leaderboardLoading.value = true
+  try {
+    const res = await competeApi.getLeaderboard(gameId)
+    leaderboard.value = Array.isArray(res.data) ? res.data : []
+  }
+  catch (e) { console.error(e) }
+  finally { leaderboardLoading.value = false }
+}
+
+const leaderboardColumns: DataTableColumns<any> = [
+  { title: '排名', key: 'rank', width: 80 },
+  { title: '玩家', key: 'name', render: r => r.name || r.username || r.gamerId },
+  { title: '积分', key: 'score', width: 100 },
+  { title: '胜场', key: 'wins', width: 80, render: r => r.wins ?? '-' },
+  { title: '败场', key: 'losses', width: 80, render: r => r.losses ?? '-' },
+]
+
+// ── 对局列表 ──
+const matches = ref<any[]>([])
+const matchesLoading = ref(false)
+const matchPage = ref(1)
+const matchPageCount = ref(1)
+const matchPerPage = 20
+
+async function fetchMatches() {
+  matchesLoading.value = true
+  try {
+    const res = await competeApi.listMatches({
+      gameId,
+      page: matchPage.value,
+      perPage: matchPerPage,
+    })
+    const data = res.data as any
+    matches.value = data?.items || data || []
+    if (data?.total) {
+      matchPageCount.value = Math.ceil(data.total / matchPerPage)
+    }
+  }
+  catch (e) { console.error(e) }
+  finally { matchesLoading.value = false }
+}
+
+const matchStatusLabel: Record<string, string> = {
+  pending: '等待中',
+  running: '进行中',
+  finished: '已完成',
+  error: '错误',
+}
+
+const matchStatusColor: Record<string, any> = {
+  pending: 'default',
+  running: 'info',
+  finished: 'success',
+  error: 'error',
+}
+
+const matchColumns: DataTableColumns<any> = [
+  { title: 'ID', key: 'id', width: 70 },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    render: r => h(NTag, {
+      type: matchStatusColor[r.status] || 'default',
+      size: 'small',
+    }, { default: () => matchStatusLabel[r.status] || r.status || '-' }),
+  },
+  { title: '参与者', key: 'gamers', render: r => r.gamers?.map((g: any) => g.name || g.id).join(', ') || '-' },
+  {
+    title: '创建时间',
+    key: 'createdAt',
+    width: 160,
+    render: r => r.createdAt ? dayjs(r.createdAt).format('YYYY-MM-DD HH:mm') : '-',
+  },
+]
+
+// ── Tab 切换时懒加载 ──
+watch(activeTab, (tab) => {
+  if (tab === 'leaderboard' && !leaderboard.value.length) fetchLeaderboard()
+  if (tab === 'matches' && !matches.value.length) fetchMatches()
+})
+</script>
+
+<style scoped>
+.admin-game-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+</style>
