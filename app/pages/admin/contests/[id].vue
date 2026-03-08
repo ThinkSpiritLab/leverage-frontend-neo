@@ -402,9 +402,20 @@ async function handleRemoveProblem(problemId: number) {
 }
 
 const problemColumns: DataTableColumns<any> = [
-  { title: 'ID', key: 'id', width: 70 },
+  {
+    title: '题号',
+    key: 'label',
+    width: 70,
+    render(row) {
+      return h('div', { style: 'line-height: 1.3' }, [
+        h('span', { style: 'font-weight: 700' }, row.label ?? ''),
+        h('br'),
+        h('span', { style: 'color: #999; font-size: 11px' }, row.logicId ? String(row.logicId) : ''),
+      ])
+    },
+  },
+  { title: 'PID', key: 'problemId', width: 60 },
   { title: '标题', key: 'title' },
-  { title: '题号', key: 'prefix', width: 80 },
   {
     title: '操作',
     key: 'actions',
@@ -412,7 +423,7 @@ const problemColumns: DataTableColumns<any> = [
     render(row) {
       return h(NButton, {
         size: 'small', type: 'error', ghost: true,
-        onClick: () => handleRemoveProblem(row.id),
+        onClick: () => handleRemoveProblem(row.problemId),
       }, { default: () => '移除' })
     },
   },

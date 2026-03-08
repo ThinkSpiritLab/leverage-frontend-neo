@@ -177,25 +177,31 @@ function updateCountdown() {
 // 题目列表列
 const problemColumns: DataTableColumns = [
   {
-    title: '序号',
+    title: '题号',
     key: 'label',
-    width: 60,
-    render(_row, index) {
-      return h('span', { style: 'font-weight: 700; color: #666;' }, String.fromCharCode(65 + index))
+    width: 80,
+    render(row: any, index) {
+      const label = String.fromCharCode(65 + index)
+      return h('div', { style: 'line-height: 1.3' }, [
+        h('span', { style: 'font-weight: 700; font-size: 15px;' }, label),
+        h('br'),
+        h('span', { style: 'color: #999; font-size: 11px;' }, row.logicId ? String(row.logicId) : ''),
+      ])
     },
   },
   {
     title: '标题',
     key: 'title',
     render(row: any, index: number) {
+      const label = String.fromCharCode(65 + index)
       return h(
         resolveComponent('NButton') as any,
         {
           text: true,
           type: 'primary',
-          onClick: () => navigateTo(`/contests/${contest.value!.id}/problems/${row.id}`),
+          onClick: () => navigateTo(`/contests/${contest.value!.id}/problems/${row.problemId}`),
         },
-        { default: () => `${String.fromCharCode(65 + index)}. ${row.title}` },
+        { default: () => `${label}. ${row.title ?? ''}` },
       )
     },
   },
