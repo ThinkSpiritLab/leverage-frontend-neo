@@ -1,11 +1,11 @@
 <template>
   <div>
-    <h2 style="text-align: center; margin-bottom: 24px">登录</h2>
     <NForm ref="formRef" :model="form" :rules="rules" label-placement="top">
       <NFormItem label="用户名" path="username">
         <NInput
           v-model:value="form.username"
           placeholder="请输入用户名"
+          :disabled="loading"
           @keydown.enter="handleLogin"
         />
       </NFormItem>
@@ -15,6 +15,7 @@
           type="password"
           show-password-on="click"
           placeholder="请输入密码"
+          :disabled="loading"
           @keydown.enter="handleLogin"
         />
       </NFormItem>
@@ -38,6 +39,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'auth',
+  middleware: 'auth',
 })
 
 const authStore = useAuthStore()
@@ -73,7 +75,7 @@ async function handleLogin() {
   }
   catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } }
-    error.value = err.response?.data?.message || '登录失败，请检查用户名和密码'
+    error.value = err.response?.data?.message || '账号或密码错误，请重试'
   }
   finally {
     loading.value = false
