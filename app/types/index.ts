@@ -125,3 +125,13 @@ export interface RankItem {
   score: number
   rank: number
 }
+
+// 内存单位转换：bytes → KB
+export function memoryToKB(bytes: number): number {
+  return Math.round(bytes / 1024)
+}
+
+// 内存单位转换：bytes → MB（保留两位小数）
+export function memoryToMB(bytes: number): string {
+  return (bytes / 1024 / 1024).toFixed(2)
+}
