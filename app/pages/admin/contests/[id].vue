@@ -237,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { h } from 'vue'
+import { h, resolveComponent } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns, SelectOption, UploadCustomRequestOptions } from 'naive-ui'
 import dayjs from 'dayjs'
@@ -477,7 +477,17 @@ const problemColumns: DataTableColumns<any> = [
       ])
     },
   },
-  { title: '标题', key: 'title' },
+  {
+    title: '标题',
+    key: 'title',
+    render(row) {
+      return h(
+        resolveComponent('NButton') as any,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/problems/${row.problemId}`) },
+        { default: () => row.title ?? '-' },
+      )
+    },
+  },
   {
     title: '颜色',
     key: 'color',
