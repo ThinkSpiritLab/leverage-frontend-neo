@@ -152,8 +152,8 @@ async function fetchContests() {
   try {
     const typeFilter = activeTypeTab.value === 'all' ? undefined : activeTypeTab.value
     const res = await contestsApi.list({ page: page.value, perPage: pageSize.value, type: typeFilter })
-    contests.value = res.items
-    total.value = res.total
+    contests.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

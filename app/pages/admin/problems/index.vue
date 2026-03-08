@@ -137,8 +137,8 @@ async function fetchProblems() {
   loading.value = true
   try {
     const res = await problemsApi.list({ page: page.value, perPage: pageSize.value })
-    problems.value = res.items
-    total.value = res.total
+    problems.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

@@ -106,8 +106,8 @@ async function fetchUsers() {
       perPage: pageSize.value,
       search: searchText.value || undefined,
     })
-    users.value = res.items
-    total.value = res.total
+    users.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

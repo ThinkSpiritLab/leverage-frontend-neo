@@ -72,8 +72,8 @@ async function fetchSubmissions() {
     if (filterProblemId.value) params.problemId = Number(filterProblemId.value)
     if (filterStatus.value !== null && filterStatus.value !== undefined) params.status = filterStatus.value
     const res = await submissionsApi.list(params as any)
-    submissions.value = res.items
-    total.value = res.total
+    submissions.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

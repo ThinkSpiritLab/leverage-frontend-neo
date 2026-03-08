@@ -52,8 +52,8 @@ async function fetchContests() {
       perPage: pageSize.value,
       state: activeTab.value,
     })
-    contests.value = res.items
-    total.value = res.total
+    contests.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)
