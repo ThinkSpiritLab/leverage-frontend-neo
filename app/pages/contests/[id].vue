@@ -254,7 +254,7 @@ const problemColumns: DataTableColumns = [
           type: 'primary',
           onClick: () => navigateTo(`/contests/${contest.value!.id}/problems/${row.problemId}`),
         },
-        { default: () => `${label}. ${row.name || row.title ?? ''}` },
+        { default: () => `${label}. ${( row.name || row.title) ?? ''}` },
       )
     },
   },
