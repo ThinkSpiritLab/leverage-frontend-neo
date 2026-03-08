@@ -41,6 +41,9 @@
     >
       登录
     </NButton>
+    <NButton block quaternary style="margin-top: 10px" @click="navigateTo('/register')">
+      没有账号？去注册
+    </NButton>
 
     <div class="powered-by">Powered by Leverage OJ v2.0</div>
   </div>

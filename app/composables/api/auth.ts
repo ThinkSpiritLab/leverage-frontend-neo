@@ -6,6 +6,8 @@ export function useAuthApi() {
   return {
     login: (username: string, password: string) =>
       api.post<{ accessToken: string; refreshToken: string }>('/auth/login', { username, password }),
+    register: (dto: { username: string; password: string; certifiedName?: string; email?: string }) =>
+      api.post<{ id: number; username: string; certifiedName?: string | null; authority: string; createdAt: string }>('/auth/register', dto),
     loginContest: (contestId: number, username: string, password: string) =>
       api.post<{ accessToken: string }>('/auth/login/contest', { contestId, username, password }),
     refresh: (refreshToken: string) =>
