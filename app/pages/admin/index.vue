@@ -151,8 +151,7 @@
           <NButton v-if="failedJobs.length > 0" text size="tiny" type="primary" style="margin-left: 8px" @click="handleRetryAll">全部重投</NButton>
           <NButton v-if="failedJobs.length > 0" text size="tiny" type="error" style="margin-left: 8px" @click="handleClearAll">全部清空</NButton>
         </div>
-        <NEmpty v-if="!failedJobsLoading && failedJobs.length === 0" description="无失败任务 🎉" style="margin: 8px 0" />
-        <NList v-else-if="failedJobs.length > 0" bordered size="small" style="margin-top: 4px">
+        <NList v-if="failedJobs.length > 0" bordered size="small" style="margin-top: 4px">
           <NListItem v-for="job in failedJobs" :key="job.jobId">
             <NSpace align="center" justify="space-between" style="width: 100%">
               <div>
