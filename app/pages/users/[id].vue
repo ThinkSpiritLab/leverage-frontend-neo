@@ -105,7 +105,7 @@
 import { h } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { NButton, NTag } from 'naive-ui'
-import { STATUS_LABEL, STATUS_COLOR, SubmissionStatus, LANGUAGE_LABEL, type Submission } from '~/types'
+import { STATUS_LABEL, STATUS_COLOR, LANGUAGE_LABEL, type Submission } from '~/types'
 import dayjs from 'dayjs'
 
 definePageMeta({
@@ -214,25 +214,15 @@ function formatDate(date: string) {
 async function loadAcProblems() {
   acLoading.value = true
   try {
-    // 获取该用户所有 AC 提交，最多 200 条，去重提取题目
-    const res = await submissionsApi.list({ userId: userId.value, status: SubmissionStatus.AC, perPage: 200 })
-    const data = res.data ?? res
-    const items: Submission[] = data.items ?? data
-    // 去重：按 problemId
-    const seen = new Set<number>()
-    const problems: { id: number; title: string; logicId: number; prefix: string }[] = []
-    for (const s of items) {
-      if (s.problem && !seen.has(s.problem.id)) {
-        seen.add(s.problem.id)
-        problems.push({
-          id: s.problem.id,
-          title: s.problem.title,
-          logicId: s.problem.logicId,
-          prefix: s.problem.prefix ?? '',
-        })
-      }
-    }
-    acProblems.value = problems
+    const res = await usersApi.getAcceptedProblems(userId.value)
+    const payload = res.data
+    const items = Array.isArray(payload) ? payload : (payload?.items ?? [])
+    acProblems.value = items.map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      logicId: p.logicId,
+      prefix: p.prefix ?? '',
+    }))
   }
   catch {
     acProblems.value = []
@@ -246,7 +236,7 @@ onMounted(async () => {
   // 加载用户信息
   try {
     const res = await usersApi.get(userId.value)
-    user.value = res.data ?? res
+    user.value = res.data
   }
   catch {
     user.value = null
@@ -263,8 +253,7 @@ onMounted(async () => {
   submissionsLoading.value = true
   try {
     const res = await submissionsApi.list({ userId: userId.value, perPage: 20 })
-    const data = res.data ?? res
-    submissions.value = data.items ?? data
+    submissions.value = res.data.items
   }
   catch {
     submissions.value = []
