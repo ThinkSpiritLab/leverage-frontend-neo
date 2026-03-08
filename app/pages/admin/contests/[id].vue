@@ -218,10 +218,10 @@
             :style="`display:inline-block;width:28px;height:28px;border-radius:4px;border:1px solid #ddd;background:${problemEditForm.color || '#fff'};flex-shrink:0`"
           />
           <input
-            v-model="problemEditForm.color"
             type="color"
             :value="problemEditForm.color || '#ffffff'"
             style="width:36px;height:28px;padding:1px;border:1px solid #ddd;border-radius:4px;cursor:pointer"
+            @input="(e: any) => problemEditForm.color = e.target.value"
           />
           <NInput v-model:value="problemEditForm.color" placeholder="#e63946" style="width:110px" />
           <NButton text size="small" type="error" @click="problemEditForm.color = null">清除</NButton>
@@ -465,27 +465,31 @@ const problemColumns: DataTableColumns<any> = [
   {
     title: '题号',
     key: 'label',
-    width: 70,
+    width: 90,
     render(row) {
+      const problemNum = row.logicId
+        ? `${row.prefix ? row.prefix + '-' : ''}${row.logicId}`
+        : ''
       return h('div', { style: 'line-height: 1.3' }, [
-        h('span', { style: 'font-weight: 700' }, row.label ?? ''),
+        h('span', { style: 'font-weight: 700; font-size: 15px' }, row.label ?? ''),
         h('br'),
-        h('span', { style: 'color: #999; font-size: 11px' }, row.logicId ? String(row.logicId) : ''),
+        h('span', { style: 'color: #999; font-size: 11px' }, problemNum),
       ])
     },
   },
-  { title: 'PID', key: 'problemId', width: 60 },
   { title: '标题', key: 'title' },
   {
     title: '颜色',
     key: 'color',
-    width: 70,
+    width: 60,
     render(row) {
       if (!row.color) return h('span', { style: 'color:#aaa' }, '-')
-      return h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
-        h('span', { style: `display:inline-block;width:14px;height:14px;border-radius:50%;background:${row.color};border:1px solid rgba(0,0,0,.15)` }),
-        h('span', { style: 'font-size:11px;color:#666' }, row.color),
-      ])
+      // 只显示色块，忽略可能存在的 rgb 格式旧数据
+      const isHex = /^#[0-9a-fA-F]{3,8}$/.test(row.color)
+      return h('span', {
+        title: row.color,
+        style: `display:inline-block;width:20px;height:20px;border-radius:4px;background:${isHex ? row.color : '#ccc'};border:1px solid rgba(0,0,0,.15)`,
+      })
     },
   },
   {
