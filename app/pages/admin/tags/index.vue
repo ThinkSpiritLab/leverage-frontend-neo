@@ -66,7 +66,7 @@ async function fetchTags() {
   loading.value = true
   try {
     const res = await tagsApi.list()
-    tags.value = res.data.items ?? []
+    tags.value = res.data ?? []
   }
   catch (e) {
     console.error(e)
