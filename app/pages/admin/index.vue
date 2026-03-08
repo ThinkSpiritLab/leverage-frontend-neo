@@ -197,6 +197,12 @@
           <div class="queue-title">
             <NText strong>⚡ 评测队列</NText>
             <NText depth="3" style="font-size: 12px">{{ queues.queue }}</NText>
+            <NButton
+              text size="tiny" tag="a"
+              :href="`http://${apiHost}:3000/admin/queues?token=${accessToken}`"
+              target="_blank"
+              style="margin-left: 10px; font-size: 12px"
+            >🔍 Bull Board →</NButton>
           </div>
           <NSpace style="margin-top: 8px">
             <NTag type="default" size="small">等待 {{ queues.waiting ?? 0 }}</NTag>
@@ -265,6 +271,18 @@ const statisticsApi = useStatisticsApi()
 const healthApi = useHealthApi()
 const notificationsApi = useNotificationsApi()
 const transmitApi = useTransmitApi()
+const config = useRuntimeConfig()
+
+// Bull Board 链接（附上 JWT）
+const accessToken = computed(() => authStore.accessToken ?? '')
+const apiHost = computed(() => {
+  try {
+    return new URL(config.public.apiBase as string).hostname
+  }
+  catch {
+    return window.location.hostname
+  }
+})
 
 // ── 统计数字 ─────────────────────────────────────────────────────────────────
 const stat = ref<StatResult | null>(null)
