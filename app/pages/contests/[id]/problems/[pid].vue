@@ -147,8 +147,8 @@ onMounted(async () => {
       problemsApi.get(problemId.value),
       contestsApi.get(contestId.value),
     ])
-    problem.value = problemRes.data ?? problemRes
-    contestData.value = contestRes.data ?? contestRes
+    problem.value = (problemRes as any).data ?? problemRes
+    contestData.value = (contestRes as any).data ?? contestRes
   }
   catch (e) {
     console.error(e)
@@ -174,7 +174,7 @@ async function handleSubmit() {
       code: code.value,
       contestId: contestId.value,
     })
-    const sub = res.data ?? res
+    const sub = (res as any).data ?? res
     submissionId.value = sub.id
     submissionStatus.value = sub.status
     startPolling(sub.id)

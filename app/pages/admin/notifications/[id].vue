@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useMessage } from 'naive-ui'
+
 definePageMeta({ layout: 'admin', middleware: 'admin' })
 
 const route = useRoute()

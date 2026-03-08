@@ -423,7 +423,7 @@ watch(activeTab, (tab) => {
 onMounted(async () => {
   try {
     const res = await contestsApi.get(contestId.value)
-    contest.value = res.data ?? res
+    contest.value = (res as any).data ?? res
   }
   catch (e) {
     console.error(e)

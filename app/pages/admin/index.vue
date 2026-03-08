@@ -255,6 +255,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMessage } from 'naive-ui'
 import type { HealthStatus, QueueHealth, SystemInfo } from '~/composables/api/health'
 import type { FailedJob } from '~/composables/api/transmit'
 import type { StatResult } from '~/composables/api/statistics'
@@ -271,6 +272,7 @@ const healthApi = useHealthApi()
 const notificationsApi = useNotificationsApi()
 const transmitApi = useTransmitApi()
 const config = useRuntimeConfig()
+const message = useMessage()
 
 // Bull Board 链接（附上 JWT）
 const accessToken = computed(() => authStore.accessToken ?? '')

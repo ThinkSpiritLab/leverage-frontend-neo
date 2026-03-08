@@ -82,7 +82,7 @@ async function handleLogin() {
   loading.value = true
   try {
     const res = await authApi.loginContest(contestId.value, form.username, form.password)
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     const token = data.accessToken ?? data
     // 存储竞赛专属 token
     localStorage.setItem(`contestToken_${contestId.value}`, token)

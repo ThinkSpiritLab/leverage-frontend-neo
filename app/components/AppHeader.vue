@@ -140,7 +140,7 @@ async function fetchUnreadCount() {
   if (!authStore.isLoggedIn) return
   try {
     const res = await msgApi.getUnreadCount()
-    const data = res.data ?? res
+    const data = (res as any).data ?? res
     unreadCount.value = data.count ?? 0
   }
   catch {
