@@ -195,7 +195,6 @@ const columns: DataTableColumns<Problem> = [
           processing: false,
           status: progressStatus,
           borderRadius: 6,
-          railStyle: { background: '#edf2f7' },
         }),
         h('span', { class: 'rate-meta' }, `${rate}% (${row.accepts}/${row.submits})`),
       ])
