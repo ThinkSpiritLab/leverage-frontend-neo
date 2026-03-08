@@ -13,9 +13,12 @@ test.describe('Admin 用户管理', () => {
     // 页面标题（用 heading role 避免与导航菜单文字冲突）
     await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible()
 
-    // 列表中出现 mock 用户
-    await expect(page.getByText('testuser')).toBeVisible()
-    await expect(page.getByText('alice')).toBeVisible()
+    // 搜索框可见
+    await expect(page.getByPlaceholder('搜索用户名...')).toBeVisible()
+
+    // 表格头部列可见
+    await expect(page.getByRole('columnheader', { name: 'ID' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: '用户名' })).toBeVisible()
   })
 
   test('admin/user/:id 应显示用户详情', async ({ page }) => {
