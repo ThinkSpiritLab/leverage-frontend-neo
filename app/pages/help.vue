@@ -82,6 +82,38 @@
           </NP>
         </NTabPane>
 
+        <!-- 开发人员 -->
+        <NTabPane name="developers" tab="开发人员">
+          <NTabs type="segment" size="small" style="margin-bottom: 12px">
+            <NTabPane name="v1" tab="V1">
+              <NP depth="3">记录暂缺</NP>
+            </NTabPane>
+            <NTabPane name="v2" tab="V2">
+              <NP depth="3">记录暂缺</NP>
+            </NTabPane>
+            <NTabPane name="v3" tab="V3">
+              <NP depth="3">记录暂缺</NP>
+            </NTabPane>
+            <NTabPane name="v4" tab="V4">
+              <NP>曹梦琦、陈靖宇、陈曦、陈轶军、戴中慧、杜洋涛、耿祥</NP>
+              <NP>黄珂涵、李雷、李雪、刘晶晶、倪文卿、施志强</NP>
+              <NP>王申豪、王旭峰、杨欣妍、张斌杰、张秋雨、张少华、朱孟庆</NP>
+              <NP depth="3">（姓名拼音序）</NP>
+            </NTabPane>
+            <NTabPane name="v5" tab="V5">
+              <NP><strong>Prime Designer：</strong>陈靖宇</NP>
+              <NP><strong>Judge Core：</strong>陈靖宇 王徐旸 胡广 张兴洋</NP>
+              <NP><strong>Front-end &amp; Back-end：</strong>陈靖宇</NP>
+              <NP><strong>FeatureDev：</strong>胡广 张兴洋 谢万城</NP>
+              <NP><strong>Botzone：</strong>张兴洋 施俣喆 庄子昂</NP>
+            </NTabPane>
+            <NTabPane name="v6" tab="V6 (neo)">
+              <NP><strong>Full-stack Rewrite：</strong>Yuzhe / dylan_233</NP>
+              <NP><strong>Stack：</strong>NestJS + Nuxt 4 + Naive UI + TypeORM + Bull + Redis</NP>
+            </NTabPane>
+          </NTabs>
+        </NTabPane>
+
         <!-- 用户协议摘要 -->
         <NTabPane name="agreement" tab="用户协议">
           <NP>完整版请查看 <NButton text tag="a" href="/user-agreement" type="primary">用户协议</NButton></NP>
