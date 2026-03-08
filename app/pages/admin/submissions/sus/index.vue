@@ -1,7 +1,15 @@
 <template>
   <div class="admin-sus">
-    <div class="page-header">
+    <div class="page-header" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
       <NH2 style="margin: 0">抄袭检测列表</NH2>
+      <NSelect
+        v-model:value="selectedCourseId"
+        :options="courseOptions"
+        placeholder="按课程过滤（可选）"
+        clearable
+        style="width:220px"
+        @update:value="onCourseChange"
+      />
     </div>
 
     <PaginatedTable
@@ -18,8 +26,8 @@
 </template>
 
 <script setup lang="ts">
-import { h, ref } from 'vue'
-import { NSwitch, NButton, useMessage  } from 'naive-ui'
+import { h, ref, onMounted, computed } from 'vue'
+import { NSwitch, NButton, NSelect, useMessage  } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 definePageMeta({
@@ -28,6 +36,7 @@ definePageMeta({
 })
 
 const suspicionsApi = useSuspicionsApi()
+const coursesApi = useCoursesApi()
 const message = useMessage()
 
 const items = ref<any[]>([])
@@ -35,11 +44,30 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
+const selectedCourseId = ref<number | null>(null)
+const courseOptions = ref<{ label: string; value: number }[]>([])
+
+async function loadCourses() {
+  try {
+    const res = await coursesApi.list({ page: 1, perPage: 100 })
+    const list = res.data?.items ?? res.data ?? []
+    courseOptions.value = list.map((c: any) => ({ label: c.name || c.title || `课程${c.id}`, value: c.id }))
+  } catch { /* ignore */ }
+}
+
+function onCourseChange() {
+  page.value = 1
+  fetchItems()
+}
 
 async function fetchItems() {
   loading.value = true
   try {
-    const res = await suspicionsApi.list({ page: page.value, perPage: pageSize.value })
+    const res = await suspicionsApi.list({
+      page: page.value,
+      perPage: pageSize.value,
+      courseId: selectedCourseId.value ?? undefined,
+    })
     items.value = res.data.items
     total.value = res.data.total
   }
@@ -51,7 +79,7 @@ async function fetchItems() {
   }
 }
 
-onMounted(fetchItems)
+onMounted(() => { loadCourses(); fetchItems() })
 
 function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: number }) {
   page.value = p
