@@ -21,6 +21,13 @@
           {{ roleLabel }}
         </NTag>
 
+        <!-- 消息图标（带未读角标） -->
+        <NBadge :value="unreadCount" :max="99" :show="unreadCount > 0">
+          <NButton text style="font-size: 20px; line-height: 1" @click="navigateTo('/messages')">
+            <NIcon><MailOutline /></NIcon>
+          </NButton>
+        </NBadge>
+
         <!-- 登出按钮 -->
         <NButton size="small" @click="handleLogout">
           登出
@@ -37,7 +44,34 @@
 </template>
 
 <script setup lang="ts">
+import { MailOutline } from '@vicons/ionicons5'
+
 const authStore = useAuthStore()
+const msgApi = useMessageApi()
+
+const unreadCount = ref(0)
+
+async function fetchUnreadCount() {
+  if (!authStore.isLoggedIn) return
+  try {
+    const res = await msgApi.getUnreadCount()
+    const data = res.data ?? res
+    unreadCount.value = data.count ?? 0
+  }
+  catch {
+    // ignore
+  }
+}
+
+// Poll every 60 seconds
+let timer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  fetchUnreadCount()
+  timer = setInterval(fetchUnreadCount, 60_000)
+})
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 
 const roleLabel = computed(() => {
   const roleMap: Record<string, string> = {
