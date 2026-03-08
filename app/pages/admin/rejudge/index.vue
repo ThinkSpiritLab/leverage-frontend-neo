@@ -12,11 +12,20 @@
             <NFormItem label="题目ID">
               <NInputNumber v-model:value="filterForm.problemId" :min="1" placeholder="可留空" clearable style="width: 100%" />
             </NFormItem>
-            <NFormItem label="课程ID">
-              <NInputNumber v-model:value="filterForm.courseId" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            <NFormItem label="范围">
+              <NRadioGroup v-model:value="filterForm.scope">
+                <NSpace>
+                  <NRadio value="global">全局</NRadio>
+                  <NRadio value="contest">竞赛</NRadio>
+                  <NRadio value="course">课程</NRadio>
+                </NSpace>
+              </NRadioGroup>
             </NFormItem>
-            <NFormItem label="竞赛ID">
+            <NFormItem v-if="filterForm.scope === 'contest'" label="竞赛ID">
               <NInputNumber v-model:value="filterForm.contestId" :min="1" placeholder="可留空" clearable style="width: 100%" />
+            </NFormItem>
+            <NFormItem v-if="filterForm.scope === 'course'" label="课程ID">
+              <NInputNumber v-model:value="filterForm.courseId" :min="1" placeholder="可留空" clearable style="width: 100%" />
             </NFormItem>
           </NGridItem>
           <NGridItem>
@@ -48,7 +57,8 @@
               <NSelect
                 v-model:value="filterForm.status"
                 :options="statusOptions"
-                placeholder="全部状态（留空则全选）"
+                placeholder="选择状态"
+                multiple
                 clearable
               />
             </NFormItem>
@@ -82,6 +92,8 @@ definePageMeta({
 const submissionsApi = useSubmissionsApi()
 const message = useMessage()
 
+const DEFAULT_STATUS = [1, 2, 3, 4, 5, 6, 8]
+
 const filterForm = ref({
   userId: null as number | null,
   problemId: null as number | null,
@@ -89,9 +101,10 @@ const filterForm = ref({
   idEnd: null as number | null,
   dateStart: null as number | null,
   dateEnd: null as number | null,
+  scope: 'global' as 'global' | 'contest' | 'course',
   contestId: null as number | null,
   courseId: null as number | null,
-  status: null as number | null,
+  status: [...DEFAULT_STATUS] as number[],
 })
 
 const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({
@@ -105,7 +118,7 @@ const showConfirm = ref(false)
 const pendingCount = ref(0)
 
 function buildPayload() {
-  const payload: Record<string, number> = {}
+  const payload: Record<string, number | number[]> = {}
   const form = filterForm.value
   if (form.userId !== null) payload.userId = form.userId
   if (form.problemId !== null) payload.problemId = form.problemId
@@ -113,9 +126,9 @@ function buildPayload() {
   if (form.idEnd !== null) payload.idEnd = form.idEnd
   if (form.dateStart !== null) payload.dateStart = form.dateStart
   if (form.dateEnd !== null) payload.dateEnd = form.dateEnd
-  if (form.contestId !== null) payload.contestId = form.contestId
-  if (form.courseId !== null) payload.courseId = form.courseId
-  if (form.status !== null) payload.status = form.status
+  if (form.scope === 'contest' && form.contestId !== null) payload.contestId = form.contestId
+  if (form.scope === 'course' && form.courseId !== null) payload.courseId = form.courseId
+  if (form.status.length > 0) payload.status = form.status
   return payload
 }
 
