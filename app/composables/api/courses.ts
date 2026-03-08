@@ -4,6 +4,10 @@ export interface Course {
   id: number
   title: string
   description?: string
+  teacher?: string
+  startTime?: string
+  endTime?: string
+  notification?: string
   createdAt: string
   problems?: number[]
   members?: number[]
