@@ -3,10 +3,10 @@
     <div class="page-header">
       <NSpace align="center">
         <NButton text @click="navigateTo('/admin/contests')">
-          ← 返回竞赛列表
+          ← 返回列表
         </NButton>
         <NH2 style="margin: 0">
-          {{ contest?.title || '竞赛详情' }}
+          {{ contest?.title || (isExam ? '考试详情' : '竞赛详情') }}
         </NH2>
       </NSpace>
     </div>
@@ -14,14 +14,14 @@
     <NSpin :show="loading">
       <NTabs v-model:value="activeTab" type="line" animated>
         <!-- ===== 基本信息 Tab ===== -->
-        <NTabPane name="info" tab="基本信息">
+        <NTabPane name="info" :tab="isExam ? '考试信息' : '基本信息'">
           <NCard v-if="contest" style="max-width: 600px; margin-top: 16px">
             <NDescriptions :column="1" label-placement="left" bordered>
               <NDescriptionsItem label="ID">{{ contest.id }}</NDescriptionsItem>
-              <NDescriptionsItem label="标题">{{ contest.title }}</NDescriptionsItem>
+              <NDescriptionsItem :label="isExam ? '考试名称' : '标题'">{{ contest.title }}</NDescriptionsItem>
               <NDescriptionsItem label="类型">
                 <NTag :type="typeColorMap[contest.type?.toLowerCase()] || 'default'" size="small">
-                  {{ contest.type?.toUpperCase() || '-' }}
+                  {{ typeLabel[contest.type?.toLowerCase()] || contest.type?.toUpperCase() || '-' }}
                 </NTag>
               </NDescriptionsItem>
               <NDescriptionsItem label="开始时间">{{ fmtTime(contest.startTime) }}</NDescriptionsItem>
@@ -29,7 +29,7 @@
               <NDescriptionsItem label="题目数">{{ contest.problems?.length || 0 }}</NDescriptionsItem>
             </NDescriptions>
             <div style="margin-top: 16px">
-              <NButton type="primary" @click="openEditModal">编辑竞赛</NButton>
+              <NButton type="primary" @click="openEditModal">{{ isExam ? '编辑考试' : '编辑竞赛' }}</NButton>
             </div>
           </NCard>
         </NTabPane>
@@ -123,7 +123,7 @@
     </NSpin>
 
     <!-- 编辑弹窗 -->
-    <NModal v-model:show="showEditModal" title="编辑竞赛" preset="dialog" style="width: 560px">
+    <NModal v-model:show="showEditModal" :title="isExam ? '编辑考试' : '编辑竞赛'" preset="dialog" style="width: 560px">
       <NForm :model="editForm" label-placement="left" label-width="90px" style="margin-top: 12px">
         <NFormItem label="标题" required>
           <NInput v-model:value="editForm.title" placeholder="输入竞赛标题" />
@@ -185,18 +185,33 @@ const loading = ref(false)
 const activeTab = ref('info')
 
 const typeColorMap: Record<string, any> = {
+  contest: 'info',
+  exam: 'warning',
   icpc: 'info',
   ioi: 'success',
-  oi: 'warning',
+  oi: 'primary',
   cf: 'error',
 }
 
+const typeLabel: Record<string, string> = {
+  contest: '竞赛',
+  exam: '考试',
+  icpc: 'ICPC',
+  ioi: 'IOI',
+  oi: 'OI',
+  cf: 'CF',
+}
+
 const typeOptions = [
+  { label: '竞赛 (Contest)', value: 'contest' },
+  { label: '考试 (Exam)', value: 'exam' },
   { label: 'ICPC', value: 'icpc' },
   { label: 'IOI', value: 'ioi' },
   { label: 'OI', value: 'oi' },
   { label: 'Codeforces', value: 'cf' },
 ]
+
+const isExam = computed(() => contest.value?.type === 'exam')
 
 function fmtTime(t?: string) {
   return t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '-'
