@@ -206,6 +206,8 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+useHead(computed(() => ({ title: course.value?.title ? `${course.value.title} — Leverage OJ` : '课程 — Leverage OJ' })))
 </script>
 
 <style scoped>

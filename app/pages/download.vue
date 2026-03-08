@@ -85,6 +85,8 @@ const columns: DataTableColumns<DownloadItem> = [
     },
   },
 ]
+
+useHead({ title: '下载中心 — Leverage OJ' })
 </script>
 
 <style scoped>

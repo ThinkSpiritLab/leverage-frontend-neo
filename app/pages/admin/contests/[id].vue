@@ -504,6 +504,8 @@ watch(activeTab, (tab) => {
   if (tab === 'submissions' && !submissions.value.length) fetchSubmissions()
   if (tab === 'scoreboard' && !ranking.value.length) fetchRanking()
 })
+
+useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title}` : '竞赛编辑' })))
 </script>
 
 <style scoped>

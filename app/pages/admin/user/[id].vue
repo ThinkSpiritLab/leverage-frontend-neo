@@ -326,6 +326,8 @@ async function handleResetPassword() {
 watch(activeTab, (tab) => {
   if (tab === 'submissions' && !submissions.value.length) fetchSubmissions()
 })
+
+useHead(computed(() => ({ title: user.value?.username ? `${user.value.username}` : '用户管理' })))
 </script>
 
 <style scoped>

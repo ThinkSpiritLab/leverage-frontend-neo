@@ -276,6 +276,8 @@ const columns: DataTableColumns<Course> = [
     },
   },
 ]
+
+useHead({ title: '课程管理' })
 </script>
 
 <style scoped>

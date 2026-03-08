@@ -397,6 +397,8 @@ watch(activeTab, (tab) => {
   if (tab === 'submissions' && !submissions.value.length) fetchSubmissions()
   if (tab === 'ranking' && !ranking.value.length) fetchRanking()
 })
+
+useHead({ title: '课程编辑' })
 </script>
 
 <style scoped>

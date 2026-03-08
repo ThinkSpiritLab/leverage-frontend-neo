@@ -133,6 +133,8 @@ const columns: DataTableColumns = [
     },
   },
 ]
+
+useHead({ title: '可疑提交' })
 </script>
 
 <style scoped>

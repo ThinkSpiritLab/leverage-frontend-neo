@@ -141,6 +141,8 @@ const columns: DataTableColumns = [
 ]
 
 onMounted(fetchSettings)
+
+useHead({ title: '系统设置' })
 </script>
 
 <style scoped>

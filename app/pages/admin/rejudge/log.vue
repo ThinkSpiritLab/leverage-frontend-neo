@@ -190,6 +190,8 @@ const columns: DataTableColumns<any> = [
     },
   },
 ]
+
+useHead({ title: '重测日志' })
 </script>
 
 <style scoped>

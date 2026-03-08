@@ -284,6 +284,8 @@ onMounted(() => {
   fetchHealth()
   fetchNotifications()
 })
+
+useHead({ title: '控制台' })
 </script>
 
 <style scoped>

@@ -334,6 +334,8 @@ const columns: DataTableColumns<Problem> = [
     },
   },
 ]
+
+useHead({ title: '题目管理' })
 </script>
 
 <style scoped>

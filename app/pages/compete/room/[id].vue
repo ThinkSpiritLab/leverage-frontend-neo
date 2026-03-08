@@ -408,6 +408,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   stopPolling()
 })
+
+useHead({ title: '对战房间 — Leverage OJ' })
 </script>
 
 <style scoped>

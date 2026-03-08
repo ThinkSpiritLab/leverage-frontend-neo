@@ -274,6 +274,8 @@ watch(activeTab, (tab) => {
   if (tab === 'leaderboard' && !leaderboard.value.length) fetchLeaderboard()
   if (tab === 'matches' && !matches.value.length) fetchMatches()
 })
+
+useHead(computed(() => ({ title: game.value?.name ? `${game.value.name}` : '游戏管理' })))
 </script>
 
 <style scoped>

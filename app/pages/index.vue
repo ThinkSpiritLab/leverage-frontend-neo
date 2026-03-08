@@ -7,4 +7,6 @@ if (authStore.isLoggedIn) {
 else {
   navigateTo('/login', { replace: true })
 }
+
+useHead({ title: 'Leverage OJ' })
 </script>

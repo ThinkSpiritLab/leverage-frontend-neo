@@ -208,6 +208,8 @@ const columns: DataTableColumns<Submission> = [
     },
   },
 ]
+
+useHead({ title: '提交记录' })
 </script>
 
 <style scoped>

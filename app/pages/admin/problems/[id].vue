@@ -331,6 +331,8 @@ onMounted(() => {
   fetchProblem()
   fetchAllTags()
 })
+
+useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title}` : '题目编辑' })))
 </script>
 
 <style scoped>

@@ -123,6 +123,8 @@ const judgeResults = [
   { abbr: 'PE', full: 'Presentation Error', desc: '输出格式错误（多余空格/换行）', type: 'warning' },
   { abbr: 'Pending', full: 'Queuing / Judging', desc: '等待评测或评测中', type: 'info' },
 ]
+
+useHead({ title: '帮助 — Leverage OJ' })
 </script>
 
 <style scoped>

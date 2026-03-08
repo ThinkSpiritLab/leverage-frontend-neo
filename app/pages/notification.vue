@@ -125,6 +125,8 @@ async function handleMarkAllRead() {
 }
 
 onMounted(fetchNotifications)
+
+useHead({ title: '通知 — Leverage OJ' })
 </script>
 
 <style scoped>

@@ -117,6 +117,8 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+useHead(computed(() => ({ title: `提交 #${submissionId.value} — Leverage OJ` })))
 </script>
 
 <style scoped>

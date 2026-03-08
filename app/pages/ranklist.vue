@@ -14,6 +14,9 @@
         :row-key="(row: any) => row.id"
         @update:page="onPageChange"
       />
+      <div v-if="!loading && users.length === 0" style="display: flex; justify-content: center; padding: 40px 0">
+        <NEmpty description="暂无排行数据" />
+      </div>
     </NCard>
   </div>
 </template>
@@ -103,6 +106,8 @@ function onPageChange(p: number) {
 }
 
 onMounted(fetchUsers)
+
+useHead({ title: '排行榜 — Leverage OJ' })
 </script>
 
 <style scoped>

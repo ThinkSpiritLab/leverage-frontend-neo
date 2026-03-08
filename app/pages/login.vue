@@ -81,4 +81,6 @@ async function handleLogin() {
     loading.value = false
   }
 }
+
+useHead({ title: '登录 — Leverage OJ' })
 </script>

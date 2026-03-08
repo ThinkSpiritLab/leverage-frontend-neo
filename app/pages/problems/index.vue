@@ -143,6 +143,8 @@ const columns: DataTableColumns<Problem> = [
     },
   },
 ]
+
+useHead({ title: '题库 — Leverage OJ' })
 </script>
 
 <style scoped>

@@ -225,6 +225,8 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title} — Leverage OJ` : '竞赛 — Leverage OJ' })))
 </script>
 
 <style scoped>

@@ -191,6 +191,8 @@ const columns: DataTableColumns<Tag> = [
     },
   },
 ]
+
+useHead({ title: '标签管理' })
 </script>
 
 <style scoped>

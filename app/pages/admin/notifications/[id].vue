@@ -37,6 +37,8 @@ async function save() {
     saving.value = false
   }
 }
+
+useHead({ title: '通知详情' })
 </script>
 
 <template>

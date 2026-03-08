@@ -202,6 +202,8 @@ const columns: DataTableColumns = [
     },
   },
 ]
+
+useHead({ title: '通知管理' })
 </script>
 
 <style scoped>

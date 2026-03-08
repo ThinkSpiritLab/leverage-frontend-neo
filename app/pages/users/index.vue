@@ -114,6 +114,8 @@ function onPageChange(p: number) {
 }
 
 onMounted(fetchUsers)
+
+useHead({ title: '用户列表 — Leverage OJ' })
 </script>
 
 <style scoped>

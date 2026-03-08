@@ -20,9 +20,10 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'LevOJ',
+      title: 'Leverage OJ',
       meta: [
         { charset: 'utf-8' },
+        { name: 'description', content: '在线评测系统' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       ],
     },

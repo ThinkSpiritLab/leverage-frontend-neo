@@ -116,6 +116,8 @@ const columns: DataTableColumns<any> = [
     },
   },
 ]
+
+useHead({ title: '对战竞技 — Leverage OJ' })
 </script>
 
 <style scoped>

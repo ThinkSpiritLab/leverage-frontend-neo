@@ -178,6 +178,8 @@ const columns: DataTableColumns<Submission> = [
     },
   },
 ]
+
+useHead({ title: '重测' })
 </script>
 
 <style scoped>

@@ -142,6 +142,8 @@ async function handleChangePassword() {
     savingPwd.value = false
   }
 }
+
+useHead({ title: '编辑资料 — Leverage OJ' })
 </script>
 
 <style scoped>

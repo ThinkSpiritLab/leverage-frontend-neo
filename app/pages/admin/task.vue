@@ -178,6 +178,8 @@ async function fetchQueueStatus() {
 }
 
 onMounted(fetchQueueStatus)
+
+useHead({ title: '任务队列' })
 </script>
 
 <style scoped>

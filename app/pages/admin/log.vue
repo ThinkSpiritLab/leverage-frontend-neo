@@ -142,6 +142,8 @@ async function fetchLogs(page = currentPage.value) {
 }
 
 onMounted(() => fetchLogs(1))
+
+useHead({ title: '系统日志' })
 </script>
 
 <style scoped>

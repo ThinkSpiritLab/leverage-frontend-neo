@@ -273,6 +273,8 @@ const columns: DataTableColumns<User> = [
     },
   },
 ]
+
+useHead({ title: '用户管理' })
 </script>
 
 <style scoped>

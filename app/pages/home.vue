@@ -125,6 +125,8 @@ onMounted(async () => {
     notifLoading.value = false
   }
 })
+
+useHead({ title: '首页 — Leverage OJ' })
 </script>
 
 <style scoped>

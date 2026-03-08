@@ -362,6 +362,8 @@ const columns: DataTableColumns<Contest> = [
     },
   },
 ]
+
+useHead({ title: '竞赛管理' })
 </script>
 
 <style scoped>

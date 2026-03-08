@@ -156,6 +156,8 @@ onMounted(async () => {
   await fetchMessage()
   await markRead()
 })
+
+useHead({ title: '消息详情 — Leverage OJ' })
 </script>
 
 <style scoped>

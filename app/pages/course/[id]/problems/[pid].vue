@@ -204,6 +204,8 @@ function startPolling(id: number) {
 onUnmounted(() => {
   if (pollTimer) clearTimeout(pollTimer)
 })
+
+useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} — Leverage OJ` : '题目 — Leverage OJ' })))
 </script>
 
 <style scoped>

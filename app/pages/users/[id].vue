@@ -272,6 +272,8 @@ onMounted(async () => {
     submissionsLoading.value = false
   }
 })
+
+useHead(computed(() => ({ title: user.value?.username ? `${user.value.username} — Leverage OJ` : '用户 — Leverage OJ' })))
 </script>
 
 <style scoped>

@@ -116,6 +116,8 @@ async function markAllChecked() {
 }
 
 onMounted(fetchDetail)
+
+useHead({ title: '可疑代码' })
 </script>
 
 <style scoped>

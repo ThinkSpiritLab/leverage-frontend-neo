@@ -173,6 +173,8 @@ const playbackText = computed(() => {
     return String(raw)
   }
 })
+
+useHead(computed(() => ({ title: `对战记录 #${matchId.value} — Leverage OJ` })))
 </script>
 
 <style scoped>

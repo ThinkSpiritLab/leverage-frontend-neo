@@ -56,6 +56,8 @@
 definePageMeta({
   layout: 'default',
 })
+
+useHead({ title: '用户协议 — Leverage OJ' })
 </script>
 
 <style scoped>

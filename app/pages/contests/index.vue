@@ -133,6 +133,8 @@ const columns: DataTableColumns<Contest> = [
     },
   },
 ]
+
+useHead({ title: '竞赛列表 — Leverage OJ' })
 </script>
 
 <style scoped>

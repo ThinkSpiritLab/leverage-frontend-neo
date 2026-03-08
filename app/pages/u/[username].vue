@@ -22,6 +22,8 @@ onMounted(async () => {
     await navigateTo('/users', { replace: true })
   }
 })
+
+useHead({ title: '用户主页 — Leverage OJ' })
 </script>
 
 <style scoped>

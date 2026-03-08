@@ -474,6 +474,8 @@ onMounted(async () => {
   await fetchGame()
   await Promise.all([fetchLeaderboard(), fetchGamers(), fetchMatches()])
 })
+
+useHead(computed(() => ({ title: game.value?.name ? `${game.value.name} — Leverage OJ` : '游戏 — Leverage OJ' })))
 </script>
 
 <style scoped>

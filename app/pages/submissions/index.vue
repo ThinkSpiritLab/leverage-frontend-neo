@@ -192,6 +192,8 @@ const columns: DataTableColumns<Submission> = [
     },
   },
 ]
+
+useHead({ title: '评测记录 — Leverage OJ' })
 </script>
 
 <style scoped>

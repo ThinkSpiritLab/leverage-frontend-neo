@@ -159,6 +159,8 @@ async function handleContactAdmin() {
 }
 
 onMounted(fetchMessages)
+
+useHead({ title: '收件箱 — Leverage OJ' })
 </script>
 
 <style scoped>

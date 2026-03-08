@@ -95,6 +95,8 @@ function onPageChange(p: number) {
   page.value = p
   fetchCourses()
 }
+
+useHead({ title: '课程列表 — Leverage OJ' })
 </script>
 
 <style scoped>

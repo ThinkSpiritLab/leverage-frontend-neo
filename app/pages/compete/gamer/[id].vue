@@ -271,6 +271,8 @@ async function handleSave() {
     saving.value = false
   }
 }
+
+useHead({ title: 'Bot 详情 — Leverage OJ' })
 </script>
 
 <style scoped>

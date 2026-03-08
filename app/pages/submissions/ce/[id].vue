@@ -68,6 +68,8 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+useHead(computed(() => ({ title: `编译错误 #${submissionId.value} — Leverage OJ` })))
 </script>
 
 <style scoped>
