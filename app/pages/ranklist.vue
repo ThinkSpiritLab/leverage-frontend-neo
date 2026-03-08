@@ -1,7 +1,19 @@
 <template>
   <div class="ranklist-page">
     <div class="page-header">
-      <NH1>🏆 全站排行榜</NH1>
+      <NH1>全站排行榜</NH1>
+    </div>
+
+    <!-- 年级筛选 -->
+    <div class="filter-bar">
+      <NSelect
+        v-model:value="gradeFilter"
+        placeholder="按年级筛选"
+        clearable
+        :options="gradeOptions"
+        style="width: 200px"
+        @update:value="onGradeChange"
+      />
     </div>
 
     <NCard>
@@ -38,6 +50,15 @@ const pageSize = 50
 const users = ref<User[]>([])
 const total = ref(0)
 const loading = ref(false)
+const gradeFilter = ref<number | null>(null)
+
+// 生成年级选项（最近6年）
+const currentYear = new Date().getFullYear()
+const maxGrade = new Date().getMonth() >= 8 ? currentYear : currentYear - 1
+const gradeOptions = Array.from({ length: 6 }, (_, i) => ({
+  label: `${maxGrade - i} 级`,
+  value: maxGrade - i,
+}))
 
 const pagination = computed(() => ({
   page: page.value,
@@ -71,15 +92,26 @@ const columns: DataTableColumns = [
       h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/users/${row.id}`) }, () => row.username),
   },
   {
+    title: '姓名',
+    key: 'certifiedName',
+    width: 120,
+    render: (row: any) => row.certifiedName || '-',
+  },
+  {
+    title: '学院',
+    key: 'college',
+    render: (row: any) => row.college || '-',
+  },
+  {
     title: 'AC 数',
     key: 'accepts',
-    width: 120,
-    render: (row: any) => row.accepts ?? 0,
+    width: 100,
+    render: (row: any) => h('span', { style: 'font-weight: 600; color: #18a058;' }, String(row.accepts ?? 0)),
   },
   {
     title: '提交数',
     key: 'submits',
-    width: 120,
+    width: 100,
     render: (row: any) => row.submits ?? 0,
   },
 ]
@@ -87,10 +119,12 @@ const columns: DataTableColumns = [
 async function fetchUsers() {
   loading.value = true
   try {
-    const res = await usersApi.list({ page: page.value, perPage: pageSize })
+    const params: Record<string, unknown> = { page: page.value, perPage: pageSize }
+    if (gradeFilter.value) params.grade = gradeFilter.value
+    const res = await usersApi.list(params as any)
     const data = res.data ?? res
-    users.value = data.items ?? data
-    total.value = data.total ?? 0
+    users.value = (data as any).items ?? data
+    total.value = (data as any).total ?? 0
   }
   catch (e) {
     console.error(e)
@@ -102,6 +136,11 @@ async function fetchUsers() {
 
 function onPageChange(p: number) {
   page.value = p
+  fetchUsers()
+}
+
+function onGradeChange() {
+  page.value = 1
   fetchUsers()
 }
 
@@ -119,5 +158,10 @@ useHead({ title: '排行榜 — Leverage OJ' })
 
 .page-header {
   text-align: center;
+}
+
+.filter-bar {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
