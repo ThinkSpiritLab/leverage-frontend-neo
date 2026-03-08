@@ -51,44 +51,96 @@
         <NSelect
           v-model:value="language"
           :options="languageOptions"
-          style="width: 160px"
+          style="width: 180px"
         />
+        <NTooltip trigger="hover" placement="top">
+          <template #trigger>
+            <NButton text style="font-size: 18px; line-height: 1" @click="toggleFullscreen">
+              {{ isFullscreen ? '⊠' : '⛶' }}
+            </NButton>
+          </template>
+          {{ isFullscreen ? '退出全屏 (Ctrl+Shift+F)' : '全屏编辑 (Ctrl+Shift+F)' }}
+        </NTooltip>
       </div>
 
-      <CodeEditor
-        v-model="code"
-        :language="language"
-        height="450px"
-      />
-
-      <div class="submit-area">
-        <NButton
-          type="primary"
-          :loading="submitting"
-          block
-          size="large"
-          @click="handleSubmit"
-        >
-          提交代码
-        </NButton>
-      </div>
-
-      <!-- 提交结果 -->
-      <div v-if="submissionId" class="submission-result">
-        <NCard size="small">
-          <div class="result-row">
-            <span class="result-label">提交 ID：</span>
-            <NButton text type="primary" @click="navigateTo(`/submissions/${submissionId}`)">
-              #{{ submissionId }}
+      <!-- 全屏遮罩 -->
+      <Teleport to="body">
+        <div v-if="isFullscreen" class="fullscreen-editor">
+          <div class="fullscreen-header">
+            <NSelect
+              v-model:value="language"
+              :options="languageOptions"
+              style="width: 180px"
+            />
+            <NButton text style="font-size: 20px; color: #fff; line-height: 1" @click="toggleFullscreen">
+              ⊠
             </NButton>
           </div>
-          <div class="result-row">
-            <span class="result-label">状态：</span>
-            <StatusTag :status="submissionStatus" />
-            <NSpin v-if="polling" size="small" style="margin-left: 8px" />
+          <div class="fullscreen-body">
+            <CodeEditor
+              v-model="code"
+              :language="language"
+              height="100%"
+            />
           </div>
-        </NCard>
-      </div>
+          <div class="fullscreen-footer">
+            <span class="shortcut-hint">
+              <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 提交 &nbsp;·&nbsp;
+              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> 退出全屏
+            </span>
+            <NButton
+              type="primary"
+              :loading="submitting"
+              size="large"
+              @click="handleSubmit"
+            >
+              提交代码
+            </NButton>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- 普通编辑器（全屏时隐藏） -->
+      <template v-if="!isFullscreen">
+        <CodeEditor
+          v-model="code"
+          :language="language"
+          height="450px"
+        />
+
+        <div class="submit-area">
+          <NButton
+            type="primary"
+            :loading="submitting"
+            block
+            size="large"
+            @click="handleSubmit"
+          >
+            提交代码
+          </NButton>
+          <div class="shortcut-hint">
+            <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 提交 &nbsp;·&nbsp;
+            <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> 全屏
+          </div>
+        </div>
+
+        <!-- 提交结果 -->
+        <div v-if="submissionId" class="submission-result">
+          <NCard size="small">
+            <div class="result-row">
+              <span class="result-label">提交 ID：</span>
+              <NButton text type="primary" @click="navigateTo(`/submissions/${submissionId}`)">
+                #{{ submissionId }}
+              </NButton>
+            </div>
+            <div class="result-row">
+              <span class="result-label">状态：</span>
+              <StatusTag :status="submissionStatus" />
+              <NSpin v-if="polling" size="small" style="margin-left: 8px" />
+            </div>
+          </NCard>
+        </div>
+      </template>
     </div>
   </div>
   <div v-else>
@@ -120,11 +172,18 @@ const submissionId = ref<number | null>(null)
 const submissionStatus = ref(0)
 const polling = ref(false)
 
+// 全屏状态
+const isFullscreen = ref(false)
+
+function toggleFullscreen() {
+  isFullscreen.value = !isFullscreen.value
+}
+
 const languageOptions = [
-  { label: 'C++', value: 'cpp' },
-  { label: 'Java', value: 'java' },
-  { label: 'Python', value: 'python' },
-  { label: 'JavaScript', value: 'javascript' },
+  { label: '🔵 C++', value: 'cpp' },
+  { label: '☕ Java', value: 'java' },
+  { label: '🐍 Python', value: 'python' },
+  { label: '🟡 JavaScript', value: 'javascript' },
 ]
 
 onMounted(async () => {
@@ -137,7 +196,38 @@ onMounted(async () => {
   finally {
     loading.value = false
   }
+
+  document.addEventListener('keydown', handleKeydown)
 })
+
+onUnmounted(() => {
+  if (pollTimer) clearTimeout(pollTimer)
+  document.removeEventListener('keydown', handleKeydown)
+})
+
+function handleKeydown(e: KeyboardEvent) {
+  const isMac = navigator.platform.toUpperCase().includes('MAC')
+  const ctrl = isMac ? e.metaKey : e.ctrlKey
+
+  // Ctrl/Cmd + Enter → 提交代码
+  if (ctrl && !e.shiftKey && e.key === 'Enter') {
+    e.preventDefault()
+    handleSubmit()
+    return
+  }
+
+  // Ctrl/Cmd + Shift + F → 全屏切换
+  if (ctrl && e.shiftKey && e.key === 'F') {
+    e.preventDefault()
+    toggleFullscreen()
+    return
+  }
+
+  // Escape → 退出全屏
+  if (e.key === 'Escape' && isFullscreen.value) {
+    isFullscreen.value = false
+  }
+}
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -188,10 +278,6 @@ function startPolling(id: number) {
 
   pollTimer = setTimeout(poll, 2000)
 }
-
-onUnmounted(() => {
-  if (pollTimer) clearTimeout(pollTimer)
-})
 
 useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} — Leverage OJ` : '题目 — Leverage OJ' })))
 </script>
@@ -245,11 +331,16 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
 
 .editor-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .submit-area {
   margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .submission-result {
@@ -271,5 +362,74 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   color: #666;
   font-size: 14px;
   min-width: 72px;
+}
+
+/* 快捷键提示 */
+.shortcut-hint {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  user-select: none;
+}
+
+.shortcut-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  background: #f5f5f5;
+  color: #555;
+  box-shadow: 0 1px 0 #ccc;
+}
+
+/* 全屏模式 */
+.fullscreen-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #282c34; /* oneDark 背景色 */
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #21252b;
+  border-bottom: 1px solid #3e4451;
+}
+
+.fullscreen-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.fullscreen-body :deep(.code-editor) {
+  border: none;
+  border-radius: 0;
+}
+
+.fullscreen-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #21252b;
+  border-top: 1px solid #3e4451;
+}
+
+.fullscreen-footer .shortcut-hint {
+  color: #888;
+}
+
+.fullscreen-footer .shortcut-hint kbd {
+  background: #3e4451;
+  border-color: #555;
+  color: #abb2bf;
+  box-shadow: 0 1px 0 #555;
 }
 </style>

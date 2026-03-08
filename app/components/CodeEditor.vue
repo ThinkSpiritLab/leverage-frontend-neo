@@ -3,6 +3,7 @@
 </template>
 
 <script setup lang="ts">
+import { Compartment } from '@codemirror/state'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { cpp } from '@codemirror/lang-cpp'
@@ -22,8 +23,12 @@ const emit = defineEmits<{
   'update:modelValue': [string]
 }>()
 
+const { isDark } = useTheme()
+
 const editorEl = ref<HTMLElement>()
 let view: EditorView | null = null
+const themeCompartment = new Compartment()
+const languageCompartment = new Compartment()
 
 function getLanguageExtension(lang: string) {
   switch (lang) {
@@ -44,6 +49,18 @@ function getLanguageExtension(lang: string) {
   }
 }
 
+function getThemeExtension(dark: boolean) {
+  return dark ? oneDark : EditorView.baseTheme({})
+}
+
+function buildUpdateListener() {
+  return EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      emit('update:modelValue', update.state.doc.toString())
+    }
+  })
+}
+
 onMounted(() => {
   if (!editorEl.value) return
   view = new EditorView({
@@ -51,13 +68,9 @@ onMounted(() => {
       doc: props.modelValue,
       extensions: [
         basicSetup,
-        getLanguageExtension(props.language),
-        oneDark,
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            emit('update:modelValue', update.state.doc.toString())
-          }
-        }),
+        languageCompartment.of(getLanguageExtension(props.language)),
+        themeCompartment.of(getThemeExtension(isDark.value)),
+        buildUpdateListener(),
         EditorView.editable.of(!props.readonly),
       ],
     }),
@@ -65,23 +78,20 @@ onMounted(() => {
   })
 })
 
-// 监听 language 变化，重建 state
+// 动态切换主题（暗色/亮色）
+watch(isDark, (dark) => {
+  if (!view) return
+  view.dispatch({
+    effects: themeCompartment.reconfigure(getThemeExtension(dark)),
+  })
+})
+
+// 监听 language 变化，只重配语言扩展
 watch(() => props.language, () => {
   if (!view) return
-  view.setState(EditorState.create({
-    doc: view.state.doc.toString(),
-    extensions: [
-      basicSetup,
-      getLanguageExtension(props.language),
-      oneDark,
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          emit('update:modelValue', update.state.doc.toString())
-        }
-      }),
-      EditorView.editable.of(!props.readonly),
-    ],
-  }))
+  view.dispatch({
+    effects: languageCompartment.reconfigure(getLanguageExtension(props.language)),
+  })
 })
 
 // 外部 modelValue 变化时同步（避免光标跳动）
