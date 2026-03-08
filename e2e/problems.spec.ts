@@ -41,8 +41,8 @@ test.describe('题目详情', () => {
     await page.goto('/problems/1')
     await page.waitForLoadState('networkidle')
     await expect(page.getByText('两数之和')).toBeVisible({ timeout: 8_000 })
-    // MarkdownView 渲染出 "题目" 标题
-    await expect(page.getByText('题目')).toBeVisible({ timeout: 8_000 })
+    // MarkdownView 渲染出 "题目" 标题（markdown h1）
+    await expect(page.getByRole('heading', { name: '题目' })).toBeVisible({ timeout: 8_000 })
   })
 
   test('应显示代码编辑器和提交按钮', async ({ page }) => {
