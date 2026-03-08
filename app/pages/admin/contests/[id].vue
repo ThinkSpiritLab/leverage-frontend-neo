@@ -13,7 +13,6 @@
 
     <NSpin :show="loading">
       <NTabs v-model:value="activeTab" type="line" animated>
-        <!-- ===== 基本信息 Tab ===== -->
         <NTabPane name="info" :tab="isExam ? '考试信息' : '基本信息'">
           <NCard v-if="contest" style="max-width: 600px; margin-top: 16px">
             <NDescriptions :column="1" label-placement="left" bordered>
@@ -34,11 +33,20 @@
           </NCard>
         </NTabPane>
 
-        <!-- ===== 题目管理 Tab ===== -->
         <NTabPane name="problems" tab="题目管理">
           <div style="margin-top: 16px">
             <NSpace style="margin-bottom: 12px">
-              <NInputNumber v-model:value="addProblemId" placeholder="输入题目 ID" style="width: 160px" />
+              <NSelect
+                v-model:value="addProblemId"
+                style="width: 360px"
+                filterable
+                remote
+                clearable
+                :loading="problemSearchLoading"
+                :options="problemOptions"
+                placeholder="搜索题目（输入关键词）"
+                @search="handleProblemSearch"
+              />
               <NButton type="primary" :loading="addingProblem" @click="handleAddProblem">添加题目</NButton>
             </NSpace>
             <NDataTable
@@ -50,11 +58,22 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 用户管理 Tab ===== -->
         <NTabPane name="users" tab="用户管理">
           <div style="margin-top: 16px">
             <NSpace style="margin-bottom: 12px">
-              <NButton type="primary" @click="fetchContestUsers">刷新</NButton>
+              <NSelect
+                v-model:value="addUserId"
+                style="width: 360px"
+                filterable
+                remote
+                clearable
+                :loading="userSearchLoading"
+                :options="userOptions"
+                placeholder="搜索用户名"
+                @search="handleUserSearch"
+              />
+              <NButton type="primary" :loading="addingUser" @click="handleAddUser">添加用户</NButton>
+              <NButton @click="fetchContestUsers">刷新</NButton>
               <NUpload
                 :custom-request="handleImportUsers"
                 accept=".csv,.txt"
@@ -73,7 +92,6 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 气球 Tab ===== -->
         <NTabPane name="balloons" tab="气球">
           <div style="margin-top: 16px">
             <NButton style="margin-bottom: 12px" @click="fetchBalloons">刷新</NButton>
@@ -87,7 +105,6 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 提交记录 Tab ===== -->
         <NTabPane name="submissions" tab="提交记录">
           <div style="margin-top: 16px">
             <NDataTable
@@ -106,7 +123,6 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 排行榜 Tab ===== -->
         <NTabPane name="scoreboard" tab="排行榜">
           <div style="margin-top: 16px">
             <NButton style="margin-bottom: 12px" @click="fetchRanking">刷新</NButton>
@@ -122,7 +138,6 @@
       </NTabs>
     </NSpin>
 
-    <!-- 编辑弹窗 -->
     <NModal v-model:show="showEditModal" :title="isExam ? '编辑考试' : '编辑竞赛'" preset="dialog" style="width: 560px">
       <NForm :model="editForm" label-placement="left" label-width="90px" style="margin-top: 12px">
         <NFormItem label="标题" required>
@@ -163,7 +178,7 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
-import type { DataTableColumns, UploadCustomRequestOptions } from 'naive-ui'
+import type { DataTableColumns, SelectOption, UploadCustomRequestOptions } from 'naive-ui'
 import dayjs from 'dayjs'
 import type { Contest, RankItem } from '~/types'
 import { STATUS_LABEL, STATUS_COLOR } from '~/types'
@@ -176,10 +191,11 @@ definePageMeta({
 const route = useRoute()
 const contestId = Number(route.params.id)
 const contestsApi = useContestsApi()
+const problemsApi = useProblemsApi()
+const usersApi = useUsersApi()
 const message = useMessage()
 const dialog = useDialog()
 
-// ── 基本信息 ──
 const contest = ref<Contest | null>(null)
 const loading = ref(false)
 const activeTab = ref('info')
@@ -229,7 +245,6 @@ async function fetchContest() {
 
 onMounted(fetchContest)
 
-// ── 编辑弹窗 ──
 const showEditModal = ref(false)
 const saving = ref(false)
 const editStartMs = ref<number | null>(null)
@@ -261,21 +276,38 @@ async function handleSaveEdit() {
   finally { saving.value = false }
 }
 
-// ── 题目管理 ──
 const addProblemId = ref<number | null>(null)
 const addingProblem = ref(false)
+const problemSearchLoading = ref(false)
+const problemOptions = ref<SelectOption[]>([])
+
+async function handleProblemSearch(keyword: string) {
+  const search = keyword.trim()
+  if (!search) {
+    problemOptions.value = []
+    return
+  }
+  problemSearchLoading.value = true
+  try {
+    const res = await problemsApi.list({ search, page: 1, perPage: 20 })
+    problemOptions.value = (res.data.items || []).map(problem => ({
+      label: `[${problem.logicId}] ${problem.title}`,
+      value: problem.id,
+    }))
+  }
+  catch {
+    problemOptions.value = []
+  }
+  finally {
+    problemSearchLoading.value = false
+  }
+}
 
 async function handleAddProblem() {
   if (!addProblemId.value) return
   addingProblem.value = true
   try {
-    // 通过更新竞赛的 problemIds 来添加题目
-    const currentIds = contest.value?.problems?.map(p => p.id) || []
-    if (currentIds.includes(addProblemId.value)) {
-      message.warning('该题目已在竞赛中')
-      return
-    }
-    await contestsApi.update(contestId, { problemIds: [...currentIds, addProblemId.value] })
+    await contestsApi.addProblem(contestId, addProblemId.value)
     message.success('添加成功')
     addProblemId.value = null
     fetchContest()
@@ -292,8 +324,7 @@ async function handleRemoveProblem(problemId: number) {
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        const currentIds = contest.value?.problems?.map(p => p.id).filter(id => id !== problemId) || []
-        await contestsApi.update(contestId, { problemIds: currentIds })
+        await contestsApi.removeProblem(contestId, problemId)
         message.success('删除成功')
         fetchContest()
       }
@@ -319,9 +350,47 @@ const problemColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 用户管理 ──
 const contestUsers = ref<any[]>([])
 const usersLoading = ref(false)
+const addUserId = ref<number | null>(null)
+const addingUser = ref(false)
+const userSearchLoading = ref(false)
+const userOptions = ref<SelectOption[]>([])
+
+async function handleUserSearch(keyword: string) {
+  const search = keyword.trim()
+  if (!search) {
+    userOptions.value = []
+    return
+  }
+  userSearchLoading.value = true
+  try {
+    const res = await usersApi.list({ search, page: 1, perPage: 20 })
+    userOptions.value = (res.data.items || []).map((user: any) => ({
+      label: `${user.username} (${user.certifiedName || ''})`,
+      value: user.id,
+    }))
+  }
+  catch {
+    userOptions.value = []
+  }
+  finally {
+    userSearchLoading.value = false
+  }
+}
+
+async function handleAddUser() {
+  if (!addUserId.value) return
+  addingUser.value = true
+  try {
+    await contestsApi.addContestUser(contestId, addUserId.value)
+    message.success('添加成功')
+    addUserId.value = null
+    fetchContestUsers()
+  }
+  catch (e: any) { message.error(e?.message || '添加失败') }
+  finally { addingUser.value = false }
+}
 
 async function fetchContestUsers() {
   usersLoading.value = true
@@ -386,7 +455,6 @@ const userColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 气球 ──
 const balloons = ref<any[]>([])
 const balloonsLoading = ref(false)
 
@@ -434,7 +502,6 @@ const balloonColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 提交记录 ──
 const submissions = ref<any[]>([])
 const submissionsLoading = ref(false)
 const submissionPage = ref(1)
@@ -477,7 +544,6 @@ const submissionColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 排行榜 ──
 const ranking = ref<RankItem[]>([])
 const rankingLoading = ref(false)
 
@@ -497,7 +563,6 @@ const rankingColumns: DataTableColumns<RankItem> = [
   { title: '分数', key: 'score', width: 100 },
 ]
 
-// ── Tab 切换时懒加载 ──
 watch(activeTab, (tab) => {
   if (tab === 'users' && !contestUsers.value.length) fetchContestUsers()
   if (tab === 'balloons' && !balloons.value.length) fetchBalloons()

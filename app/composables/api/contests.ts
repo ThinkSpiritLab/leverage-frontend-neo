@@ -40,6 +40,14 @@ export function useContestsApi() {
     update: (id: number, dto: Partial<CreateContestDto>) => api.patch<Contest>(`/contests/${id}`, dto),
     delete: (id: number) => api.delete(`/contests/${id}`),
     register: (contestId: number) => api.post(`/contests/${contestId}/users`),
+    addContestUser: (id: number, userId: number) =>
+      api.post(`/contests/${id}/users`, { userId }),
+
+    // 题目管理
+    addProblem: (id: number, problemId: number) =>
+      api.post(`/contests/${id}/problems`, { problemId }),
+    removeProblem: (id: number, problemId: number) =>
+      api.delete(`/contests/${id}/problems/${problemId}`),
 
     // 气球相关
     getBalloons: (id: number) => api.get<BalloonItem[]>(`/contests/${id}/balloons`),

@@ -13,7 +13,6 @@
 
     <NSpin :show="loading">
       <NTabs v-model:value="activeTab" type="line" animated>
-        <!-- ===== 基本信息 Tab ===== -->
         <NTabPane name="info" tab="基本信息">
           <NCard v-if="course" style="max-width: 600px; margin-top: 16px">
             <NDescriptions :column="1" label-placement="left" bordered>
@@ -30,11 +29,20 @@
           </NCard>
         </NTabPane>
 
-        <!-- ===== 题目管理 Tab ===== -->
         <NTabPane name="problems" tab="题目管理">
           <div style="margin-top: 16px">
             <NSpace style="margin-bottom: 12px">
-              <NInputNumber v-model:value="addProblemId" placeholder="输入题目 ID" style="width: 160px" />
+              <NSelect
+                v-model:value="addProblemId"
+                style="width: 360px"
+                filterable
+                remote
+                clearable
+                :loading="problemSearchLoading"
+                :options="problemOptions"
+                placeholder="搜索题目（输入关键词）"
+                @search="handleProblemSearch"
+              />
               <NButton type="primary" :loading="addingProblem" @click="handleAddProblem">添加题目</NButton>
             </NSpace>
             <NDataTable
@@ -47,11 +55,20 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 成员管理 Tab ===== -->
         <NTabPane name="members" tab="成员管理">
           <div style="margin-top: 16px">
             <NSpace style="margin-bottom: 12px">
-              <NInputNumber v-model:value="addUserId" placeholder="输入用户 ID" style="width: 160px" />
+              <NSelect
+                v-model:value="addUserId"
+                style="width: 360px"
+                filterable
+                remote
+                clearable
+                :loading="userSearchLoading"
+                :options="userOptions"
+                placeholder="搜索用户名"
+                @search="handleUserSearch"
+              />
               <NButton type="primary" :loading="addingMember" @click="handleAddMember">添加成员</NButton>
               <NUpload
                 :custom-request="handleImportMembers"
@@ -71,7 +88,6 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 提交记录 Tab ===== -->
         <NTabPane name="submissions" tab="提交记录">
           <div style="margin-top: 16px">
             <NDataTable
@@ -90,7 +106,6 @@
           </div>
         </NTabPane>
 
-        <!-- ===== 排行榜 Tab ===== -->
         <NTabPane name="ranking" tab="排行榜">
           <div style="margin-top: 16px">
             <NButton style="margin-bottom: 12px" @click="fetchRanking">刷新</NButton>
@@ -106,7 +121,6 @@
       </NTabs>
     </NSpin>
 
-    <!-- 编辑弹窗 -->
     <NModal v-model:show="showEditModal" title="编辑课程" preset="dialog" style="width: 560px">
       <NForm :model="editForm" label-placement="left" label-width="90px" style="margin-top: 12px">
         <NFormItem label="课程名" required>
@@ -129,7 +143,7 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
-import type { DataTableColumns, UploadCustomRequestOptions } from 'naive-ui'
+import type { DataTableColumns, SelectOption, UploadCustomRequestOptions } from 'naive-ui'
 import dayjs from 'dayjs'
 import { STATUS_LABEL, STATUS_COLOR } from '~/types'
 import type { Course, CourseRankItem } from '~/composables/api/courses'
@@ -142,10 +156,11 @@ definePageMeta({
 const route = useRoute()
 const courseId = Number(route.params.id)
 const coursesApi = useCoursesApi()
+const problemsApi = useProblemsApi()
+const usersApi = useUsersApi()
 const message = useMessage()
 const dialog = useDialog()
 
-// ── 基本信息 ──
 const course = ref<Course | null>(null)
 const loading = ref(false)
 const activeTab = ref('info')
@@ -166,7 +181,6 @@ async function fetchCourse() {
 
 onMounted(fetchCourse)
 
-// ── 编辑弹窗 ──
 const showEditModal = ref(false)
 const saving = ref(false)
 const editForm = ref({ name: '', notification: '' })
@@ -192,11 +206,33 @@ async function handleSaveEdit() {
   finally { saving.value = false }
 }
 
-// ── 题目管理 ──
 const addProblemId = ref<number | null>(null)
 const addingProblem = ref(false)
+const problemSearchLoading = ref(false)
+const problemOptions = ref<SelectOption[]>([])
 
-// course.problems 是 problem id 列表，转成对象数组用于表格
+async function handleProblemSearch(keyword: string) {
+  const search = keyword.trim()
+  if (!search) {
+    problemOptions.value = []
+    return
+  }
+  problemSearchLoading.value = true
+  try {
+    const res = await problemsApi.list({ search, page: 1, perPage: 20 })
+    problemOptions.value = (res.data.items || []).map(problem => ({
+      label: `[${problem.logicId}] ${problem.title}`,
+      value: problem.id,
+    }))
+  }
+  catch {
+    problemOptions.value = []
+  }
+  finally {
+    problemSearchLoading.value = false
+  }
+}
+
 const courseProblems = computed(() => {
   const probs = course.value?.problems || []
   return probs.map((p: any) => typeof p === 'object' ? p : { id: p })
@@ -248,16 +284,38 @@ const problemColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 成员管理 ──
 const courseMembers = ref<any[]>([])
 const membersLoading = ref(false)
 const addUserId = ref<number | null>(null)
 const addingMember = ref(false)
+const userSearchLoading = ref(false)
+const userOptions = ref<SelectOption[]>([])
+
+async function handleUserSearch(keyword: string) {
+  const search = keyword.trim()
+  if (!search) {
+    userOptions.value = []
+    return
+  }
+  userSearchLoading.value = true
+  try {
+    const res = await usersApi.list({ search, page: 1, perPage: 20 })
+    userOptions.value = (res.data.items || []).map((user: any) => ({
+      label: `${user.username} (${user.certifiedName || ''})`,
+      value: user.id,
+    }))
+  }
+  catch {
+    userOptions.value = []
+  }
+  finally {
+    userSearchLoading.value = false
+  }
+}
 
 async function fetchMembers() {
   membersLoading.value = true
   try {
-    // members 在 course 详情中，刷新课程数据
     await fetchCourse()
     const members = course.value?.members || []
     courseMembers.value = members.map((m: any) => typeof m === 'object' ? m : { id: m })
@@ -328,7 +386,6 @@ const memberColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 提交记录 ──
 const submissions = ref<any[]>([])
 const submissionsLoading = ref(false)
 const submissionPage = ref(1)
@@ -371,7 +428,6 @@ const submissionColumns: DataTableColumns<any> = [
   },
 ]
 
-// ── 排行榜 ──
 const ranking = ref<CourseRankItem[]>([])
 const rankingLoading = ref(false)
 
@@ -391,7 +447,6 @@ const rankingColumns: DataTableColumns<CourseRankItem> = [
   { title: '分数', key: 'score', width: 100 },
 ]
 
-// ── Tab 切换时懒加载 ──
 watch(activeTab, (tab) => {
   if (tab === 'members' && !courseMembers.value.length) fetchMembers()
   if (tab === 'submissions' && !submissions.value.length) fetchSubmissions()
