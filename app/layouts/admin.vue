@@ -70,6 +70,12 @@ import {
   SchoolOutline,
   HomeOutline,
   LogOutOutline,
+  DocumentTextOutline,
+  RefreshOutline,
+  SettingsOutline,
+  NotificationsOutline,
+  PricetagsOutline,
+  AlertCircleOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -108,6 +114,47 @@ const adminMenuOptions = [
     key: 'admin-courses',
     icon: renderIcon(SchoolOutline),
     onClick: () => navigateTo('/admin/courses'),
+  },
+  {
+    label: '提交管理',
+    key: 'admin-submissions',
+    icon: renderIcon(DocumentTextOutline),
+    children: [
+      {
+        label: '全部提交',
+        key: 'admin-submissions',
+        onClick: () => navigateTo('/admin/submissions'),
+      },
+      {
+        label: '抄袭检测',
+        key: 'admin-submissions-sus',
+        onClick: () => navigateTo('/admin/submissions/sus'),
+      },
+    ],
+  },
+  {
+    label: '批量重判',
+    key: 'admin-rejudge',
+    icon: renderIcon(RefreshOutline),
+    onClick: () => navigateTo('/admin/rejudge'),
+  },
+  {
+    label: '标签管理',
+    key: 'admin-tags',
+    icon: renderIcon(PricetagsOutline),
+    onClick: () => navigateTo('/admin/tags'),
+  },
+  {
+    label: '通知管理',
+    key: 'admin-notifications',
+    icon: renderIcon(NotificationsOutline),
+    onClick: () => navigateTo('/admin/notifications'),
+  },
+  {
+    label: '系统设置',
+    key: 'admin-setting',
+    icon: renderIcon(SettingsOutline),
+    onClick: () => navigateTo('/admin/setting'),
   },
 ]
 
