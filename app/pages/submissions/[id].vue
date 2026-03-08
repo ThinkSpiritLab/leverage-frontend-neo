@@ -33,7 +33,18 @@
         </NDescriptionsItem>
 
         <NDescriptionsItem label="状态">
-          <StatusTag :status="submission.status" />
+          <NSpace align="center">
+            <StatusTag :status="submission.status" />
+            <NButton
+              v-if="submission.status === 7"
+              text
+              type="error"
+              size="small"
+              @click="navigateTo(`/submissions/ce/${submission.id}`)"
+            >
+              查看编译错误
+            </NButton>
+          </NSpace>
         </NDescriptionsItem>
 
         <NDescriptionsItem label="执行时间">

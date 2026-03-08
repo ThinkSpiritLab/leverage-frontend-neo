@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { mockAuthApi, mockRanklistApi } from './mocks/api'
+import { mockAuthApi, mockRanklistApi, loginViaUI } from './mocks/api'
 
 test.describe('排行榜', () => {
   test('应显示排行榜表格', async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe('排行榜', () => {
     await mockAuthApi(page)
     await mockRanklistApi(page)
 
-    // mock /api/users/:id for the user page
+    // mock /api/users/:id for the user profile page
     await page.route(/\/api\/users\/10$/, async (route) => {
       await route.fulfill({
         json: {
@@ -54,6 +54,12 @@ test.describe('排行榜', () => {
         },
       })
     })
+
+    // 需要登录，否则跳转 /users/:id 会被 auth middleware 拦截
+    await loginViaUI(page)
+
+    // 重新注入 ranklist mock（loginViaUI 跳转到 /problems，需要在这之前或之后都有路由注册）
+    // 已在上方提前注册，route 拦截是 persistent 的，无需重复
 
     await page.goto('/ranklist')
     await page.waitForLoadState('networkidle')

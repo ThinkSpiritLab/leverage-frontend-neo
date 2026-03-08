@@ -1,0 +1,113 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - complementary [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]: LevOJ 管理
+        - menu [ref=e10]:
+          - menuitem "仪表板" [ref=e11]:
+            - img [ref=e12] [cursor=pointer]:
+              - img [ref=e13]
+            - text: 仪表板
+          - menuitem "用户管理" [ref=e17]:
+            - img [ref=e18] [cursor=pointer]:
+              - img [ref=e19]
+            - text: 用户管理
+          - menuitem "题目管理" [ref=e24]:
+            - img [ref=e25] [cursor=pointer]:
+              - img [ref=e26]
+            - text: 题目管理
+          - menuitem "竞赛管理" [ref=e30]:
+            - img [ref=e31] [cursor=pointer]:
+              - img [ref=e32]
+            - text: 竞赛管理
+          - menuitem "课程管理" [ref=e36]:
+            - img [ref=e37] [cursor=pointer]:
+              - img [ref=e38]
+            - text: 课程管理
+          - menu [ref=e41] [cursor=pointer]:
+            - menuitem "提交管理" [ref=e42]:
+              - img [ref=e43]:
+                - img [ref=e44]
+              - text: 提交管理
+              - img [ref=e48]
+          - menuitem "批量重判" [ref=e50]:
+            - img [ref=e51] [cursor=pointer]:
+              - img [ref=e52]
+            - text: 批量重判
+          - menuitem "标签管理" [ref=e55]:
+            - img [ref=e56] [cursor=pointer]:
+              - img [ref=e57]
+            - text: 标签管理
+          - menuitem "通知管理" [ref=e61]:
+            - img [ref=e62] [cursor=pointer]:
+              - img [ref=e63]
+            - text: 通知管理
+          - menuitem "系统设置" [ref=e66]:
+            - img [ref=e67] [cursor=pointer]:
+              - img [ref=e68]
+            - text: 系统设置
+          - menuitem "系统日志" [ref=e70]:
+            - img [ref=e71] [cursor=pointer]:
+              - img [ref=e72]
+            - text: 系统日志
+          - menuitem "系统任务" [ref=e76]:
+            - img [ref=e77] [cursor=pointer]:
+              - img [ref=e78]
+            - text: 系统任务
+      - img [ref=e85] [cursor=pointer]
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - navigation "Breadcrumb" [ref=e91]:
+          - list [ref=e92]:
+            - listitem [ref=e93]:
+              - button "首页" [ref=e95] [cursor=pointer]:
+                - generic [ref=e96]: 首页
+              - generic [ref=e97]: /
+            - listitem [ref=e98]:
+              - generic [ref=e99]: 管理后台
+        - button "testuser sa" [ref=e100] [cursor=pointer]:
+          - generic [ref=e101]:
+            - text: testuser
+            - generic [ref=e103]: sa
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - heading "用户管理" [level=2] [ref=e108]
+          - generic [ref=e111]:
+            - textbox "搜索用户名..." [ref=e112]
+            - generic:
+              - generic: 搜索用户名...
+        - generic [ref=e118]:
+          - table [ref=e119]:
+            - rowgroup [ref=e128]:
+              - row "ID 用户名 邮箱 学号 角色 提交/通过 操作" [ref=e129]:
+                - columnheader "ID" [ref=e130]:
+                  - generic [ref=e132]: ID
+                - columnheader "用户名" [ref=e133]:
+                  - generic [ref=e135]: 用户名
+                - columnheader "邮箱" [ref=e136]:
+                  - generic [ref=e138]: 邮箱
+                - columnheader "学号" [ref=e139]:
+                  - generic [ref=e141]: 学号
+                - columnheader "角色" [ref=e142]:
+                  - generic [ref=e144]: 角色
+                - columnheader "提交/通过" [ref=e145]:
+                  - generic [ref=e147]: 提交/通过
+                - columnheader "操作" [ref=e148]:
+                  - generic [ref=e150]: 操作
+          - generic [ref=e152]:
+            - img [ref=e155]
+            - generic [ref=e158]: No Data
+  - generic:
+    - img
+  - generic [ref=e159]:
+    - button "Toggle Nuxt DevTools" [ref=e160] [cursor=pointer]:
+      - img [ref=e161]
+    - generic "Page load time" [ref=e164]:
+      - generic [ref=e165]: "168"
+      - generic [ref=e166]: ms
+    - button "Toggle Component Inspector" [ref=e168] [cursor=pointer]:
+      - img [ref=e169]
+```

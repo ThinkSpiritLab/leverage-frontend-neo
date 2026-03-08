@@ -11,5 +11,6 @@ export function useSubmissionsApi() {
       api.post<Submission>('/submissions', dto),
     getStatus: (id: number) => api.get<{ status: number }>(`/submissions/${id}/status`),
     rejudge: (id: number) => api.post(`/submissions/${id}/rejudge`),
+    getCE: (id: number) => api.get<string>(`/submissions/ce/${id}`),
   }
 }

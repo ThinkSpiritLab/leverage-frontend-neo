@@ -54,14 +54,29 @@ pnpm build
 
 产物在 `.output/public/`，可直接静态托管（Nginx、CDN 等）。
 
+## 主要功能
+
+- **题库**：题目列表、详情、提交与代码编辑（CodeMirror 6）
+- **竞赛**：比赛列表、实时排名、气球追踪
+- **课程**：课程管理、学生注册、提交导出
+- **消息收件箱**：用户间站内消息（收件箱 / 发件箱）
+- **通知**：系统通知中心
+- **Admin**：用户管理、题目管理、考试（exam）管理（支持按课程筛选过滤）
+- **排行榜**：全局 Redis 排行榜
+- **错误页**：统一 404 / 500 / 403 错误页（`app/error.vue`）
+
 ## 项目结构
 
 ```
 app/
 ├── pages/          # 路由页面（文件即路由）
+│   ├── messages/   # 收件箱 / 消息详情
+│   ├── admin/      # 管理后台（exam 支持课程过滤）
+│   └── ...
 ├── components/     # 可复用 Vue 组件
 ├── composables/    # 组合式函数（useApi、useAuth 等）
 ├── stores/         # Pinia 状态仓库（auth、user 等）
+├── error.vue       # 全局错误页（404 / 403 / 500）
 └── layouts/        # 页面布局模板（default、auth 等）
 ```
 

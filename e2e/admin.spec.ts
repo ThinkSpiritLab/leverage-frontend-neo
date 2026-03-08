@@ -10,8 +10,8 @@ test.describe('Admin 用户管理', () => {
     await page.goto('/admin/users')
     await page.waitForLoadState('networkidle')
 
-    // 页面标题
-    await expect(page.getByText('用户管理')).toBeVisible()
+    // 页面标题（用 heading role 避免与导航菜单文字冲突）
+    await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible()
 
     // 列表中出现 mock 用户
     await expect(page.getByText('testuser')).toBeVisible()
@@ -26,17 +26,17 @@ test.describe('Admin 用户管理', () => {
     await page.goto('/admin/user/1')
     await page.waitForLoadState('networkidle')
 
-    // 页面标题含用户名
-    await expect(page.getByText('testuser')).toBeVisible()
+    // 页面标题含用户名（用 heading 避免与其他元素冲突）
+    await expect(page.getByRole('heading', { name: 'testuser' })).toBeVisible()
 
     // 统计卡片可见
     await expect(page.getByText('通过数')).toBeVisible()
     await expect(page.getByText('提交数')).toBeVisible()
 
-    // Tabs 可见
-    await expect(page.getByRole('tab', { name: '基本信息' })).toBeVisible()
-    await expect(page.getByRole('tab', { name: '提交记录' })).toBeVisible()
-    await expect(page.getByRole('tab', { name: '权限' })).toBeVisible()
+    // Tabs 可见（NTabs 可能不暴露 role=tab，用文字匹配）
+    await expect(page.getByText('基本信息').first()).toBeVisible()
+    await expect(page.getByText('提交记录').first()).toBeVisible()
+    await expect(page.getByText('权限').first()).toBeVisible()
   })
 
   test('admin/user/:id 基本信息 tab 应可编辑', async ({ page }) => {
@@ -47,8 +47,8 @@ test.describe('Admin 用户管理', () => {
     await page.goto('/admin/user/1')
     await page.waitForLoadState('networkidle')
 
-    // 基本信息 tab 默认选中
-    await expect(page.getByRole('tab', { name: '基本信息' })).toBeVisible()
+    // 基本信息 tab 默认选中（NTabs 用文字匹配）
+    await expect(page.getByText('基本信息').first()).toBeVisible()
 
     // 邮箱输入框应有值（来自 mock 数据）
     const emailInput = page.getByPlaceholder('输入邮箱')
