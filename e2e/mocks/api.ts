@@ -138,3 +138,178 @@ export async function setLoggedInViaStorage(page: Page) {
     localStorage.setItem('refreshToken', tokens.refreshToken)
   }, mockTokens)
 }
+
+// ──────────────────────────────────────────────────────────────
+// Messages mock data
+// ──────────────────────────────────────────────────────────────
+
+export const mockMessages = [
+  {
+    id: 1,
+    senderId: 0,
+    sender: null,
+    receiverId: 1,
+    receiver: null,
+    sessionId: null,
+    content: '欢迎使用 Leverage OJ，这是一条系统通知消息。',
+    read: false,
+    closed: null,
+    deleted: null,
+    messageUpdatedAt: '2026-01-01T10:00:00Z',
+    createdAt: '2026-01-01T10:00:00Z',
+    replies: [],
+  },
+  {
+    id: 2,
+    senderId: 1,
+    sender: { id: 1, username: 'admin' },
+    receiverId: 1,
+    receiver: null,
+    sessionId: null,
+    content: '你好，感谢你的反馈，我们已经处理完毕。',
+    read: true,
+    closed: null,
+    deleted: null,
+    messageUpdatedAt: '2026-01-02T12:00:00Z',
+    createdAt: '2026-01-02T12:00:00Z',
+    replies: [],
+  },
+]
+
+/**
+ * Mock 消息相关 API：inbox / count
+ */
+export async function mockMessagesApi(page: Page) {
+  await page.route('**/api/messages/count', async (route) => {
+    await route.fulfill({ json: { count: 1 } })
+  })
+
+  await page.route(/\/api\/messages(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: { items: mockMessages, total: mockMessages.length },
+    })
+  })
+
+  await page.route(/\/api\/messages\/contact-admin/, async (route) => {
+    await route.fulfill({ json: { id: 3 } })
+  })
+
+  await page.route(/\/api\/messages\/\d+$/, async (route) => {
+    const url = route.request().url()
+    const id = Number(url.split('/').pop())
+    const msg = mockMessages.find(m => m.id === id)
+    if (msg) {
+      await route.fulfill({ json: msg })
+    }
+    else {
+      await route.fulfill({ status: 404, json: {} })
+    }
+  })
+}
+
+// ──────────────────────────────────────────────────────────────
+// Ranklist mock data
+// ──────────────────────────────────────────────────────────────
+
+export const mockRanklistUsers = [
+  {
+    id: 10,
+    username: 'alice',
+    role: 'user',
+    email: 'alice@example.com',
+    accepts: 120,
+    submits: 200,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 11,
+    username: 'bob',
+    role: 'user',
+    email: 'bob@example.com',
+    accepts: 90,
+    submits: 150,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 12,
+    username: 'charlie',
+    role: 'user',
+    email: 'charlie@example.com',
+    accepts: 60,
+    submits: 100,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+]
+
+/**
+ * Mock 排行榜 API：/api/users（带分页）
+ */
+export async function mockRanklistApi(page: Page) {
+  await page.route(/\/api\/users(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: { items: mockRanklistUsers, total: mockRanklistUsers.length },
+    })
+  })
+}
+
+// ──────────────────────────────────────────────────────────────
+// Admin user mock data
+// ──────────────────────────────────────────────────────────────
+
+export const mockAdminUsers = [
+  {
+    id: 1,
+    username: 'testuser',
+    role: 'sa',
+    email: 'test@example.com',
+    studentId: 'S001',
+    accepts: 42,
+    submits: 100,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 2,
+    username: 'alice',
+    role: 'user',
+    email: 'alice@example.com',
+    studentId: 'S002',
+    accepts: 10,
+    submits: 30,
+    createdAt: '2026-01-02T00:00:00Z',
+  },
+]
+
+/**
+ * Mock 管理员用户 API：list / get / update
+ */
+export async function mockAdminUserApi(page: Page) {
+  // 具体用户路径需先注册，避免被通配符覆盖
+  await page.route(/\/api\/users\/\d+$/, async (route) => {
+    const method = route.request().method()
+    const url = route.request().url()
+    const id = Number(url.split('/').pop())
+    if (method === 'GET') {
+      const user = mockAdminUsers.find(u => u.id === id) ?? mockAdminUsers[0]
+      await route.fulfill({ json: user })
+    }
+    else if (method === 'PATCH') {
+      const body = JSON.parse(route.request().postData() || '{}')
+      const user = mockAdminUsers.find(u => u.id === id) ?? mockAdminUsers[0]
+      await route.fulfill({ json: { ...user, ...body } })
+    }
+    else {
+      await route.fulfill({ json: {} })
+    }
+  })
+
+  await page.route(/\/api\/users(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: { items: mockAdminUsers, total: mockAdminUsers.length },
+    })
+  })
+
+  // submissions under user
+  await page.route(/\/api\/users\/\d+\/submissions(\?.*)?$/, async (route) => {
+    await route.fulfill({ json: { items: [], total: 0 } })
+  })
+}
