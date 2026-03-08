@@ -92,6 +92,7 @@ const roleOptions = [
 
 const roleTypeMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
   sa: 'error',
+  superadmin: 'error',
   admin: 'warning',
   supervisor: 'info',
   user: 'default',
@@ -135,7 +136,7 @@ function openEditModal(row: User) {
   form.value = {
     email: row.email,
     studentId: row.studentId,
-    role: row.role,
+    role: (row as any).authority || row.role,
     password: '',
   }
   showModal.value = true
@@ -218,14 +219,15 @@ const columns: DataTableColumns<User> = [
     key: 'role',
     width: 100,
     render(row) {
+      const role = (row as any).authority || row.role || '-'
       return h(
         NTag,
         {
-          type: roleTypeMap[row.role] || 'default',
+          type: roleTypeMap[role] || 'default',
           size: 'small',
           bordered: false,
         },
-        { default: () => row.role },
+        { default: () => role },
       )
     },
   },

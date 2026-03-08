@@ -40,9 +40,25 @@ const contestsApi = useContestsApi()
 const activeTab = ref<'upcoming' | 'ongoing' | 'ended'>('ongoing')
 const page = ref(1)
 const pageSize = ref(20)
-const contests = ref<Contest[]>([])
+const allContests = ref<Contest[]>([])
 const total = ref(0)
 const loading = ref(false)
+
+function filterByTab(items: Contest[]): Contest[] {
+  const now = Date.now()
+  return items.filter((c) => {
+    const start = new Date(c.startTime).getTime()
+    const end = new Date(c.endTime).getTime()
+    switch (activeTab.value) {
+      case 'upcoming': return start > now
+      case 'ongoing': return start <= now && end > now
+      case 'ended': return end <= now
+      default: return true
+    }
+  })
+}
+
+const contests = computed(() => filterByTab(allContests.value))
 
 async function fetchContests() {
   loading.value = true
@@ -52,7 +68,7 @@ async function fetchContests() {
       perPage: pageSize.value,
       state: activeTab.value,
     })
-    contests.value = res.data.items
+    allContests.value = res.data.items
     total.value = res.data.total
   }
   catch (e) {
@@ -89,13 +105,15 @@ const columns: DataTableColumns<Contest> = [
     key: 'title',
     render(row) {
       return h(
-        NButton,
+        'a',
         {
-          text: true,
-          type: 'primary',
-          onClick: () => navigateTo(`/contests/${row.id}`),
+          style: 'color: #2080f0; cursor: pointer; text-decoration: none;',
+          onClick: (e: Event) => {
+            e.preventDefault()
+            navigateTo(`/contests/${row.id}`)
+          },
         },
-        { default: () => row.title || row.name || '-' },
+        row.title || '-',
       )
     },
   },

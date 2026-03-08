@@ -285,13 +285,23 @@ const columns: DataTableColumns<Problem> = [
   {
     title: '操作',
     key: 'actions',
-    width: 200,
+    width: 260,
     render(row) {
       return h(
         NSpace,
         { size: 'small' },
         {
           default: () => [
+            h(
+              NButton,
+              {
+                size: 'small',
+                type: 'info',
+                ghost: true,
+                onClick: () => navigateTo(`/problems/${row.logicId}`),
+              },
+              { default: () => '查看' },
+            ),
             h(
               NButton,
               {

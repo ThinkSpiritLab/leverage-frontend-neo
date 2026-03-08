@@ -105,7 +105,7 @@
 import { h } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { NButton, NTag } from 'naive-ui'
-import { STATUS_LABEL, STATUS_COLOR, type Submission } from '~/types'
+import { STATUS_LABEL, STATUS_COLOR, SubmissionStatus, LANGUAGE_LABEL, type Submission } from '~/types'
 import dayjs from 'dayjs'
 
 definePageMeta({
@@ -191,6 +191,7 @@ const submissionColumns: DataTableColumns = [
     title: '语言',
     key: 'language',
     width: 100,
+    render: (row: any) => LANGUAGE_LABEL[row.language] ?? String(row.language),
   },
   {
     title: '状态',
@@ -214,7 +215,7 @@ async function loadAcProblems() {
   acLoading.value = true
   try {
     // 获取该用户所有 AC 提交，最多 200 条，去重提取题目
-    const res = await submissionsApi.list({ userId: userId.value, status: 2, perPage: 200 })
+    const res = await submissionsApi.list({ userId: userId.value, status: SubmissionStatus.AC, perPage: 200 })
     const data = res.data ?? res
     const items: Submission[] = data.items ?? data
     // 去重：按 problemId

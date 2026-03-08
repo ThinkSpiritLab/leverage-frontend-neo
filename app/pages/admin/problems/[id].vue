@@ -8,6 +8,9 @@
         <NH2 style="margin: 0">
           {{ problem ? `${problem.prefix}${problem.logicId} - ${problem.title}` : '加载中...' }}
         </NH2>
+        <NButton v-if="problem" type="info" size="small" ghost @click="navigateTo(`/problems/${problem.logicId}`)">
+          查看题目页
+        </NButton>
       </NSpace>
     </div>
 
