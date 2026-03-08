@@ -140,6 +140,7 @@ async function fetchMessages() {
 }
 
 async function handleContactAdmin() {
+  if (sending.value) return
   if (!contactForm.title.trim() || !contactForm.content.trim()) return
   sending.value = true
   try {
