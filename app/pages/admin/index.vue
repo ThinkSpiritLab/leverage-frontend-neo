@@ -112,6 +112,28 @@
           </NDescriptionsItem>
         </NDescriptions>
 
+        <!-- 评测统计 -->
+        <NDivider style="margin: 16px 0" />
+        <div class="queue-title" style="margin-bottom: 8px">
+          <NText strong>📊 评测吞吐</NText>
+          <NButton text size="tiny" style="margin-left: 8px" @click="fetchJudgeStats">🔄</NButton>
+        </div>
+        <NDescriptions v-if="judgeStats" :column="3" bordered size="small">
+          <NDescriptionsItem label="1分钟">
+            <NText>{{ judgeStats.last1min }} 次</NText>
+            <NText depth="3" style="font-size: 11px; margin-left: 4px">AC {{ judgeStats.acLast1min }}</NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem label="5分钟">
+            <NText>{{ judgeStats.last5min }} 次</NText>
+            <NText depth="3" style="font-size: 11px; margin-left: 4px">AC {{ judgeStats.acLast5min }}</NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem label="10分钟">
+            <NText>{{ judgeStats.last10min }} 次</NText>
+            <NText depth="3" style="font-size: 11px; margin-left: 4px">AC {{ judgeStats.acLast10min }}</NText>
+          </NDescriptionsItem>
+        </NDescriptions>
+        <NText v-else-if="judgersLoading" depth="3">加载中…</NText>
+
         <!-- 评测机状态 -->
         <NDivider style="margin: 16px 0" />
         <div class="queue-title">
@@ -246,6 +268,19 @@ async function fetchJudgers() {
   }
 }
 
+interface JudgeStats { last1min: number; last5min: number; last10min: number; acLast1min: number; acLast5min: number; acLast10min: number }
+const judgeStats = ref<JudgeStats | null>(null)
+
+async function fetchJudgeStats() {
+  try {
+    const res = await transmitApi.getJudgeStats()
+    judgeStats.value = res.data
+  }
+  catch (e) {
+    console.error('judge stats error', e)
+  }
+}
+
 // ── 系统健康 ─────────────────────────────────────────────────────────────────
 const health = ref<HealthStatus | null>(null)
 const healthLoading = ref(false)
@@ -326,6 +361,7 @@ onMounted(() => {
   fetchStat()
   fetchHealth()
   fetchJudgers()
+  fetchJudgeStats()
   fetchNotifications()
 })
 
