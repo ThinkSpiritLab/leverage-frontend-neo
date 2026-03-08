@@ -126,9 +126,9 @@ function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: numbe
 }
 
 function getStatusInfo(status: unknown) {
-  // backend UserProblemStatus: 1=AC, 2=tried, 0/undefined=untried
-  if (status === 1) return { text: '已 AC', color: '#18a058' }
-  if (status === 2) return { text: '尝试过', color: '#f0a020' }
+  // backend UserProblemStatus enum: 0=TODO, 1=ATTEMPTED, 2=ACCEPTED
+  if (status === 2) return { text: '已 AC', color: '#18a058' }
+  if (status === 1) return { text: '尝试过', color: '#f0a020' }
   return { text: '未做', color: '#b0b8c2' }
 }
 
