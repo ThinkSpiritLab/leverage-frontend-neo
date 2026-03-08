@@ -61,6 +61,31 @@
       </NDescriptions>
     </NCard>
 
+    <!-- 编译错误 -->
+    <NCard v-if="compileError" title="编译错误" style="margin-bottom: 24px">
+      <NCode :code="compileError" language="text" show-line-numbers />
+    </NCard>
+
+    <!-- 每个测试点结果 -->
+    <NCard v-if="caseResults.length > 0" title="测试点详情" style="margin-bottom: 24px">
+      <div class="case-grid">
+        <div
+          v-for="(c, i) in caseResults"
+          :key="i"
+          class="case-item"
+          :class="`case-${kindClass(c.kind)}`"
+          :title="`${c.kind}${c.extraMessage ? '\n' + c.extraMessage : ''}`"
+        >
+          <div class="case-index">#{{ i + 1 }}</div>
+          <div class="case-status">{{ kindShort(c.kind) }}</div>
+          <div class="case-meta">
+            <span v-if="c.time != null">{{ c.time }}ms</span>
+            <span v-if="c.memory != null">{{ (c.memory / 1048576).toFixed(1) }}MB</span>
+          </div>
+        </div>
+      </div>
+    </NCard>
+
     <NCard title="提交代码">
       <CodeEditor
         v-model="codeContent"
@@ -99,14 +124,63 @@ const submissionsApi = useSubmissionsApi()
 const submission = ref<Submission | null>(null)
 const loading = ref(true)
 const codeContent = ref('')
+const caseResults = ref<Array<{ kind: string; time: number | null; memory: number | null; extraMessage?: string }>>([])
+const compileError = ref('')
 
 import { LANGUAGE_LABEL, LANGUAGE_NAME } from '~/types'
+
+/** JudgeResultKind → 短标签 */
+function kindShort(kind: string): string {
+  const map: Record<string, string> = {
+    Accepted: 'AC',
+    WrongAnswer: 'WA',
+    PresentationError: 'PE',
+    TimeLimitExceeded: 'TLE',
+    MemoryLimitExceeded: 'MLE',
+    OutpuLimitExceeded: 'OLE',
+    RuntimeError: 'RE',
+    CompileError: 'CE',
+    CompileTimeLimitExceeded: 'CRLE',
+    CompileMemoryLimitExceed: 'CRLE',
+    CompileFileLimitExceed: 'CRLE',
+    SystemError: 'SE',
+    SystemTimeLimitExceed: 'SE',
+    SystemMemoryLimitExceed: 'SE',
+    SystemOutpuLimitExceeded: 'SE',
+    SystemRuntimeError: 'SE',
+    SystemCompileError: 'SE',
+    Unjudged: '?',
+  }
+  return map[kind] ?? kind.slice(0, 4)
+}
+
+function kindClass(kind: string): string {
+  if (kind === 'Accepted') return 'ac'
+  if (['WrongAnswer', 'PresentationError'].includes(kind)) return 'wa'
+  if (kind.startsWith('TimeLimitExceeded')) return 'tle'
+  if (kind.startsWith('MemoryLimitExceeded')) return 'mle'
+  if (kind.startsWith('RuntimeError')) return 're'
+  if (kind.startsWith('Compile')) return 'ce'
+  return 'se'
+}
+
+function parseMisc(data: any) {
+  codeContent.value = data?.misc?.code || data?.code || ''
+  compileError.value = data?.misc?.compileErrorMsg || data?.compileErrorMsg || ''
+  try {
+    const raw = data?.misc?.judgeResult
+    if (raw) {
+      caseResults.value = JSON.parse(raw)
+    }
+  }
+  catch { /* ignore */ }
+}
 
 onMounted(async () => {
   try {
     const res = await submissionsApi.get(submissionId.value)
     submission.value = res.data
-    codeContent.value = (res.data as any).misc?.code || (res.data as any).code || ''
+    parseMisc(res.data)
     // 若仍在评测中，开始轮询状态
     if (res.data.status >= 9) {
       startPolling()
@@ -135,7 +209,7 @@ function startPolling() {
         // 再拉一次完整信息（time/memory 等）
         const full = await submissionsApi.get(submissionId.value)
         submission.value = full.data
-        codeContent.value = (full.data as any).misc?.code || (full.data as any).code || codeContent.value
+        parseMisc(full.data)
         return
       }
       pollTimer = setTimeout(poll, 1500)
@@ -164,4 +238,33 @@ useHead(computed(() => ({ title: `提交 #${submissionId.value} — Leverage OJ`
   max-width: 1000px;
   margin: 0 auto;
 }
+
+/* 测试点格子 */
+.case-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.case-item {
+  width: 80px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 12px;
+  cursor: default;
+  border: 1px solid transparent;
+}
+
+.case-index { color: #999; font-size: 10px; margin-bottom: 2px; }
+.case-status { font-weight: 700; font-size: 13px; }
+.case-meta { color: #888; font-size: 10px; margin-top: 2px; display: flex; flex-direction: column; gap: 1px; }
+
+.case-ac  { background: #e8f5e9; border-color: #a5d6a7; }
+.case-wa  { background: #fce4e4; border-color: #ef9a9a; }
+.case-tle { background: #fff3e0; border-color: #ffcc80; }
+.case-mle { background: #e8eaf6; border-color: #9fa8da; }
+.case-re  { background: #fce4e4; border-color: #ef9a9a; }
+.case-ce  { background: #fafafa; border-color: #bdbdbd; }
+.case-se  { background: #f3e5f5; border-color: #ce93d8; }
 </style>
