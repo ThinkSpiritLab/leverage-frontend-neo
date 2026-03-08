@@ -323,7 +323,7 @@ const columns: DataTableColumns<Contest> = [
     key: 'problems',
     width: 80,
     render(row) {
-      return h('span', row.problems?.length || 0)
+      return h('span', row.problemCount ?? row.problems?.length ?? 0)
     },
   },
   {
