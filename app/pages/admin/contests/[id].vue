@@ -214,7 +214,16 @@
       </NFormItem>
       <NFormItem label="气球颜色">
         <NSpace align="center">
-          <NColorPicker v-model:value="problemEditForm.color" :show-alpha="false" style="width: 200px" />
+          <span
+            :style="`display:inline-block;width:28px;height:28px;border-radius:4px;border:1px solid #ddd;background:${problemEditForm.color || '#fff'};flex-shrink:0`"
+          />
+          <input
+            v-model="problemEditForm.color"
+            type="color"
+            :value="problemEditForm.color || '#ffffff'"
+            style="width:36px;height:28px;padding:1px;border:1px solid #ddd;border-radius:4px;cursor:pointer"
+          />
+          <NInput v-model:value="problemEditForm.color" placeholder="#e63946" style="width:110px" />
           <NButton text size="small" type="error" @click="problemEditForm.color = null">清除</NButton>
         </NSpace>
       </NFormItem>
@@ -323,7 +332,7 @@ async function saveProblemEdit() {
     })
     message.success('保存成功')
     showProblemEditModal.value = false
-    await loadContest()
+    fetchContest()
   }
   catch { message.error('保存失败') }
   finally { savingProblem.value = false }
