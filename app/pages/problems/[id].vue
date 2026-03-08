@@ -144,7 +144,7 @@
 
 <script setup lang="ts">
 import { nextTick } from 'vue'
-import { isFinalStatus, type Problem } from '~/types'
+import { isFinalStatus, SubmissionStatus, type Problem } from '~/types'
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
@@ -312,6 +312,20 @@ async function handleSubmit() {
   }
 }
 
+async function fireConfetti() {
+  if (typeof window === 'undefined') return
+  const confetti = (await import('canvas-confetti')).default
+  const count = 200
+  const defaults = { origin: { y: 0.7 } }
+  const fire = (particleRatio: number, opts: object) =>
+    confetti({ ...defaults, ...opts, particleCount: Math.floor(count * particleRatio) })
+  fire(0.25, { spread: 26, startVelocity: 55 })
+  fire(0.2, { spread: 60 })
+  fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 })
+  fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 })
+  fire(0.1, { spread: 120, startVelocity: 45 })
+}
+
 function startPolling(id: number) {
   if (isFinalStatus(submissionStatus.value)) return
   polling.value = true
@@ -325,6 +339,9 @@ function startPolling(id: number) {
       }
       else {
         polling.value = false
+        if (res.data.status === SubmissionStatus.AC) {
+          fireConfetti()
+        }
       }
     }
     catch {
