@@ -40,6 +40,7 @@ export function useContestsApi() {
     update: (id: number, dto: Partial<CreateContestDto>) => api.patch<Contest>(`/contests/${id}`, dto),
     delete: (id: number) => api.delete(`/contests/${id}`),
     register: (contestId: number) => api.post(`/contests/${contestId}/users`),
+    getMyStatus: (contestId: number) => api.get(`/contests/${contestId}/me`),
     addContestUser: (id: number, userId: number) =>
       api.post(`/contests/${id}/users`, { userId }),
 

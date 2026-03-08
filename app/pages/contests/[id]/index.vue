@@ -423,8 +423,15 @@ watch(activeTab, (tab) => {
 
 onMounted(async () => {
   try {
-    const res = await contestsApi.get(contestId.value)
+    const [res, meRes] = await Promise.all([
+      contestsApi.get(contestId.value),
+      contestsApi.getMyStatus(contestId.value).catch(() => null),
+    ])
     contest.value = (res as any).data ?? res
+    if (meRes) {
+      const meData = (meRes as any).data ?? meRes
+      registered.value = meData?.registered === true
+    }
   }
   catch (e) {
     console.error(e)
