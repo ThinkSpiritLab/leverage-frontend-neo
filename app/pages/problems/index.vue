@@ -29,10 +29,10 @@
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NButton, NTag, NSpace } from 'naive-ui'
-import type { DataTableColumns } from 'naive-ui'
+import { NButton, NTag, NSpace, NProgress } from 'naive-ui'
+import type { DataTableColumns, ProgressProps } from 'naive-ui'
 import { SearchOutline } from '@vicons/ionicons5'
-import type { Problem } from '~/types'
+import type { Problem, Tag } from '~/types'
 
 definePageMeta({
   layout: 'default',
@@ -67,7 +67,6 @@ async function fetchProblems() {
   }
 }
 
-// 防抖 300ms
 const debouncedFetch = useDebounceFn(fetchProblems, 300)
 
 watch(searchText, () => {
@@ -83,13 +82,38 @@ function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: numbe
   fetchProblems()
 }
 
+function getStatusInfo(status: unknown) {
+  if (status === 0 || status === 'ac') return { text: '已 AC', color: '#18a058' }
+  if (status === 1 || status === 'tried' || status === 'attempted') return { text: '尝试过', color: '#f0a020' }
+  return { text: '未做', color: '#b0b8c2' }
+}
+
+function tagColor(tag: Tag) {
+  if (tag.color) return tag.color
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']
+  const hash = [...tag.name].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+  return colors[hash % colors.length]
+}
+
 const columns: DataTableColumns<Problem> = [
+  {
+    title: '状态',
+    key: 'status',
+    width: 110,
+    render(row) {
+      const info = getStatusInfo((row as any).status)
+      return h('div', { class: 'status-cell' }, [
+        h('span', { class: 'status-dot', style: `background:${info.color}` }),
+        h('span', { class: 'status-text' }, info.text),
+      ])
+    },
+  },
   {
     title: '题号',
     key: 'logicId',
     width: 100,
     render(row) {
-      return h('span', { style: 'font-weight: 600; color: #666;' }, `${row.prefix}${row.logicId}`)
+      return h('span', { style: 'font-weight: 600; color: #64748b;' }, `${row.prefix}${row.logicId}`)
     },
   },
   {
@@ -100,7 +124,7 @@ const columns: DataTableColumns<Problem> = [
         NButton,
         {
           text: true,
-          type: 'primary',
+          class: 'problem-link',
           onClick: () => navigateTo(`/problems/${row.id}`),
         },
         { default: () => row.title },
@@ -110,20 +134,33 @@ const columns: DataTableColumns<Problem> = [
   {
     title: '通过率',
     key: 'accepts',
-    width: 120,
+    width: 220,
     render(row) {
-      const rate = row.submits > 0 ? ((row.accepts / row.submits) * 100).toFixed(1) : '0.0'
-      return h('span', { style: 'color: #18a058; font-weight: 500;' }, `${rate}% (${row.accepts}/${row.submits})`)
+      const rate = row.submits > 0 ? Number(((row.accepts / row.submits) * 100).toFixed(1)) : 0
+      const progressStatus: ProgressProps['status'] = rate >= 60 ? 'success' : rate >= 30 ? 'warning' : 'error'
+      return h('div', { class: 'rate-cell' }, [
+        h(NProgress, {
+          type: 'line',
+          percentage: rate,
+          height: 8,
+          indicatorPlacement: 'inside',
+          processing: false,
+          status: progressStatus,
+          borderRadius: 6,
+          railStyle: { background: '#edf2f7' },
+        }),
+        h('span', { class: 'rate-meta' }, `${rate}% (${row.accepts}/${row.submits})`),
+      ])
     },
   },
   {
     title: '标签',
     key: 'tags',
     render(row) {
-      if (!row.tags || row.tags.length === 0) return h('span', { style: 'color: #999;' }, '无')
+      if (!row.tags || row.tags.length === 0) return h('span', { style: 'color: #94a3b8;' }, '无')
       return h(
         NSpace,
-        { size: 4 },
+        { size: 6 },
         {
           default: () =>
             row.tags.map(tag =>
@@ -132,8 +169,12 @@ const columns: DataTableColumns<Problem> = [
                 {
                   key: tag.id,
                   size: 'small',
-                  type: 'info',
                   bordered: false,
+                  round: true,
+                  style: {
+                    color: '#fff',
+                    background: tagColor(tag),
+                  },
                 },
                 { default: () => tag.name },
               ),
@@ -162,5 +203,42 @@ useHead({ title: '题库 — Leverage OJ' })
 
 .page-header :deep(.n-h2) {
   margin: 0;
+}
+
+:deep(.status-cell) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:deep(.status-dot) {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+:deep(.status-text) {
+  font-size: 13px;
+  color: #475569;
+}
+
+:deep(.problem-link .n-button__content) {
+  color: #334155;
+  transition: color 0.2s ease;
+}
+
+:deep(.problem-link:hover .n-button__content) {
+  color: #2563eb;
+}
+
+:deep(.rate-cell) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+:deep(.rate-meta) {
+  color: #64748b;
+  font-size: 12px;
 }
 </style>
