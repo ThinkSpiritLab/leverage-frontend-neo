@@ -6,7 +6,7 @@
           ← 返回列表
         </NButton>
         <NH2 style="margin: 0">
-          {{ contest?.title || (isExam ? '考试详情' : '竞赛详情') }}
+          {{ contest?.name || contest?.title || (isExam ? '考试详情' : '竞赛详情') }}
         </NH2>
       </NSpace>
     </div>
@@ -18,7 +18,7 @@
           <NCard v-if="contest" style="max-width: 600px; margin-top: 16px">
             <NDescriptions :column="1" label-placement="left" bordered>
               <NDescriptionsItem label="ID">{{ contest.id }}</NDescriptionsItem>
-              <NDescriptionsItem :label="isExam ? '考试名称' : '标题'">{{ contest.title }}</NDescriptionsItem>
+              <NDescriptionsItem :label="isExam ? '考试名称' : '标题'">{{ contest.name || contest.title }}</NDescriptionsItem>
               <NDescriptionsItem label="类型">
                 <NTag :type="typeColorMap[contest.type?.toLowerCase()] || 'default'" size="small">
                   {{ typeLabel[contest.type?.toLowerCase()] || contest.type?.toUpperCase() || '-' }}
@@ -126,7 +126,7 @@
     <NModal v-model:show="showEditModal" :title="isExam ? '编辑考试' : '编辑竞赛'" preset="dialog" style="width: 560px">
       <NForm :model="editForm" label-placement="left" label-width="90px" style="margin-top: 12px">
         <NFormItem label="标题" required>
-          <NInput v-model:value="editForm.title" placeholder="输入竞赛标题" />
+          <NInput v-model:value="editForm.name" placeholder="输入竞赛标题" />
         </NFormItem>
         <NFormItem label="类型">
           <NSelect v-model:value="editForm.type" :options="typeOptions" />
@@ -234,12 +234,12 @@ const showEditModal = ref(false)
 const saving = ref(false)
 const editStartMs = ref<number | null>(null)
 const editEndMs = ref<number | null>(null)
-const editForm = ref({ title: '', type: 'icpc', startTime: '', endTime: '' })
+const editForm = ref({ name: '', type: 'icpc', startTime: '', endTime: '' })
 
 function openEditModal() {
   if (!contest.value) return
   editForm.value = {
-    title: contest.value.title,
+    name: contest.value.name || contest.value.title,
     type: contest.value.type || 'icpc',
     startTime: contest.value.startTime,
     endTime: contest.value.endTime,
@@ -505,7 +505,7 @@ watch(activeTab, (tab) => {
   if (tab === 'scoreboard' && !ranking.value.length) fetchRanking()
 })
 
-useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title}` : '竞赛编辑' })))
+useHead(computed(() => ({ title: contest.value?.name || contest.value?.title ? `${contest.value?.name || contest.value?.title}` : '竞赛编辑' })))
 </script>
 
 <style scoped>

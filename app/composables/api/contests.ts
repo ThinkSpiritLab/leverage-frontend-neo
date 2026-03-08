@@ -2,7 +2,8 @@ import { useApi } from '~/composables/useApi'
 import type { Contest, RankItem } from '~/types'
 
 export interface CreateContestDto {
-  title: string
+  name: string
+  title?: string
   startTime: string
   endTime: string
   type: string

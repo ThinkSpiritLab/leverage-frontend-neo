@@ -35,7 +35,7 @@
           />
         </NFormItem>
         <NFormItem label="标题" required>
-          <NInput v-model:value="form.title" :placeholder="form.type === 'exam' ? '输入考试标题' : '输入竞赛标题'" />
+          <NInput v-model:value="form.name" :placeholder="form.type === 'exam' ? '输入考试标题' : '输入竞赛标题'" />
         </NFormItem>
         <NFormItem label="开始时间" required>
           <NDatePicker
@@ -111,7 +111,7 @@ const problemIdsText = ref('')
 const isExamMode = computed(() => activeTypeTab.value === 'exam')
 
 const defaultForm = (): CreateContestDto => ({
-  title: '',
+  name: '',
   type: activeTypeTab.value === 'exam' ? 'exam' : 'contest',
   startTime: '',
   endTime: '',
@@ -196,7 +196,7 @@ function openCreateModal() {
 function openEditModal(row: Contest) {
   editingId.value = row.id
   form.value = {
-    title: row.title,
+    name: row.name || row.title,
     type: row.type || 'contest',
     startTime: row.startTime,
     endTime: row.endTime,
@@ -209,7 +209,7 @@ function openEditModal(row: Contest) {
 }
 
 async function handleSave() {
-  if (!form.value.title.trim()) {
+  if (!form.value.name?.trim()) {
     message.warning('请填写标题')
     return
   }
@@ -249,7 +249,7 @@ function handleDelete(row: Contest) {
   const label = row.type === 'exam' ? '考试' : '竞赛'
   dialog.warning({
     title: '确认删除',
-    content: `确定要删除${label}「${row.title}」吗？此操作不可恢复。`,
+    content: `确定要删除${label}「${row.name || row.title}」吗？此操作不可恢复。`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
@@ -273,7 +273,7 @@ const columns: DataTableColumns<Contest> = [
   },
   {
     title: '标题',
-    key: 'title',
+    key: 'name',
     render(row) {
       return h(
         'a',
@@ -281,7 +281,7 @@ const columns: DataTableColumns<Contest> = [
           style: 'color: #2080f0; cursor: pointer;',
           onClick: () => navigateTo(`/admin/contests/${row.id}`),
         },
-        row.title,
+        row.name || row.title,
       )
     },
   },

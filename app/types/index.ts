@@ -42,7 +42,8 @@ export interface Submission {
 // 竞赛
 export interface Contest {
   id: number
-  title: string
+  name?: string
+  title?: string
   startTime: string
   endTime: string
   type: string
