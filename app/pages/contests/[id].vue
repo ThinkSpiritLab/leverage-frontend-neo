@@ -179,13 +179,22 @@ const problemColumns: DataTableColumns = [
   {
     title: '题号',
     key: 'label',
-    width: 80,
+    width: 90,
     render(row: any, index) {
       const label = String.fromCharCode(65 + index)
-      return h('div', { style: 'line-height: 1.3' }, [
-        h('span', { style: 'font-weight: 700; font-size: 15px;' }, label),
-        h('br'),
-        h('span', { style: 'color: #999; font-size: 11px;' }, row.logicId ? String(row.logicId) : ''),
+      const color = row.color ?? null
+      return h('div', { style: 'display: flex; align-items: center; gap: 6px;' }, [
+        color
+          ? h('span', {
+              title: `气球颜色: ${color}`,
+              style: `display:inline-block;width:12px;height:12px;border-radius:50%;background:${color};border:1px solid rgba(0,0,0,.15);flex-shrink:0`,
+            })
+          : null,
+        h('div', { style: 'line-height: 1.3' }, [
+          h('span', { style: 'font-weight: 700; font-size: 15px;' }, label),
+          h('br'),
+          h('span', { style: 'color: #999; font-size: 11px;' }, row.logicId ? String(row.logicId) : ''),
+        ]),
       ])
     },
   },
@@ -206,9 +215,19 @@ const problemColumns: DataTableColumns = [
     },
   },
   {
+    title: '分值',
+    key: 'weight',
+    width: 60,
+    render(row: any) {
+      return row.weight && row.weight !== 1
+        ? h('span', { style: 'font-weight: 600; color: #f0a020' }, String(row.weight))
+        : h('span', { style: 'color: #aaa' }, '-')
+    },
+  },
+  {
     title: '通过',
     key: 'accepts',
-    width: 80,
+    width: 70,
     render(row: any) { return h('span', row.accepts ?? 0) },
   },
   {

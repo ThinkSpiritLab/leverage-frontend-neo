@@ -417,6 +417,24 @@ const problemColumns: DataTableColumns<any> = [
   { title: 'PID', key: 'problemId', width: 60 },
   { title: '标题', key: 'title' },
   {
+    title: '颜色',
+    key: 'color',
+    width: 70,
+    render(row) {
+      if (!row.color) return h('span', { style: 'color:#aaa' }, '-')
+      return h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
+        h('span', { style: `display:inline-block;width:14px;height:14px;border-radius:50%;background:${row.color};border:1px solid rgba(0,0,0,.15)` }),
+        h('span', { style: 'font-size:11px;color:#666' }, row.color),
+      ])
+    },
+  },
+  {
+    title: '分值',
+    key: 'weight',
+    width: 60,
+    render(row) { return h('span', row.weight ?? 1) },
+  },
+  {
     title: '操作',
     key: 'actions',
     width: 100,
