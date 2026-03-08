@@ -28,6 +28,8 @@ const editorEl = ref<HTMLElement>()
 let view: EditorView | null = null
 const themeCompartment = new Compartment()
 const languageCompartment = new Compartment()
+// 防止 CM 自身触发的 emit 再被 watcher 回写，形成反馈循环
+let internalUpdate = false
 
 function getLanguageExtension(lang: string) {
   switch (lang) {
@@ -55,6 +57,7 @@ function getThemeExtension(dark: boolean) {
 function buildUpdateListener() {
   return EditorView.updateListener.of((update) => {
     if (update.docChanged) {
+      internalUpdate = true
       emit('update:modelValue', update.state.doc.toString())
     }
   })
@@ -94,13 +97,34 @@ watch(() => props.language, () => {
 })
 
 // 外部 modelValue 变化时同步（避免光标跳动）
+// internalUpdate 标记：CM 自身打字触发的 emit 不需要回写
 watch(() => props.modelValue, (val) => {
+  if (internalUpdate) {
+    internalUpdate = false
+    return
+  }
   if (!view) return
+  const docLen = view.state.doc.length
   const current = view.state.doc.toString()
   if (current !== val) {
-    view.dispatch({
-      changes: { from: 0, to: current.length, insert: val },
-    })
+    try {
+      view.dispatch({
+        changes: { from: 0, to: docLen, insert: val ?? '' },
+      })
+    }
+    catch {
+      // 状态不一致时重建 editor state（极端情况兜底）
+      view.setState(EditorState.create({
+        doc: val ?? '',
+        extensions: [
+          basicSetup,
+          languageCompartment.of(getLanguageExtension(props.language)),
+          themeCompartment.of(getThemeExtension(isDark.value)),
+          buildUpdateListener(),
+          EditorView.editable.of(!props.readonly),
+        ],
+      }))
+    }
   }
 })
 
