@@ -3,6 +3,13 @@
     <NSpin size="large" />
   </div>
   <div v-else-if="problem" class="problem-page">
+    <!-- 顶部倒计时 -->
+    <div v-if="contestData" class="contest-timer-bar" :class="timerClass">
+      <span class="timer-label">{{ timerLabel }}</span>
+      <span class="timer-value">{{ timerDisplay }}</span>
+    </div>
+
+    <div class="problem-content-area">
     <!-- 左侧：题目信息 -->
     <div class="problem-left">
       <div class="problem-header">
@@ -85,6 +92,7 @@
         </NCard>
       </div>
     </div>
+    </div><!-- end problem-content-area -->
   </div>
   <div v-else>
     <NResult status="404" title="题目不存在" />
@@ -140,7 +148,45 @@ const problemLetter = computed(() => {
   return idx >= 0 ? String.fromCharCode(65 + idx) : ''
 })
 
+// ── 倒计时 ──────────────────────────────────────────────
+const now = ref(Date.now())
+let timerInterval: ReturnType<typeof setInterval> | null = null
+
+const timerLabel = computed(() => {
+  if (!contestData.value) return ''
+  const start = new Date(contestData.value.startTime).getTime()
+  const end   = new Date(contestData.value.endTime).getTime()
+  const t = now.value
+  if (t < start) return '距开始'
+  if (t < end)   return '距结束'
+  return '竞赛已结束'
+})
+
+const timerClass = computed(() => {
+  if (!contestData.value) return ''
+  const end = new Date(contestData.value.endTime).getTime()
+  const diff = end - now.value
+  if (diff <= 0) return 'timer-ended'
+  if (diff < 10 * 60 * 1000) return 'timer-urgent'   // < 10分钟
+  if (diff < 30 * 60 * 1000) return 'timer-warning'  // < 30分钟
+  return 'timer-normal'
+})
+
+const timerDisplay = computed(() => {
+  if (!contestData.value) return ''
+  const start = new Date(contestData.value.startTime).getTime()
+  const end   = new Date(contestData.value.endTime).getTime()
+  const t = now.value
+  const diff = t < start ? start - t : t < end ? end - t : 0
+  if (diff <= 0) return '--:--:--'
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+})
+
 onMounted(async () => {
+  timerInterval = setInterval(() => { now.value = Date.now() }, 1000)
   try {
     const [problemRes, contestRes] = await Promise.all([
       problemsApi.get(problemId.value),
@@ -212,6 +258,7 @@ function startPolling(id: number) {
 
 onUnmounted(() => {
   if (pollTimer) clearTimeout(pollTimer)
+  if (timerInterval) clearInterval(timerInterval)
 })
 
 useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} — Leverage OJ` : '题目 — Leverage OJ' })))
@@ -225,10 +272,41 @@ useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} 
   min-height: 300px;
 }
 
+.contest-timer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 15px;
+  width: 100%;
+}
+.timer-normal  { background: #e8f5e9; color: #2e7d32; }
+.timer-warning { background: #fff8e1; color: #f57f17; }
+.timer-urgent  { background: #fce4ec; color: #c62828; animation: pulse 1s ease-in-out infinite; }
+.timer-ended   { background: #f5f5f5; color: #9e9e9e; }
+.timer-label { font-size: 13px; opacity: 0.8; }
+.timer-value { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 20px; letter-spacing: 2px; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .problem-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.problem-content-area {
   display: flex;
   gap: 24px;
   align-items: flex-start;
+  width: 100%;
 }
 
 .problem-left {
