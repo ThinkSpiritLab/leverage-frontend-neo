@@ -298,7 +298,7 @@ const columns: DataTableColumns<Problem> = [
                 size: 'small',
                 type: 'info',
                 ghost: true,
-                onClick: () => navigateTo(`/problems/${row.logicId}`),
+                onClick: () => navigateTo(`/problems/${row.id}`),
               },
               { default: () => '查看' },
             ),
