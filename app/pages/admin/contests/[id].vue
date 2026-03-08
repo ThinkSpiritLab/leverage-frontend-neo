@@ -81,6 +81,7 @@
               >
                 <NButton>导入用户 (CSV)</NButton>
               </NUpload>
+              <NButton @click="exportUsersCsv">导出用户名单 CSV</NButton>
             </NSpace>
             <NDataTable
               :columns="userColumns"
@@ -588,6 +589,12 @@ async function fetchContestUsers() {
   }
   catch (e) { console.error(e) }
   finally { usersLoading.value = false }
+}
+
+const exportUsersCsv = async () => {
+  const token = authStore.accessToken
+  const url = `${runtimeConfig.public.apiBase}/contests/${contestId}/users/export?token=${token}`
+  window.open(url, '_blank')
 }
 
 async function handleRemoveUser(userId: number) {
