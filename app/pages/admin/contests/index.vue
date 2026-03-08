@@ -247,7 +247,7 @@ const columns: DataTableColumns<Contest> = [
         'a',
         {
           style: 'color: #2080f0; cursor: pointer;',
-          onClick: () => navigateTo(`/contests/${row.id}`),
+          onClick: () => navigateTo(`/admin/contests/${row.id}`),
         },
         row.title,
       )
