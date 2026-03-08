@@ -235,7 +235,9 @@ async function fetchUser() {
     editForm.value.college = res.data.college || ''
     editForm.value.profession = res.data.profession || ''
     editForm.value.grade = res.data.grade || ''
-    roleForm.value.role = res.data.role
+    // authority 是后端字段名（superadmin→sa），role 是前端/DTO 名
+    const rawRole = res.data.role ?? res.data.authority ?? 'user'
+    roleForm.value.role = rawRole === 'superadmin' ? 'sa' : rawRole
     isBanned.value = res.data.status === 2 || !!res.data.banned
   }
   catch (e) { console.error(e) }
