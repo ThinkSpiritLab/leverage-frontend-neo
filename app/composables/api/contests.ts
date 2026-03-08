@@ -44,6 +44,8 @@ export function useContestsApi() {
       api.post(`/contests/${id}/users`, { userId }),
 
     // 题目管理
+    icpcRanking: (id: number) =>
+      api.get<any[]>(`/contests/${id}/icpc-ranking`),
     addProblem: (id: number, problemId: number) =>
       api.post(`/contests/${id}/problems`, { problemId }),
     removeProblem: (id: number, problemId: number) =>

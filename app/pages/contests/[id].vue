@@ -65,13 +65,52 @@
 
       <!-- 排行榜 -->
       <NTabPane name="ranking" tab="排行榜">
-        <NDataTable
-          :columns="rankColumns"
-          :data="rankData"
-          :loading="rankLoading"
-          :pagination="rankPagination"
-          @update:page="onRankPageChange"
-        />
+        <NSpin :show="rankLoading">
+          <div v-if="rankData.length === 0 && !rankLoading" style="padding: 40px 0; text-align:center">
+            <NEmpty description="暂无榜单数据" />
+          </div>
+          <div v-else class="icpc-table-wrapper">
+            <table class="icpc-table">
+              <thead>
+                <tr>
+                  <th class="col-rank">#</th>
+                  <th class="col-user">选手</th>
+                  <th class="col-solved">✓</th>
+                  <th class="col-penalty">罚时</th>
+                  <th v-for="cp in contest?.problems ?? []" :key="cp.problemId" class="col-problem" :style="cp.color ? `border-top: 3px solid ${cp.color}` : ''">
+                    {{ cp.label || '?' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in rankData" :key="row.userId">
+                  <td class="col-rank">{{ row.rank }}</td>
+                  <td class="col-user">
+                    <NButton text type="primary" @click="navigateTo(`/users/${row.userId}`)">{{ row.username }}</NButton>
+                    <div v-if="row.certifiedName" style="font-size:11px;color:#999">{{ row.certifiedName }}</div>
+                  </td>
+                  <td class="col-solved" style="font-weight:700;color:#18a058">{{ row.solved }}</td>
+                  <td class="col-penalty" style="color:#666">{{ row.totalPenalty }}</td>
+                  <td v-for="cp in contest?.problems ?? []" :key="cp.problemId" class="col-problem-cell" :class="getCellClass(row, cp.problemId)">
+                    <template v-if="row.problems?.[cp.problemId]">
+                      <template v-if="row.problems[cp.problemId].frozen">
+                        <span class="frozen-cell">?</span>
+                        <div v-if="row.problems[cp.problemId].attempts > 0" class="attempt-count">+{{ row.problems[cp.problemId].attempts }}</div>
+                      </template>
+                      <template v-else-if="row.problems[cp.problemId].acTime !== null">
+                        <span class="ac-time">{{ fmtMin(row.problems[cp.problemId].acTime) }}</span>
+                        <div v-if="row.problems[cp.problemId].attempts > 0" class="attempt-count">+{{ row.problems[cp.problemId].attempts }}</div>
+                      </template>
+                      <template v-else-if="row.problems[cp.problemId].attempts > 0">
+                        <span class="wa-count">{{ row.problems[cp.problemId].attempts }}</span>
+                      </template>
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </NSpin>
       </NTabPane>
 
       <!-- 注册 -->
@@ -243,60 +282,32 @@ const problemColumns: DataTableColumns = [
 ]
 
 // 排行榜
-const rankData = ref<RankItem[]>([])
+const rankData = ref<any[]>([])
 const rankLoading = ref(false)
-const rankPage = ref(1)
-const rankPageSize = ref(20)
-const rankTotal = ref(0)
 
-const rankPagination = computed(() => ({
-  page: rankPage.value,
-  pageSize: rankPageSize.value,
-  itemCount: rankTotal.value,
-  showSizePicker: false,
-}))
+function fmtMin(min: number | null): string {
+  if (min === null) return ''
+  const h = Math.floor(min / 60)
+  const m = Math.round(min % 60)
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}`
+  return String(m)
+}
 
-const rankColumns: DataTableColumns<RankItem> = [
-  {
-    title: '排名',
-    key: 'rank',
-    width: 80,
-    render(row) {
-      return h('span', { style: 'font-weight: 600;' }, `#${row.rank}`)
-    },
-  },
-  {
-    title: '用户名',
-    key: 'username',
-    render(row) {
-      return h(
-        'a',
-        {
-          style: 'color: #2080f0; cursor: pointer;',
-          onClick: () => navigateTo(`/users/${row.userId}`),
-        },
-        row.username,
-      )
-    },
-  },
-  {
-    title: '得分',
-    key: 'score',
-    width: 100,
-    render(row) {
-      return h('span', { style: 'font-weight: 600; color: #18a058;' }, String(row.score))
-    },
-  },
-]
+function getCellClass(row: any, problemId: number): string {
+  const p = row.problems?.[problemId]
+  if (!p) return 'cell-empty'
+  if (p.frozen) return 'cell-frozen'
+  if (p.acTime !== null) return 'cell-ac'
+  if (p.attempts > 0) return 'cell-wa'
+  return 'cell-empty'
+}
 
 async function fetchRanking() {
   if (!contest.value) return
   rankLoading.value = true
   try {
-    const res = await contestsApi.getRanking(contestId.value, rankPage.value, rankPageSize.value)
-    const data = res.data ?? res
-    rankData.value = Array.isArray(data) ? data : (data as any).items ?? []
-    rankTotal.value = (data as any).total ?? rankData.value.length
+    const res = await contestsApi.icpcRanking(contestId.value)
+    rankData.value = Array.isArray(res.data) ? res.data : []
   }
   catch (e) {
     console.error(e)
@@ -304,11 +315,6 @@ async function fetchRanking() {
   finally {
     rankLoading.value = false
   }
-}
-
-function onRankPageChange(page: number) {
-  rankPage.value = page
-  fetchRanking()
 }
 
 // 我的提交记录
@@ -489,4 +495,45 @@ useHead(computed(() => ({ title: contest.value?.title ? `${contest.value.title} 
   flex-direction: column;
   align-items: flex-start;
 }
+
+/* ICPC 榜单样式 */
+.icpc-table-wrapper {
+  overflow-x: auto;
+}
+
+.icpc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.icpc-table th, .icpc-table td {
+  padding: 6px 10px;
+  border: 1px solid #e8e8e8;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.icpc-table thead th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.col-user { text-align: left !important; min-width: 120px; }
+.col-rank { width: 40px; }
+.col-solved { width: 40px; }
+.col-penalty { width: 60px; }
+.col-problem { min-width: 60px; }
+
+.col-problem-cell { min-width: 60px; min-height: 40px; }
+
+.cell-ac { background: #e8f5e9; }
+.cell-wa { background: #fce4e4; }
+.cell-frozen { background: #e3f2fd; }
+.cell-empty { }
+
+.ac-time { font-weight: 600; color: #18a058; font-size: 12px; }
+.wa-count { color: #d03050; font-size: 12px; }
+.frozen-cell { color: #2080f0; font-weight: 700; }
+.attempt-count { font-size: 10px; color: #999; }
 </style>
