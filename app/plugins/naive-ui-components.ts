@@ -86,5 +86,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     NGrid,
     NGridItem,
   ]
-  components.forEach(c => nuxtApp.vueApp.component(c.name, c))
+  // Naive UI 组件的 .name 属性是不带 N 前缀的（如 NInput.name === 'Input'），
+  // 但模板中使用 <NInput>，所以需要加上 'N' 前缀才能正确注册。
+  components.forEach(c => nuxtApp.vueApp.component('N' + c.name, c))
 })
