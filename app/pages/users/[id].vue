@@ -198,11 +198,11 @@ function openProfileEditModal() {
   showProfileEdit.value = true
   // load options
   collegesApi.list().then((res) => {
-    const d = res.data
+    const d = res.data as any
     allColleges.value = Array.isArray(d) ? d : (d?.items ?? [])
   }).catch(() => {})
   professionsApi.list().then((res) => {
-    const d = res.data
+    const d = res.data as any
     allProfessions.value = Array.isArray(d) ? d : (d?.items ?? [])
   }).catch(() => {})
 }
