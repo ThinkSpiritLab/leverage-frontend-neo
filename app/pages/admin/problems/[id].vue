@@ -167,8 +167,8 @@
 </template>
 
 <script setup lang="ts">
-import { h, ref, computed, onMounted } from 'vue'
-import { NButton as NBtn, useMessage, type UploadFileInfo, type DataTableColumns } from 'naive-ui'
+import { ref, computed, onMounted } from 'vue'
+import { useMessage, type UploadFileInfo, type DataTableColumns } from 'naive-ui'
 import type { Problem, Tag } from '~/types'
 
 definePageMeta({
