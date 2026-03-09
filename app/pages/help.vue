@@ -30,6 +30,18 @@
           <NP>
             除特别说明外，OJ 题目一律采用多组输入。程序应循环读入直至 EOF。
           </NP>
+
+          <NDivider />
+          <NH4>时间限制与内存限制</NH4>
+          <NP>
+            每道题目都有对应的<strong>时间限制（Time Limit）</strong>和<strong>内存限制（Memory Limit）</strong>，
+            通常标注在题面顶部。
+          </NP>
+          <NUl>
+            <NLi>时间限制：程序从开始运行到结束的最大允许时间（单位：毫秒 ms）。超出则返回 TLE。</NLi>
+            <NLi>内存限制：程序运行过程中可使用的最大内存（单位：MB）。超出则返回 MLE。</NLi>
+            <NLi>不同语言可能有额外的时间/内存补偿（如 Java、Python 通常有 2-3 倍时间系数），请以题目说明为准。</NLi>
+          </NUl>
         </NTabPane>
 
         <!-- 编译选项 -->
@@ -74,7 +86,7 @@
         <NTabPane name="language" tab="支持语言">
           <NP>
             目前在线评测系统支持以下语言：
-            <strong>C（C89、C99、C11）、C++（C++11、C++14、C++17）、Python（2、3）、Java、Rust</strong>。
+            <strong>C（C89、C99、C11）、C++（C++11、C++14、C++17）、Java、Python 2、Python 3、JavaScript (Node.js)、TypeScript、Rust</strong>。
             用户在提交程序的时候必须选定使用哪一种语言。
           </NP>
           <NP>
