@@ -2,19 +2,24 @@
 export interface User {
   id: number
   username: string
-  role: 'sa' | 'admin' | 'supervisor' | 'user' | 'guest'
+  role?: 'sa' | 'admin' | 'supervisor' | 'user' | 'contest-user' | 'guest'
+  authority?: string
   studentId?: string
   email?: string
   certifiedName?: string
   nickname?: string
   college?: string
   profession?: string
+  class?: string
   grade?: string
   status?: number
+  statusEndsAt?: string | null
+  remarks?: string | null
   banned?: boolean
   submits?: number
   accepts?: number
-  createdAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 // 题目

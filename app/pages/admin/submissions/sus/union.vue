@@ -50,7 +50,7 @@ const sortedData = computed(() =>
 async function fetchCourses() {
   try {
     const res = await coursesApi.list({ page: 1, perPage: 100 })
-    const list = res.data?.items ?? res.data ?? []
+    const list: any[] = (res.data as any)?.items ?? (res.data as any) ?? []
     courseOptions.value = list.map((c: any) => ({
       label: c.name || c.title || `课程 #${c.id}`,
       value: c.id,

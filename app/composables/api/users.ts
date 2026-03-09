@@ -7,7 +7,8 @@ export interface UpdateUserDto {
   password?: string
   role?: User['role']
   status?: number
-  remarks?: string
+  remarks?: string | null
+  statusEndsAt?: string | null
 }
 
 export function useUsersApi() {

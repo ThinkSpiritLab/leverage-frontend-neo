@@ -116,7 +116,7 @@ const mergeTargetOptions = computed(() =>
 async function fetchColleges() {
   try {
     const res = await collegesApi.list()
-    const payload = res.data
+    const payload = res.data as any
     colleges.value = Array.isArray(payload) ? payload : (payload?.items ?? [])
   }
   catch (e) {
@@ -128,7 +128,7 @@ async function fetchProfessions() {
   loading.value = true
   try {
     const res = await professionsApi.list(filterCollege.value || undefined)
-    const payload = res.data
+    const payload = res.data as any
     professions.value = Array.isArray(payload) ? payload : (payload?.items ?? [])
   }
   catch (e) {

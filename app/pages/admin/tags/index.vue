@@ -66,7 +66,7 @@ async function fetchTags() {
   loading.value = true
   try {
     const res = await tagsApi.list()
-    const payload = res.data
+    const payload = res.data as any
     tags.value = Array.isArray(payload) ? payload : (payload?.items ?? [])
   }
   catch (e) {

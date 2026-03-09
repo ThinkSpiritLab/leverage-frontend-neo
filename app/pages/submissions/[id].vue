@@ -92,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import { NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import type { Submission } from '~/types'
 import dayjs from 'dayjs'
