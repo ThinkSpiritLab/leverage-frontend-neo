@@ -134,6 +134,16 @@ const adminMenuOptions = [
         key: 'admin-submissions-sus',
         onClick: () => navigateTo('/admin/submissions/sus'),
       },
+      {
+        label: '最近可疑',
+        key: 'admin-submissions-sus-recent',
+        onClick: () => navigateTo('/admin/submissions/sus/recent'),
+      },
+      {
+        label: '用户统计',
+        key: 'admin-submissions-sus-union',
+        onClick: () => navigateTo('/admin/submissions/sus/union'),
+      },
     ],
   },
   {
