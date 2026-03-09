@@ -8,5 +8,7 @@ export function useSuspicionsApi() {
     get: (hashsum: string) => api.get(`/suspicion/hash/${hashsum}`),
     markChecked: (submissionId: number, checked: boolean) =>
       api.patch(`/suspicion/${submissionId}/checked`, { checked }),
+    getUserStats: (courseId: number) =>
+      api.get<any[]>(`/suspicion/course/${courseId}/user-stats`),
   }
 }

@@ -17,6 +17,24 @@
       </NSpace>
     </div>
 
+    <!-- 按抄袭率批量封禁（仅选课程时显示） -->
+    <NCard v-if="selectedCourseId" size="small" style="background:#fffbe6;border:1px solid #ffe58f">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>封禁抄袭次数 ≥</span>
+        <NInputNumber v-model:value="bulkMinCount" :min="1" style="width:80px" />
+        <span>且抄袭率 &gt;</span>
+        <NInputNumber v-model:value="bulkRate" :min="1" :max="100" style="width:80px" />
+        <span>% 的用户，封禁</span>
+        <NInputNumber v-model:value="bulkDays" :min="1" style="width:80px" />
+        <span>天</span>
+        <NInput v-model:value="bulkReason" placeholder="封禁理由（可留空）" style="width:200px" />
+        <NButton type="error" :loading="bulkBanning" @click="handleBulkBan">一键封禁</NButton>
+      </div>
+      <div v-if="bulkResult" style="margin-top:8px;font-size:13px">
+        {{ bulkResult }}
+      </div>
+    </NCard>
+
     <PaginatedTable
       :columns="columns"
       :data="items"
@@ -51,7 +69,7 @@
 
 <script setup lang="ts">
 import { h, ref } from 'vue'
-import { NSwitch, NButton, NSpace, NSelect, NModal, NInput, useMessage } from 'naive-ui'
+import { NSwitch, NButton, NSpace, NSelect, NModal, NInput, NInputNumber, NCard, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 definePageMeta({
@@ -74,6 +92,50 @@ const checkedKeys = ref<Array<string | number>>([])
 const showBanModal = ref(false)
 const banReason = ref('')
 const banning = ref(false)
+
+// 批量封禁（按抄袭率）
+const bulkMinCount = ref(2)
+const bulkRate = ref(50)
+const bulkDays = ref(7)
+const bulkReason = ref('')
+const bulkBanning = ref(false)
+const bulkResult = ref('')
+
+async function handleBulkBan() {
+  if (!selectedCourseId.value) return
+  bulkBanning.value = true
+  bulkResult.value = ''
+  try {
+    const res = await suspicionsApi.getUserStats(selectedCourseId.value)
+    const stats: any[] = Array.isArray(res.data) ? res.data : []
+    const targets = stats.filter(u =>
+      u.detectedCount >= bulkMinCount.value
+      && u.detectedRate * 100 > bulkRate.value
+      && u.status !== 2, // 跳过已封号
+    )
+    if (targets.length === 0) {
+      message.warning('没有符合条件的未被封禁用户')
+      return
+    }
+    const reason = bulkReason.value || '抄袭'
+    const statusEndsAt = new Date(Date.now() + bulkDays.value * 86400 * 1000).toISOString()
+    let ok = 0, fail = 0
+    for (const u of targets) {
+      try {
+        await usersApi.update(u.userId, { status: 2, remarks: reason, statusEndsAt })
+        ok++
+      } catch { fail++ }
+    }
+    bulkResult.value = `已封禁 ${ok} 人${fail > 0 ? `，失败 ${fail} 人` : ''}`
+    message.success(bulkResult.value)
+  }
+  catch (e: any) {
+    message.error(e?.response?.data?.message || e?.message || '操作失败')
+  }
+  finally {
+    bulkBanning.value = false
+  }
+}
 
 const selectedCourseId = ref<number | null>(null)
 const courseOptions = ref<Array<{ label: string; value: number }>>([])
