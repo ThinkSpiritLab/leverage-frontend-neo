@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # E2E curl test script for Leverage OJ backend
-set -euo pipefail
+set -uo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 PASS=0
