@@ -115,6 +115,15 @@
           </NCard>
         </NTabPane>
 
+        <!-- ===== 元数据 Tab ===== -->
+        <NTabPane name="meta" tab="元数据">
+          <NCard v-if="user" style="margin-top: 16px">
+            <NScrollbar style="max-height: 600px">
+              <pre style="font-size: 12px; margin: 0; white-space: pre-wrap;">{{ JSON.stringify(user, null, 2) }}</pre>
+            </NScrollbar>
+          </NCard>
+        </NTabPane>
+
         <!-- ===== 封号状态 Tab ===== -->
         <NTabPane name="ban" tab="封号状态">
           <NCard v-if="user" style="max-width: 500px; margin-top: 16px">

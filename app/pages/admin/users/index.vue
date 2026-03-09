@@ -2,25 +2,51 @@
   <div class="admin-users">
     <div class="page-header">
       <NH2 style="margin: 0">用户管理</NH2>
-      <NInput
-        v-model:value="searchText"
-        placeholder="搜索用户名..."
-        clearable
-        style="width: 260px"
-        @input="debouncedFetch"
-      />
     </div>
 
-    <PaginatedTable
-      :columns="columns"
-      :data="(users as any)"
-      :loading="loading"
-      :total="total"
-      :page="page"
-      :page-size="pageSize"
-      :row-key="(row: any) => row.id"
-      @page-change="onPageChange"
-    />
+    <NTabs v-model:value="activeTab" type="line" animated>
+      <!-- ===== 全部用户 Tab ===== -->
+      <NTabPane name="all" tab="全部用户">
+        <div style="margin-bottom: 12px; display: flex; justify-content: flex-end">
+          <NInput
+            v-model:value="searchText"
+            placeholder="搜索用户名..."
+            clearable
+            style="width: 260px"
+            @input="debouncedFetch"
+          />
+        </div>
+
+        <PaginatedTable
+          :columns="columns"
+          :data="(users as any)"
+          :loading="loading"
+          :total="total"
+          :page="page"
+          :page-size="pageSize"
+          :row-key="(row: any) => row.id"
+          @page-change="onPageChange"
+        />
+      </NTabPane>
+
+      <!-- ===== 封号用户 Tab ===== -->
+      <NTabPane name="banned" tab="封号用户">
+        <NDataTable
+          :columns="bannedColumns"
+          :data="bannedUsers"
+          :loading="bannedLoading"
+          :row-key="(row: any) => row.id"
+          size="small"
+          style="margin-top: 12px"
+        />
+        <NPagination
+          v-model:page="bannedPage"
+          :page-count="bannedPageCount"
+          style="margin-top: 12px; justify-content: flex-end"
+          @update:page="fetchBannedUsers"
+        />
+      </NTabPane>
+    </NTabs>
 
     <!-- 编辑用户弹窗 -->
     <NModal v-model:show="showModal" title="编辑用户" preset="dialog" style="width: 480px">
@@ -60,6 +86,7 @@
 import { h } from 'vue'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
+import dayjs from 'dayjs'
 import type { User } from '~/types'
 import type { UpdateUserDto } from '~/composables/api/users'
 
@@ -73,6 +100,9 @@ const authStore = useAuthStore()
 const message = useMessage()
 const dialog = useDialog()
 
+const activeTab = ref('all')
+
+// ── 全部用户 ──
 const users = ref<User[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -307,6 +337,106 @@ const columns: DataTableColumns<User> = [
     },
   },
 ]
+
+// ── 封号用户 ──
+const bannedUsers = ref<User[]>([])
+const bannedLoading = ref(false)
+const bannedPage = ref(1)
+const bannedPageCount = ref(1)
+const bannedPerPage = 20
+
+async function fetchBannedUsers() {
+  bannedLoading.value = true
+  try {
+    const res = await usersApi.list({
+      page: bannedPage.value,
+      perPage: bannedPerPage,
+      status: 2,
+    })
+    bannedUsers.value = res.data.items
+    bannedPageCount.value = Math.ceil((res.data.total || 0) / bannedPerPage)
+  }
+  catch (e) {
+    console.error(e)
+  }
+  finally {
+    bannedLoading.value = false
+  }
+}
+
+async function handleUnban(row: User) {
+  try {
+    await usersApi.update(row.id, { status: 0 } as any)
+    message.success(`用户「${row.username}」已解封`)
+    fetchBannedUsers()
+  }
+  catch (e: any) {
+    message.error(e?.message || '解封失败')
+  }
+}
+
+const bannedColumns: DataTableColumns<User> = [
+  { title: 'ID', key: 'id', width: 70 },
+  {
+    title: '用户名',
+    key: 'username',
+    render(row) {
+      return h(
+        'a',
+        {
+          style: 'color: #2080f0; cursor: pointer;',
+          onClick: () => navigateTo(`/admin/user/${row.id}`),
+        },
+        row.username,
+      )
+    },
+  },
+  {
+    title: '真实姓名',
+    key: 'certifiedName',
+    render(row) {
+      return h('span', row.certifiedName || '-')
+    },
+  },
+  {
+    title: '封禁原因',
+    key: 'remarks',
+    render(row) {
+      return h('span', (row as any).remarks || '-')
+    },
+  },
+  {
+    title: '封禁到期时间',
+    key: 'statusEndsAt',
+    width: 170,
+    render(row) {
+      const t = (row as any).statusEndsAt
+      return h('span', t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '永久')
+    },
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 100,
+    render(row) {
+      return h(
+        NButton,
+        {
+          size: 'small',
+          type: 'success',
+          ghost: true,
+          onClick: () => handleUnban(row),
+        },
+        { default: () => '解封' },
+      )
+    },
+  },
+]
+
+// Tab 切换懒加载
+watch(activeTab, (tab) => {
+  if (tab === 'banned' && !bannedUsers.value.length) fetchBannedUsers()
+})
 
 useHead({ title: '用户管理' })
 </script>
