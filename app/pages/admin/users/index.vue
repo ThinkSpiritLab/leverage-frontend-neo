@@ -29,6 +29,31 @@
         />
       </NTabPane>
 
+      <!-- ===== 按学院浏览 Tab ===== -->
+      <NTabPane name="college" tab="按学院浏览">
+        <div style="margin-bottom: 12px; display: flex; gap: 12px; align-items: center">
+          <NSelect
+            v-model:value="selectedCollege"
+            style="width: 300px"
+            :options="collegeOptions"
+            placeholder="选择学院"
+            clearable
+            filterable
+            @update:value="handleCollegeChange"
+          />
+        </div>
+        <PaginatedTable
+          :columns="columns"
+          :data="(collegeUsers as any)"
+          :loading="collegeLoading"
+          :total="collegeTotal"
+          :page="collegePage"
+          :page-size="collegePageSize"
+          :row-key="(row: any) => row.id"
+          @page-change="onCollegePageChange"
+        />
+      </NTabPane>
+
       <!-- ===== 封号用户 Tab ===== -->
       <NTabPane name="banned" tab="封号用户">
         <NDataTable
@@ -338,6 +363,59 @@ const columns: DataTableColumns<User> = [
   },
 ]
 
+// ── 按学院浏览 ──
+const collegesApi = useCollegesApi()
+const collegeOptions = ref<Array<{ label: string; value: string }>>([])
+const selectedCollege = ref<string | null>(null)
+const collegeUsers = ref<User[]>([])
+const collegeTotal = ref(0)
+const collegePage = ref(1)
+const collegePageSize = ref(20)
+const collegeLoading = ref(false)
+
+async function fetchColleges() {
+  try {
+    const res = await collegesApi.list()
+    const items = Array.isArray(res.data) ? res.data : []
+    collegeOptions.value = items.map((c: any) => ({
+      label: typeof c === 'string' ? c : (c.college || c.name || String(c.id)),
+      value: typeof c === 'string' ? c : (c.college || c.name || String(c.id)),
+    }))
+  }
+  catch (e) { console.error(e) }
+}
+
+async function fetchCollegeUsers() {
+  if (!selectedCollege.value) {
+    collegeUsers.value = []
+    collegeTotal.value = 0
+    return
+  }
+  collegeLoading.value = true
+  try {
+    const res = await usersApi.list({
+      page: collegePage.value,
+      perPage: collegePageSize.value,
+      college: selectedCollege.value,
+    })
+    collegeUsers.value = res.data.items
+    collegeTotal.value = res.data.total
+  }
+  catch (e) { console.error(e) }
+  finally { collegeLoading.value = false }
+}
+
+function handleCollegeChange() {
+  collegePage.value = 1
+  fetchCollegeUsers()
+}
+
+function onCollegePageChange({ page: p, pageSize: ps }: { page: number; pageSize: number }) {
+  collegePage.value = p
+  collegePageSize.value = ps
+  fetchCollegeUsers()
+}
+
 // ── 封号用户 ──
 const bannedUsers = ref<User[]>([])
 const bannedLoading = ref(false)
@@ -436,6 +514,7 @@ const bannedColumns: DataTableColumns<User> = [
 // Tab 切换懒加载
 watch(activeTab, (tab) => {
   if (tab === 'banned' && !bannedUsers.value.length) fetchBannedUsers()
+  if (tab === 'college' && !collegeOptions.value.length) fetchColleges()
 })
 
 useHead({ title: '用户管理' })

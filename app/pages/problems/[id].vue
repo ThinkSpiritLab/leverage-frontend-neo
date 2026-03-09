@@ -120,22 +120,6 @@
           </div>
         </div>
 
-        <!-- 提交结果 -->
-        <div v-if="submissionId" class="submission-result">
-          <NCard size="small">
-            <div class="result-row">
-              <span class="result-label">提交 ID：</span>
-              <NButton text type="primary" @click="navigateTo(`/submissions/${submissionId}`)">
-                #{{ submissionId }}
-              </NButton>
-            </div>
-            <div class="result-row">
-              <span class="result-label">状态：</span>
-              <StatusTag :status="submissionStatus" />
-              <NSpin v-if="polling" size="small" style="margin-left: 8px" />
-            </div>
-          </NCard>
-        </div>
       </template>
     </div>
   </div>
@@ -147,7 +131,7 @@
 
 <script setup lang="ts">
 import { nextTick } from 'vue'
-import { isFinalStatus, SubmissionStatus, type Problem } from '~/types'
+import type { Problem } from '~/types'
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
@@ -210,9 +194,6 @@ onUnmounted(() => {
 const language = ref(1) // 1=C++
 const code = ref('')
 const submitting = ref(false)
-const submissionId = ref<number | null>(null)
-const submissionStatus = ref(0)
-const polling = ref(false)
 const isAcceptedByCurrentUser = ref(false)
 
 // 全屏状态
@@ -259,7 +240,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (pollTimer) clearTimeout(pollTimer)
   document.removeEventListener('keydown', handleKeydown)
 })
 
@@ -287,14 +267,9 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-let pollTimer: ReturnType<typeof setTimeout> | null = null
-
 async function handleSubmit() {
   if (!code.value.trim()) return
   submitting.value = true
-  submissionId.value = null
-  submissionStatus.value = 0
-  if (pollTimer) clearTimeout(pollTimer)
 
   try {
     const sub = await submissionsApi.create({
@@ -302,10 +277,7 @@ async function handleSubmit() {
       language: language.value,
       code: code.value,
     })
-    const newSub = sub.data
-    submissionId.value = newSub.id
-    submissionStatus.value = newSub.status
-    startPolling(newSub.id)
+    navigateTo(`/submissions/${sub.data.id}`)
   }
   catch (e) {
     console.error(e)
@@ -313,46 +285,6 @@ async function handleSubmit() {
   finally {
     submitting.value = false
   }
-}
-
-async function fireConfetti() {
-  if (typeof window === 'undefined') return
-  const confetti = (await import('canvas-confetti')).default
-  const count = 200
-  const defaults = { origin: { y: 0.7 } }
-  const fire = (particleRatio: number, opts: object) =>
-    confetti({ ...defaults, ...opts, particleCount: Math.floor(count * particleRatio) })
-  fire(0.25, { spread: 26, startVelocity: 55 })
-  fire(0.2, { spread: 60 })
-  fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 })
-  fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 })
-  fire(0.1, { spread: 120, startVelocity: 45 })
-}
-
-function startPolling(id: number) {
-  if (isFinalStatus(submissionStatus.value)) return
-  polling.value = true
-
-  const poll = async () => {
-    try {
-      const res = await submissionsApi.getStatus(id)
-      submissionStatus.value = res.data.status
-      if (!isFinalStatus(res.data.status)) {
-        pollTimer = setTimeout(poll, 2000)
-      }
-      else {
-        polling.value = false
-        if (res.data.status === SubmissionStatus.AC) {
-          fireConfetti()
-        }
-      }
-    }
-    catch {
-      polling.value = false
-    }
-  }
-
-  pollTimer = setTimeout(poll, 1000)
 }
 
 useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title} — Leverage OJ` : '题目 — Leverage OJ' })))

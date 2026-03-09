@@ -54,6 +54,7 @@ async function fetchSettings() {
   }
   catch (e) {
     console.error(e)
+    message.error('加载设置失败')
   }
   finally {
     loading.value = false

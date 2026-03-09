@@ -138,11 +138,11 @@ async function handleReply() {
   if (!replyContent.value.trim()) return
   sending.value = true
   try {
-    const res = await msgApi.reply(id.value, replyContent.value.trim())
-    const newReply = (res as any).data ?? res
-    allMessages.value = [newReply, ...allMessages.value.filter(m => m.sessionId !== null), session.value!]
+    await msgApi.reply(id.value, replyContent.value.trim())
     replyContent.value = ''
     uiMsg.success('回复已发送')
+    // 重新拉取消息列表，确保数据一致
+    await fetchMessage()
   }
   catch {
     uiMsg.error('回复失败，请重试')

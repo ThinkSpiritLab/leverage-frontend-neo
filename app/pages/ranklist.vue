@@ -127,9 +127,8 @@ async function fetchUsers() {
     }
     if (gradeFilter.value) params.grade = gradeFilter.value
     const res = await usersApi.list(params as any)
-    const data = res.data ?? res
-    users.value = (data as any).items ?? data
-    total.value = (data as any).total ?? 0
+    users.value = res.data.items
+    total.value = res.data.total
   }
   catch (e) {
     console.error(e)

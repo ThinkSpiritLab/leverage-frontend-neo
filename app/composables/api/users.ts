@@ -13,7 +13,7 @@ export interface UpdateUserDto {
 export function useUsersApi() {
   const api = useApi()
   return {
-    list: (params?: { page?: number; perPage?: number; search?: string; role?: string; status?: number; orderBy?: string; order?: string }) =>
+    list: (params?: { page?: number; perPage?: number; search?: string; role?: string; status?: number; orderBy?: string; order?: string; college?: string }) =>
       api.get<{ items: User[]; total: number }>('/users', { params }),
     get: (id: number) => api.get<User>(`/users/${id}`),
     getByUsername: (username: string) => api.get<User>(`/users/by-username/${username}`),

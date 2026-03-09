@@ -140,6 +140,8 @@ const compileLangs = [
   { name: 'Java', cmd: 'javac -J-Xms64m -J-Xmx512m -encoding UTF-8 -sourcepath . -d . Main.java\njava -Xmx256m -Xms16m -DONLINE_JUDGE Main' },
   { name: 'Python 2', cmd: 'python src.py' },
   { name: 'Python 3', cmd: 'python3 src.py' },
+  { name: 'JavaScript (Node.js)', cmd: 'node src.js' },
+  { name: 'TypeScript', cmd: 'ts-node src.ts' },
   { name: 'Rust', cmd: 'rustc -o src src.rs -O' },
 ]
 

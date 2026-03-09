@@ -88,6 +88,25 @@
           </div>
         </NTabPane>
 
+        <NTabPane name="import-user" tab="导入用户">
+          <div style="margin-top: 16px; max-width: 600px">
+            <NInput
+              v-model:value="importUserText"
+              type="textarea"
+              :rows="8"
+              placeholder="每行一个用户名，或用逗号分隔"
+            />
+            <NSpace style="margin-top: 12px">
+              <NButton type="primary" :loading="importingUsers" @click="handleBatchImportUsers">
+                批量导入
+              </NButton>
+            </NSpace>
+            <div v-if="importResult" style="margin-top: 12px">
+              <NTag :type="importResult.type" size="small">{{ importResult.text }}</NTag>
+            </div>
+          </div>
+        </NTabPane>
+
         <NTabPane name="rate" tab="通过率">
           <div style="margin-top: 16px">
             <template v-if="hasRateData">
@@ -474,6 +493,50 @@ const memberColumns: DataTableColumns<any> = [
     },
   },
 ]
+
+// 批量导入用户
+const importUserText = ref('')
+const importingUsers = ref(false)
+const importResult = ref<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
+
+async function handleBatchImportUsers() {
+  const raw = importUserText.value.trim()
+  if (!raw) { message.warning('请输入用户名'); return }
+  const usernames = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
+  if (!usernames.length) { message.warning('未解析到有效用户名'); return }
+  importingUsers.value = true
+  importResult.value = null
+  try {
+    const failed: string[] = []
+    const userIds: number[] = []
+    for (const username of usernames) {
+      try {
+        const res = await usersApi.getByUsername(username)
+        if (res.data?.id) userIds.push(res.data.id)
+        else failed.push(username)
+      }
+      catch { failed.push(username) }
+    }
+    if (userIds.length) {
+      await coursesApi.addStudents(courseId, userIds)
+    }
+    const parts: string[] = []
+    if (userIds.length) parts.push(`成功导入 ${userIds.length} 个用户`)
+    if (failed.length) parts.push(`${failed.length} 个未找到: ${failed.join(', ')}`)
+    importResult.value = {
+      type: failed.length ? (userIds.length ? 'warning' : 'error') : 'success',
+      text: parts.join('；'),
+    }
+    if (userIds.length) {
+      importUserText.value = ''
+      fetchMembers()
+    }
+  }
+  catch (e: any) {
+    importResult.value = { type: 'error', text: e?.response?.data?.message || e?.message || '导入失败' }
+  }
+  finally { importingUsers.value = false }
+}
 
 const submissions = ref<any[]>([])
 const submissionsLoading = ref(false)

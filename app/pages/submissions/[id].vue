@@ -68,22 +68,13 @@
 
     <!-- 每个测试点结果 -->
     <NCard v-if="caseResults.length > 0" title="测试点详情" style="margin-bottom: 24px">
-      <div class="case-grid">
-        <div
-          v-for="(c, i) in caseResults"
-          :key="i"
-          class="case-item"
-          :class="`case-${kindClass(c.kind)}`"
-          :title="`${c.kind}${c.extraMessage ? '\n' + c.extraMessage : ''}`"
-        >
-          <div class="case-index">#{{ i + 1 }}</div>
-          <div class="case-status">{{ kindShort(c.kind) }}</div>
-          <div class="case-meta">
-            <span v-if="c.time != null">{{ c.time }}ms</span>
-            <span v-if="c.memory != null">{{ (c.memory / 1048576).toFixed(1) }}MB</span>
-          </div>
-        </div>
-      </div>
+      <NDataTable
+        :columns="caseColumns"
+        :data="caseTableData"
+        :bordered="true"
+        :single-line="false"
+        size="small"
+      />
     </NCard>
 
     <NCard title="提交代码">
@@ -101,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import type { DataTableColumns } from 'naive-ui'
 import type { Submission } from '~/types'
 import dayjs from 'dayjs'
 
@@ -164,13 +156,73 @@ function kindClass(kind: string): string {
   return 'se'
 }
 
+const KIND_TAG_TYPE: Record<string, 'success' | 'error' | 'warning' | 'info' | 'default'> = {
+  Accepted: 'success',
+  WrongAnswer: 'error',
+  PresentationError: 'warning',
+  TimeLimitExceeded: 'warning',
+  MemoryLimitExceeded: 'warning',
+  OutpuLimitExceeded: 'warning',
+  RuntimeError: 'error',
+  CompileError: 'default',
+  SystemError: 'error',
+  Unjudged: 'info',
+}
+
+function kindTagType(kind: string): 'success' | 'error' | 'warning' | 'info' | 'default' {
+  return KIND_TAG_TYPE[kind] ?? (kind.startsWith('System') ? 'error' : kind.startsWith('Compile') ? 'default' : 'info')
+}
+
+const caseTableData = computed(() =>
+  caseResults.value.map((c, i) => ({ index: i + 1, ...c })),
+)
+
+const caseColumns: DataTableColumns<any> = [
+  { title: '序号', key: 'index', width: 70, align: 'center' },
+  {
+    title: '结果',
+    key: 'kind',
+    width: 120,
+    align: 'center',
+    render(row) {
+      return h(NTag, { type: kindTagType(row.kind), size: 'small', bordered: false }, () => kindShort(row.kind))
+    },
+  },
+  {
+    title: '时间',
+    key: 'time',
+    width: 100,
+    align: 'center',
+    render(row) {
+      return row.time != null ? `${row.time}ms` : '-'
+    },
+  },
+  {
+    title: '内存',
+    key: 'memory',
+    width: 120,
+    align: 'center',
+    render(row) {
+      return row.memory != null ? `${(row.memory / 1024 / 1024).toFixed(2)} MB` : '-'
+    },
+  },
+  {
+    title: '信息',
+    key: 'extraMessage',
+    ellipsis: { tooltip: true },
+    render(row) {
+      return row.extraMessage || '-'
+    },
+  },
+]
+
 function parseMisc(data: any) {
   codeContent.value = data?.misc?.code || data?.code || ''
   compileError.value = data?.misc?.compileErrorMsg || data?.compileErrorMsg || ''
   try {
     const raw = data?.misc?.judgeResult
     if (raw) {
-      caseResults.value = JSON.parse(raw)
+      caseResults.value = typeof raw === 'string' ? JSON.parse(raw) : raw
     }
   }
   catch { /* ignore */ }
@@ -212,7 +264,7 @@ function startPolling() {
         parseMisc(full.data)
         return
       }
-      pollTimer = setTimeout(poll, 1500)
+      pollTimer = setTimeout(poll, 2000)
     }
     catch { /* ignore */ }
   }
@@ -239,32 +291,4 @@ useHead(computed(() => ({ title: `提交 #${submissionId.value} — Leverage OJ`
   margin: 0 auto;
 }
 
-/* 测试点格子 */
-.case-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.case-item {
-  width: 80px;
-  padding: 6px 4px;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 12px;
-  cursor: default;
-  border: 1px solid transparent;
-}
-
-.case-index { color: #999; font-size: 10px; margin-bottom: 2px; }
-.case-status { font-weight: 700; font-size: 13px; }
-.case-meta { color: #888; font-size: 10px; margin-top: 2px; display: flex; flex-direction: column; gap: 1px; }
-
-.case-ac  { background: #e8f5e9; border-color: #a5d6a7; }
-.case-wa  { background: #fce4e4; border-color: #ef9a9a; }
-.case-tle { background: #fff3e0; border-color: #ffcc80; }
-.case-mle { background: #e8eaf6; border-color: #9fa8da; }
-.case-re  { background: #fce4e4; border-color: #ef9a9a; }
-.case-ce  { background: #fafafa; border-color: #bdbdbd; }
-.case-se  { background: #f3e5f5; border-color: #ce93d8; }
 </style>
