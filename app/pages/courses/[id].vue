@@ -286,6 +286,18 @@ const rankColumns: DataTableColumns<CourseRankItem> = [
     },
   },
   {
+    title: '通过数',
+    key: 'accepts',
+    width: 90,
+    render(row) { return h('span', { style: 'font-weight: 600; color: #18a058;' }, String(row.accepts ?? 0)) },
+  },
+  {
+    title: '提交数',
+    key: 'submits',
+    width: 90,
+    render(row) { return h('span', String(row.submits ?? 0)) },
+  },
+  {
     title: '得分',
     key: 'score',
     width: 100,

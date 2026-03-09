@@ -28,6 +28,8 @@ export interface CourseRankItem {
   username: string
   score: number
   rank: number
+  accepts?: number
+  submits?: number
 }
 
 export function useCoursesApi() {
