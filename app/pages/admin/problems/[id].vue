@@ -76,7 +76,23 @@
 
         <!-- 测试用例 Tab -->
         <NTabPane name="testdata" tab="测试用例">
-          <div style="margin-top: 24px; max-width: 600px">
+          <div style="margin-top: 24px">
+            <NText strong style="margin-bottom: 12px; display: block">已有测试文件</NText>
+            <NDataTable
+              :columns="testCaseColumns"
+              :data="testCases"
+              :loading="loadingTestCases"
+              :bordered="false"
+              size="small"
+              style="max-width: 600px; margin-bottom: 24px"
+            />
+            <NText v-if="!loadingTestCases && !testCases.length" depth="3" style="display: block; margin-bottom: 24px">
+              暂无测试数据
+            </NText>
+
+            <NDivider />
+
+            <NText strong style="margin-bottom: 12px; display: block">上传测试数据</NText>
             <NText depth="3" style="margin-bottom: 16px; display: block">
               上传 ZIP 格式的测试数据文件（包含 .in 和 .out 文件对）
             </NText>
@@ -151,8 +167,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useMessage, type UploadFileInfo } from 'naive-ui'
+import { h, ref, computed, onMounted } from 'vue'
+import { NButton as NBtn, useMessage, type UploadFileInfo, type DataTableColumns } from 'naive-ui'
 import type { Problem, Tag } from '~/types'
 
 definePageMeta({
@@ -189,6 +205,19 @@ const savingContent = ref(false)
 // 测试用例
 const uploadFile = ref<File | null>(null)
 const uploading = ref(false)
+const testCases = ref<{ name: string; size: number }[]>([])
+const loadingTestCases = ref(false)
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const testCaseColumns: DataTableColumns<{ name: string; size: number }> = [
+  { title: '文件名', key: 'name' },
+  { title: '大小', key: 'size', width: 120, render: row => formatSize(row.size) },
+]
 
 // 标签
 const problemTags = ref<Tag[]>([])
@@ -272,6 +301,20 @@ async function saveContent() {
   }
 }
 
+async function fetchTestCases() {
+  loadingTestCases.value = true
+  try {
+    const res = await problemsApi.getTestCases(problemId.value)
+    testCases.value = Array.isArray(res.data) ? res.data : []
+  }
+  catch {
+    testCases.value = []
+  }
+  finally {
+    loadingTestCases.value = false
+  }
+}
+
 function onFileChange(data: { fileList: UploadFileInfo[] }) {
   const f = data.fileList[0]
   uploadFile.value = f?.file || null
@@ -284,6 +327,7 @@ async function handleUpload() {
     await problemsApi.uploadTestData(problemId.value, uploadFile.value)
     message.success('测试数据上传成功')
     uploadFile.value = null
+    await fetchTestCases()
   }
   catch (e: any) {
     message.error(e?.response?.data?.message || '上传失败')
@@ -328,6 +372,7 @@ async function addTag() {
 onMounted(() => {
   fetchProblem()
   fetchAllTags()
+  fetchTestCases()
 })
 
 useHead(computed(() => ({ title: problem.value?.title ? `${problem.value.title}` : '题目编辑' })))

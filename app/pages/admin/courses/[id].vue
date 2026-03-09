@@ -88,6 +88,38 @@
           </div>
         </NTabPane>
 
+        <NTabPane name="rate" tab="通过率">
+          <div style="margin-top: 16px">
+            <template v-if="hasRateData">
+              <NDataTable
+                :columns="rateColumns"
+                :data="courseProblems"
+                :row-key="(row: any) => row.problemId || row.id"
+                size="small"
+              />
+            </template>
+            <NEmpty v-else description="题目暂无提交/通过统计数据" />
+          </div>
+        </NTabPane>
+
+        <NTabPane name="sus" tab="查重入口">
+          <div style="margin-top: 16px">
+            <NButton type="primary" @click="navigateTo(`/admin/submissions/sus?courseId=${courseId}`)">
+              查看本课程查重数据
+            </NButton>
+            <div style="margin-top: 16px">
+              <NH4 style="margin: 0 0 8px">最近查重记录</NH4>
+              <NDataTable
+                :columns="susColumns"
+                :data="susPreview"
+                :loading="susLoading"
+                :row-key="(row: any) => row.id"
+                size="small"
+              />
+            </div>
+          </div>
+        </NTabPane>
+
         <NTabPane name="submissions" tab="提交记录">
           <div style="margin-top: 16px">
             <NSpace style="margin-bottom: 12px">
@@ -498,6 +530,51 @@ async function fetchRanking() {
   finally { rankingLoading.value = false }
 }
 
+// 通过率 tab
+const hasRateData = computed(() =>
+  courseProblems.value.some((p: any) => p.submits != null || p.accepts != null),
+)
+
+const rateColumns: DataTableColumns<any> = [
+  { title: '序号', key: 'idx', width: 70, render: (_row, idx) => idx + 1 },
+  { title: '题目', key: 'title', render: row => row.title || '-' },
+  { title: '提交数', key: 'submits', width: 90, render: row => row.submits ?? '-' },
+  { title: '通过数', key: 'accepts', width: 90, render: row => row.accepts ?? '-' },
+  {
+    title: '通过率',
+    key: 'rate',
+    width: 120,
+    render(row) {
+      const s = row.submits ?? 0
+      const a = row.accepts ?? 0
+      if (!s) return h('span', '-')
+      const pct = Math.round(a / s * 10000) / 100
+      return h('span', `${pct}%`)
+    },
+  },
+]
+
+// 查重入口 tab
+const suspicionsApi = useSuspicionsApi()
+const susPreview = ref<any[]>([])
+const susLoading = ref(false)
+
+async function fetchSusPreview() {
+  susLoading.value = true
+  try {
+    const res = await suspicionsApi.list({ courseId, perPage: 5 })
+    susPreview.value = res.data?.items || []
+  }
+  catch (e) { console.error(e) }
+  finally { susLoading.value = false }
+}
+
+const susColumns: DataTableColumns<any> = [
+  { title: '提交ID', key: 'submissionId', width: 90, render: row => row.submissionId || row.id },
+  { title: '用户', key: 'user', render: row => row.user?.username || row.username || row.userId || '-' },
+  { title: '哈希', key: 'hashsum', render: row => row.hashsum ? row.hashsum.slice(0, 12) + '...' : '-' },
+]
+
 const rankingColumns: DataTableColumns<CourseRankItem> = [
   { title: '排名', key: 'rank', width: 80 },
   {
@@ -516,6 +593,7 @@ watch(activeTab, (tab) => {
   if (tab === 'members' && !courseMembers.value.length) fetchMembers()
   if (tab === 'submissions' && !submissions.value.length) fetchSubmissions()
   if (tab === 'ranking' && !ranking.value.length) fetchRanking()
+  if (tab === 'sus' && !susPreview.value.length) fetchSusPreview()
 })
 
 useHead({ title: '课程编辑' })

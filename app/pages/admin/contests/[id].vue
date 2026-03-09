@@ -127,6 +127,31 @@
           </div>
         </NTabPane>
 
+        <NTabPane name="rate" tab="通过率">
+          <div style="margin-top: 16px">
+            <NDataTable
+              :columns="rateColumns"
+              :data="contest?.problems || []"
+              :row-key="(row: any) => row.problemId || row.id"
+              size="small"
+            />
+          </div>
+        </NTabPane>
+
+        <NTabPane name="event" tab="事件日志">
+          <div style="margin-top: 16px">
+            <template v-if="contestEvents.length">
+              <NDataTable
+                :columns="eventColumns"
+                :data="contestEvents"
+                :row-key="(_row: any, idx: number) => idx"
+                size="small"
+              />
+            </template>
+            <NEmpty v-else description="暂无事件日志" />
+          </div>
+        </NTabPane>
+
         <NTabPane name="scoreboard" tab="排行榜">
           <div style="margin-top: 16px">
             <NSpace style="margin-bottom: 12px">
@@ -777,6 +802,37 @@ const exportSubmissionsCsv = async () => {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// 通过率 tab
+const rateColumns: DataTableColumns<any> = [
+  { title: '序号', key: 'label', width: 70, render: (row, idx) => row.label || idx + 1 },
+  { title: '题目', key: 'title', render: row => row.title || '-' },
+  { title: '提交数', key: 'submits', width: 90, render: row => row.submits ?? 0 },
+  { title: '通过数', key: 'accepts', width: 90, render: row => row.accepts ?? 0 },
+  {
+    title: '通过率',
+    key: 'rate',
+    width: 120,
+    render(row) {
+      const s = row.submits ?? 0
+      const a = row.accepts ?? 0
+      const pct = s > 0 ? Math.round(a / s * 10000) / 100 : 0
+      return h('span', `${pct}%`)
+    },
+  },
+]
+
+// 事件日志 tab
+const contestEvents = computed(() => {
+  const events = (contest.value as any)?.events
+  return Array.isArray(events) ? events : []
+})
+
+const eventColumns: DataTableColumns<any> = [
+  { title: '时间', key: 'time', width: 180, render: row => fmtTime(row.time || row.createdAt) },
+  { title: '类型', key: 'type', width: 120, render: row => row.type || '-' },
+  { title: '内容', key: 'content', render: row => row.content || row.message || '-' },
+]
 
 const rankingColumns: DataTableColumns<RankItem> = [
   { title: '排名', key: 'rank', width: 80 },

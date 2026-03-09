@@ -28,5 +28,7 @@ export function useProblemsApi() {
       form.append('file', file)
       return api.post(`/problems/${id}/test-data`, form)
     },
+    getTestCases: (id: number) =>
+      api.get<{ name: string; size: number }[]>(`/problems/${id}/test-cases`),
   }
 }
