@@ -54,6 +54,16 @@
           <NCode :code="playbackText" language="json" word-wrap />
         </NCard>
 
+        <!-- 运行中提示 -->
+        <NAlert
+          v-if="isRunning"
+          type="info"
+          :show-icon="true"
+          style="margin-bottom: 16px"
+        >
+          对局运行中，每 3 秒自动刷新...
+        </NAlert>
+
         <!-- 错误信息 -->
         <NCard v-if="match.error" title="错误信息">
           <NAlert type="error">
@@ -62,7 +72,11 @@
         </NCard>
       </template>
 
-      <NEmpty v-else-if="!loading" description="对局不存在" />
+      <NResult v-else-if="!loading" status="404" title="对局不存在">
+        <template #footer>
+          <NButton @click="navigateTo('/compete')">返回对战大厅</NButton>
+        </template>
+      </NResult>
     </NSpin>
   </div>
 </template>
@@ -83,12 +97,18 @@ const competeApi = useCompeteApi()
 
 const match = ref<any>(null)
 const loading = ref(false)
+let pollingTimer: ReturnType<typeof setInterval> | null = null
 
 async function fetchMatch() {
   loading.value = true
   try {
     const res = await competeApi.getMatch(matchId.value)
     match.value = res.data
+    // 如果对局已结束，停止轮询
+    const status = (res.data?.status || '').toLowerCase()
+    if (status === 'done' || status === 'failed') {
+      stopPolling()
+    }
   }
   catch (e) {
     console.error(e)
@@ -98,7 +118,34 @@ async function fetchMatch() {
   }
 }
 
-onMounted(fetchMatch)
+function startPolling() {
+  pollingTimer = setInterval(fetchMatch, 3000)
+}
+
+function stopPolling() {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
+
+onMounted(async () => {
+  await fetchMatch()
+  // 运行中的对局自动轮询
+  const status = (match.value?.status || '').toLowerCase()
+  if (status === 'pending' || status === 'running') {
+    startPolling()
+  }
+})
+
+onBeforeUnmount(() => {
+  stopPolling()
+})
+
+const isRunning = computed(() => {
+  const s = (match.value?.status || '').toLowerCase()
+  return s === 'pending' || s === 'running'
+})
 
 const statusType = computed((): 'default' | 'info' | 'success' | 'warning' | 'error' => {
   const statusMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {

@@ -194,9 +194,9 @@ onMounted(async () => {
         navigateTo('/compete')
         return
       }
-      // 从 games 列表中查找游戏信息
-      const res = await competeApi.listGames({ page: 1, perPage: 100 })
-      game.value = res.data.items.find((g: any) => g.id === gameId) || null
+      // 获取游戏信息
+      const res = await competeApi.getGame(gameId)
+      game.value = res.data || null
       gamerForm.language = 'cpp17'
       if (game.value) await fetchMyGamers(gameId)
     }

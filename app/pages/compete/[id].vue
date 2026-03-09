@@ -63,6 +63,25 @@
         </NSpin>
       </NTabPane>
 
+      <!-- 活跃房间 -->
+      <NTabPane name="rooms" tab="活跃房间">
+        <div class="tab-actions">
+          <NButton type="primary" @click="handleCreateRoom">
+            创建房间
+          </NButton>
+        </div>
+        <NSpin :show="roomsLoading">
+          <NEmpty v-if="!roomsLoading && gameRooms.length === 0" description="暂无活跃房间" />
+          <NDataTable
+            v-else
+            :columns="roomColumns"
+            :data="gameRooms"
+            :bordered="false"
+            :row-key="(row: any) => row.id"
+          />
+        </NSpin>
+      </NTabPane>
+
       <!-- 对局记录 -->
       <NTabPane name="matches" tab="对局记录">
         <NSpin :show="matchesLoading">
@@ -154,9 +173,8 @@ const gameLoading = ref(false)
 async function fetchGame() {
   gameLoading.value = true
   try {
-    const res = await competeApi.listGames({ page: 1, perPage: 100 })
-    const found = res.data.items.find((g: any) => g.id === gameId.value)
-    game.value = found || null
+    const res = await competeApi.getGame(gameId.value)
+    game.value = res.data || null
   }
   catch (e) {
     console.error(e)
@@ -304,6 +322,86 @@ async function handleLaunchMatch() {
     message.error(e?.response?.data?.message || '发起对局失败')
   }
 }
+
+// ─── 活跃房间 ──────────────────────────────────────────────────────────────
+const gameRooms = ref<any[]>([])
+const roomsLoading = ref(false)
+
+async function fetchRooms() {
+  roomsLoading.value = true
+  try {
+    const res = await competeApi.listRooms({ gameId: gameId.value })
+    gameRooms.value = Array.isArray(res.data) ? res.data : []
+  }
+  catch (e) {
+    console.error(e)
+  }
+  finally {
+    roomsLoading.value = false
+  }
+}
+
+async function handleCreateRoom() {
+  try {
+    const res = await competeApi.createRoom({ gameId: gameId.value })
+    message.success('房间创建成功')
+    navigateTo(`/compete/room/${res.data.id}`)
+  }
+  catch (e: any) {
+    message.error(e?.response?.data?.message || '创建房间失败')
+  }
+}
+
+const roomColumns: DataTableColumns<any> = [
+  {
+    title: '房间 ID',
+    key: 'id',
+    width: 100,
+    render(row) {
+      return h(
+        NButton,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/room/${row.id}`) },
+        { default: () => `#${row.id}` },
+      )
+    },
+  },
+  {
+    title: '房主',
+    key: 'owner',
+    render(row) {
+      return h('span', row.owner?.username || '-')
+    },
+  },
+  {
+    title: '状态',
+    key: 'open',
+    width: 100,
+    render(row) {
+      return h(NTag, { type: row.open ? 'success' : 'default', size: 'small', bordered: false }, { default: () => row.open ? '开放中' : '等待中' })
+    },
+  },
+  {
+    title: '创建时间',
+    key: 'createdAt',
+    width: 180,
+    render(row) {
+      if (!row.createdAt) return h('span', '-')
+      return h('span', new Date(row.createdAt).toLocaleString('zh-CN'))
+    },
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 100,
+    render(row) {
+      return h(
+        NButton,
+        { size: 'small', type: 'primary', onClick: () => navigateTo(`/compete/room/${row.id}`) },
+        { default: () => '进入' },
+      )
+    },
+  },
+]
 
 // ─── 对局记录 ──────────────────────────────────────────────────────────────────
 const matches = ref<any[]>([])
@@ -472,7 +570,7 @@ async function submitGamer() {
 // ─── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   await fetchGame()
-  await Promise.all([fetchLeaderboard(), fetchGamers(), fetchMatches()])
+  await Promise.all([fetchLeaderboard(), fetchGamers(), fetchRooms(), fetchMatches()])
 })
 
 useHead(computed(() => ({ title: game.value?.name ? `${game.value.name} — Leverage OJ` : '游戏 — Leverage OJ' })))

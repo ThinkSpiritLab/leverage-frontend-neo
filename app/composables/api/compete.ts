@@ -22,7 +22,7 @@ export function useCompeteApi() {
     launchMatch: (gameId: number, gamerIds: number[]) =>
       api.post<any>('/compete/matches', { gameId, gamerIds }),
     // ─── Rooms ───────────────────────────────────────────────────────────────
-    listRooms: () => api.get<any[]>('/compete/rooms'),
+    listRooms: (params?: { gameId?: number }) => api.get<any[]>('/compete/rooms', { params }),
     getRoom: (id: number) => api.get<any>(`/compete/rooms/${id}`),
     createRoom: (dto: { gameId: number }) => api.post<any>('/compete/rooms', dto),
     openRoom: (id: number) => api.put<any>(`/compete/rooms/${id}/open`),
