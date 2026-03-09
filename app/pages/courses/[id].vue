@@ -21,8 +21,16 @@
     <NDivider />
 
     <NTabs v-model:value="activeTab" type="line" animated>
-      <!-- 公告 -->
-      <NTabPane name="notification" tab="公告">
+      <!-- 课程信息 -->
+      <NTabPane name="info" tab="课程信息">
+        <NDescriptions bordered :column="1" label-placement="left" style="margin-bottom: 16px">
+          <NDescriptionsItem label="课程名称">{{ course.name || course.title }}</NDescriptionsItem>
+          <NDescriptionsItem label="题目数量">{{ course.problemCount ?? course.problems?.length ?? 0 }}</NDescriptionsItem>
+          <NDescriptionsItem v-if="course.teacher" label="教师">{{ course.teacher }}</NDescriptionsItem>
+          <NDescriptionsItem v-if="course.startTime" label="开始时间">{{ dayjs(course.startTime).format('YYYY-MM-DD HH:mm') }}</NDescriptionsItem>
+          <NDescriptionsItem v-if="course.endTime" label="结束时间">{{ dayjs(course.endTime).format('YYYY-MM-DD HH:mm') }}</NDescriptionsItem>
+        </NDescriptions>
+        <NDivider v-if="course.notification" title-placement="left">公告</NDivider>
         <div v-if="course.notification">
           <MarkdownView :content="course.notification" />
         </div>
@@ -115,7 +123,7 @@ const problemsApi = useProblemsApi()
 
 const course = ref<Course | null>(null)
 const loading = ref(true)
-const activeTab = ref('notification')
+const activeTab = ref('info')
 
 // 课程状态
 const courseStatus = computed(() => {

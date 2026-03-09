@@ -150,7 +150,7 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import dayjs from 'dayjs'
 import type { Contest, RankItem, Submission } from '~/types'
 import { LANGUAGE_LABEL, isFinalStatus, memoryToKB } from '~/types'
@@ -163,6 +163,7 @@ definePageMeta({
 const route = useRoute()
 const contestId = computed(() => Number(route.params.id))
 const message = useMessage()
+const dialog = useDialog()
 const contestsApi = useContestsApi()
 
 const contest = ref<Contest | null>(null)
@@ -396,19 +397,27 @@ const submissionColumns: DataTableColumns<Submission> = [
 const registered = ref(false)
 const registering = ref(false)
 
-async function handleRegister() {
-  registering.value = true
-  try {
-    await contestsApi.register(contestId.value)
-    registered.value = true
-    message.success('成功参加竞赛！')
-  }
-  catch (e: any) {
-    message.error(e?.response?.data?.message || e?.message || '参加竞赛失败')
-  }
-  finally {
-    registering.value = false
-  }
+function handleRegister() {
+  dialog.warning({
+    title: '确认报名',
+    content: `确定要报名参加竞赛「${contest.value?.name || contest.value?.title}」吗？`,
+    positiveText: '确认报名',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      registering.value = true
+      try {
+        await contestsApi.register(contestId.value)
+        registered.value = true
+        message.success('成功参加竞赛！')
+      }
+      catch (e: any) {
+        message.error(e?.response?.data?.message || e?.message || '参加竞赛失败')
+      }
+      finally {
+        registering.value = false
+      }
+    },
+  })
 }
 
 // Watch tab change to load data lazily

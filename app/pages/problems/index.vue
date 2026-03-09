@@ -122,6 +122,7 @@ onMounted(() => {
 function onPageChange({ page: p, pageSize: ps }: { page: number; pageSize: number }) {
   page.value = p
   pageSize.value = ps
+  navigateTo({ query: { ...route.query, page: p > 1 ? String(p) : undefined } })
   fetchProblems()
 }
 

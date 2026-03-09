@@ -59,6 +59,20 @@ const columns: DataTableColumns = [
       h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/users/${row.id}`) }, () => row.username),
   },
   {
+    title: '学院',
+    key: 'college',
+    width: 140,
+    ellipsis: { tooltip: true },
+    render: (row: any) => row.college || '-',
+  },
+  {
+    title: '专业',
+    key: 'profession',
+    width: 140,
+    ellipsis: { tooltip: true },
+    render: (row: any) => row.profession || '-',
+  },
+  {
     title: 'AC 数',
     key: 'accepts',
     width: 100,
