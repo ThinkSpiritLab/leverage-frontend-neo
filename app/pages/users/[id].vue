@@ -11,12 +11,15 @@
             <NH2 style="margin:0">{{ user.username }}</NH2>
             <NTag :type="roleTagType" size="small">{{ roleLabel }}</NTag>
           </div>
-          <NSpace size="small" style="margin-top:6px">
+          <NSpace size="small" style="margin-top:6px" wrap>
             <NText depth="3">姓名：{{ user.certifiedName || '-' }}</NText>
             <NText depth="3">学院：{{ user.college || '-' }}</NText>
             <NText depth="3">专业：{{ user.profession || '-' }}</NText>
+            <NText v-if="user.classGroup" depth="3">班级：{{ user.classGroup }}</NText>
+            <NText v-if="user.studentId" depth="3">学号：{{ user.studentId }}</NText>
             <NText depth="3">等级：{{ user.rank ?? '-' }}</NText>
             <NText depth="3">AC/提交：{{ user.accepts ?? 0 }}/{{ user.submits ?? 0 }}</NText>
+            <NText depth="3">注册时间：{{ user.createdAt ? dayjs(user.createdAt).format('YYYY-MM-DD') : '-' }}</NText>
           </NSpace>
           <NSpace v-if="isOwnProfile" size="small" style="margin-top:8px">
             <NButton size="small" quaternary @click="openProfileEditModal">编辑学院/专业</NButton>

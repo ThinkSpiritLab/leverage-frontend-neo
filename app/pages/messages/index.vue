@@ -2,9 +2,19 @@
   <div class="messages-page">
     <div class="page-header">
       <NH2>收件箱</NH2>
-      <NButton type="primary" size="small" @click="showContactModal = true">
-        联系管理员
-      </NButton>
+      <NSpace>
+        <NButton
+          size="small"
+          :loading="markingAllRead"
+          :disabled="!hasUnread"
+          @click="handleMarkAllRead"
+        >
+          全部标记已读
+        </NButton>
+        <NButton type="primary" size="small" @click="showContactModal = true">
+          联系管理员
+        </NButton>
+      </NSpace>
     </div>
 
     <NSpin :show="loading">
@@ -102,10 +112,12 @@ definePageMeta({
 })
 
 const msgApi = useMessageApi()
+const notificationsApi = useNotificationsApi()
 const uiMsg = useMessage()
 
 const messages = ref<Message[]>([])
 const loading = ref(false)
+const markingAllRead = ref(false)
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
@@ -136,6 +148,23 @@ async function fetchMessages() {
   }
   finally {
     loading.value = false
+  }
+}
+
+const hasUnread = computed(() => messages.value.some(m => !m.read))
+
+async function handleMarkAllRead() {
+  markingAllRead.value = true
+  try {
+    await notificationsApi.markAllRead()
+    messages.value = messages.value.map(m => ({ ...m, read: true }))
+    uiMsg.success('已全部标记为已读')
+  }
+  catch {
+    uiMsg.error('操作失败')
+  }
+  finally {
+    markingAllRead.value = false
   }
 }
 
