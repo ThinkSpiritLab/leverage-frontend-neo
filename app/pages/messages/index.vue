@@ -112,7 +112,6 @@ definePageMeta({
 })
 
 const msgApi = useMessageApi()
-const notificationsApi = useNotificationsApi()
 const uiMsg = useMessage()
 
 const messages = ref<Message[]>([])
@@ -156,7 +155,7 @@ const hasUnread = computed(() => messages.value.some(m => !m.read))
 async function handleMarkAllRead() {
   markingAllRead.value = true
   try {
-    await notificationsApi.markAllRead()
+    await msgApi.markAllRead()
     messages.value = messages.value.map(m => ({ ...m, read: true }))
     uiMsg.success('已全部标记为已读')
   }

@@ -31,6 +31,8 @@ export function useMessageApi() {
       api.get(`/messages/${id}/set-read`),
     reply: (id: number, content: string) =>
       api.post<Message>(`/messages/${id}`, { content }),
+    markAllRead: () =>
+      api.patch('/messages/read-all'),
     contactAdmin: (title: string, content: string) =>
       api.post<Message>('/messages/contact-admin', { content: title ? `【${title}】\n${content}` : content }),
   }

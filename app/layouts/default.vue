@@ -92,14 +92,18 @@ import {
   ListOutline,
   PodiumOutline,
   ChatbubbleOutline,
+  NotificationsOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 const route = useRoute()
 const notificationsApi = useNotificationsApi()
+const msgApi = useMessageApi()
 
-const unreadCount = ref(0)
+const unreadNotifCount = ref(0)
+const unreadMsgCount = ref(0)
+const unreadCount = computed(() => unreadNotifCount.value + unreadMsgCount.value)
 let unreadTimer: ReturnType<typeof setInterval> | null = null
 
 const activeKey = computed(() => route.name as string)
@@ -142,6 +146,12 @@ const baseMenuOptions = [
     onClick: () => navigateTo('/messages'),
   },
   {
+    label: '通知',
+    key: 'notification',
+    icon: renderIcon(NotificationsOutline),
+    onClick: () => navigateTo('/notification'),
+  },
+  {
     label: '帮助',
     key: 'help',
     icon: renderIcon(HelpCircleOutline),
@@ -174,6 +184,7 @@ const routeLabelMap: Record<string, string> = {
   '/submissions': '提交记录',
   '/ranklist': '排行榜',
   '/messages': '消息',
+  '/notification': '通知',
   '/help': '帮助',
   '/admin': '管理后台',
 }
@@ -202,15 +213,21 @@ const avatarColor = computed(() => {
 
 async function refreshUnreadCount() {
   if (!authStore.isLoggedIn) {
-    unreadCount.value = 0
+    unreadNotifCount.value = 0
+    unreadMsgCount.value = 0
     return
   }
   try {
-    const res = await notificationsApi.list({ read: false, perPage: 1 })
-    unreadCount.value = Number(res.data?.unreadCount ?? res.data?.total ?? 0)
+    const [notifRes, msgRes] = await Promise.all([
+      notificationsApi.list({ read: false, perPage: 1 }),
+      msgApi.getUnreadCount(),
+    ])
+    unreadNotifCount.value = Number((notifRes as any).data?.unreadCount ?? (notifRes as any).data?.total ?? 0)
+    unreadMsgCount.value = Number((msgRes as any).data?.count ?? 0)
   }
   catch {
-    unreadCount.value = 0
+    unreadNotifCount.value = 0
+    unreadMsgCount.value = 0
   }
 }
 

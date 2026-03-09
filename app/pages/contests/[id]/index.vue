@@ -32,8 +32,8 @@
       <!-- 题目 -->
       <NTabPane name="problems" tab="题目">
         <!-- 公告 -->
-        <NAlert v-if="contest.description" type="info" title="公告" style="margin-bottom: 16px">
-          <MarkdownView :content="contest.description" />
+        <NAlert v-if="contest.notification || contest.description" type="info" title="公告" style="margin-bottom: 16px">
+          <MarkdownView :content="contest.notification || contest.description || ''" />
         </NAlert>
         <div class="problems-list">
           <NDataTable
@@ -153,7 +153,7 @@ import type { DataTableColumns } from 'naive-ui'
 import { useMessage, useDialog } from 'naive-ui'
 import dayjs from 'dayjs'
 import type { Contest, RankItem, Submission } from '~/types'
-import { LANGUAGE_LABEL, isFinalStatus, memoryToKB } from '~/types'
+import { LANGUAGE_LABEL, memoryToKB } from '~/types'
 
 definePageMeta({
   layout: 'default',
