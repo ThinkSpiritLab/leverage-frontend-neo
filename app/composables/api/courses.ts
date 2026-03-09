@@ -11,6 +11,7 @@ export interface Course {
   notification?: string
   enabledLanguageJSON?: string | null
   createdAt: string
+  problemCount?: number
   problems?: number[]
   members?: number[]
 }

@@ -4,6 +4,28 @@
       <NH2 style="margin: 0">系统日志</NH2>
     </div>
 
+    <!-- 筛选栏 -->
+    <NCard size="small">
+      <NSpace align="center" wrap>
+        <NSelect
+          v-model:value="filterAction"
+          :options="actionOptions"
+          placeholder="全部操作类型"
+          clearable
+          style="width: 160px"
+          @update:value="onFilterChange"
+        />
+        <NDatePicker
+          v-model:value="filterDateRange"
+          type="daterange"
+          clearable
+          style="width: 280px"
+          @update:value="onFilterChange"
+        />
+        <NButton @click="resetFilters">重置</NButton>
+      </NSpace>
+    </NCard>
+
     <NSpin :show="loading">
       <NDataTable
         :columns="columns"
@@ -38,6 +60,7 @@
 import { h, ref, computed, onMounted } from 'vue'
 import { NButton, NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
+import dayjs from 'dayjs'
 
 definePageMeta({
   layout: 'admin',
@@ -51,6 +74,26 @@ const total = ref(0)
 const currentPage = ref(1)
 const perPage = 20
 const loading = ref(false)
+
+const filterAction = ref<string | null>(null)
+const filterDateRange = ref<[number, number] | null>(null)
+
+const actionOptions = computed(() => {
+  const actions = [...new Set(logs.value.map(l => l.action).filter(Boolean))]
+  return actions.map(a => ({ label: a, value: a }))
+})
+
+function onFilterChange() {
+  currentPage.value = 1
+  fetchLogs(1)
+}
+
+function resetFilters() {
+  filterAction.value = null
+  filterDateRange.value = null
+  currentPage.value = 1
+  fetchLogs(1)
+}
 
 const modalVisible = ref(false)
 const selectedPayload = ref('')
@@ -126,9 +169,15 @@ async function fetchLogs(page = currentPage.value) {
   loading.value = true
   currentPage.value = page
   try {
+    const params: Record<string, any> = { page, perPage }
+    if (filterAction.value) params.action = filterAction.value
+    if (filterDateRange.value) {
+      params.startDate = dayjs(filterDateRange.value[0]).format('YYYY-MM-DD')
+      params.endDate = dayjs(filterDateRange.value[1]).format('YYYY-MM-DD')
+    }
     const res = await api.get<{ items: any[]; total: number; page: number; perPage: number }>(
       '/logs',
-      { params: { page, perPage } },
+      { params },
     )
     logs.value = res.data?.items ?? []
     total.value = res.data?.total ?? 0
