@@ -107,7 +107,27 @@ function getRowProps(row: Contest) {
   }
 }
 
+function getStatusTag(contest: Contest) {
+  const status = getContestStatus(contest, new Date())
+  if (status === 'ongoing') return { text: '进行中', type: 'success' as const }
+  if (status === 'upcoming') return { text: '未开始', type: 'info' as const }
+  return { text: '已结束', type: 'default' as const }
+}
+
 const columns: DataTableColumns<Contest> = [
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    render(row) {
+      const tag = getStatusTag(row)
+      return h(
+        NTag,
+        { type: tag.type, size: 'small', bordered: false, round: true },
+        { default: () => tag.text },
+      )
+    },
+  },
   {
     title: '标题',
     key: 'title',
