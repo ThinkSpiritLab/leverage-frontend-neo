@@ -766,7 +766,7 @@ const balloonColumns: DataTableColumns<any> = [
       if (row.delivered) return h('span', '-')
       return h(NButton, {
         size: 'small', type: 'primary', ghost: true,
-        onClick: () => handleMarkDelivered(row.contestProblemId || row.id),
+        onClick: () => handleMarkDelivered(row.id),
       }, { default: () => '标记送达' })
     },
   },
