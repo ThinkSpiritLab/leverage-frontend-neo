@@ -61,6 +61,20 @@
             </NSpace>
           </template>
 
+          <!-- Always render iframe when rendererHtml exists, use v-show to prevent flash on turn reset -->
+          <div v-if="match.game?.rendererHtml" v-show="humanTurn" style="margin-bottom:12px">
+            <iframe
+              ref="humanRendererRef"
+              :srcdoc="match.game?.rendererHtml || ''"
+              sandbox="allow-scripts"
+              style="width:100%;height:420px;border:1px solid #e0e0e6;border-radius:8px"
+              @load="onHumanRendererLoad"
+            />
+            <NText v-if="!iframeInteractive" depth="3" style="font-size:12px;display:block;margin-top:4px">
+              渲染器未声明交互支持，请使用下方输入框
+            </NText>
+          </div>
+
           <template v-if="humanTurn">
             <!-- Countdown -->
             <NSpace align="center" style="margin-bottom:12px">
@@ -73,19 +87,7 @@
               </NTag>
             </NSpace>
 
-            <!-- Renderer iframe (preferred: handles both visual & interactive) -->
-            <div v-if="match.game?.rendererHtml" style="margin-bottom:12px">
-              <iframe
-                ref="humanRendererRef"
-                :srcdoc="humanRendererSrcdoc"
-                sandbox="allow-scripts"
-                style="width:100%;height:420px;border:1px solid #e0e0e6;border-radius:8px"
-                @load="onHumanRendererLoad"
-              />
-              <NText v-if="!iframeInteractive" depth="3" style="font-size:12px;display:block;margin-top:4px">
-                渲染器未声明交互支持，请使用下方输入框
-              </NText>
-            </div>
+            <!-- Renderer iframe is rendered outside v-if to avoid re-mounting (see above) -->
 
             <!-- Inline TicTacToe board (fallback when no rendererHtml) -->
             <div v-else-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
