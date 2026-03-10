@@ -103,7 +103,7 @@
             </NRadioGroup>
           </NSpace>
         </NFormItem>
-        <NFormItem label="是否开源">
+        <NFormItem v-if="submitForm.type === 'code'" label="是否开源">
           <NSwitch v-model:value="submitForm.opensource" />
         </NFormItem>
 
@@ -164,12 +164,37 @@
         </NSpace>
       </template>
     </NModal>
+
+    <!-- API Key 弹窗（external/human bot创建后显示） -->
+    <NModal v-model:show="showApiKeyModal" preset="card" title="🔑 Bot API Key" style="width:580px">
+      <NAlert type="success" style="margin-bottom:12px">
+        Bot 创建成功！以下是你的 API Key（<b>只显示一次，请立即保存</b>）
+      </NAlert>
+      <NFormItem label="Bot API Key">
+        <NInputGroup>
+          <NInput :value="createdApiKey" readonly style="font-family:monospace;font-size:13px" />
+          <NButton @click="() => { navigator.clipboard?.writeText(createdApiKey); }">复制</NButton>
+        </NInputGroup>
+      </NFormItem>
+      <NFormItem label="Gamer ID">
+        <NInput :value="String(createdGamerId)" readonly style="font-family:monospace" />
+      </NFormItem>
+      <NAlert type="info" :show-icon="false" style="font-size:13px;margin-top:8px">
+        <b>Python 外部 Bot 示例代码：</b>
+        <pre style="margin:8px 0;font-size:12px;white-space:pre-wrap">{{ generatedExternalCode }}</pre>
+      </NAlert>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton type="primary" @click="showApiKeyModal = false">关闭</NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NButton, NTag, NSpace, useMessage } from 'naive-ui'
+import { NButton, NTag, NSpace, NInputGroup, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
 
@@ -302,6 +327,9 @@ const matchColumns: DataTableColumns<any> = [
 
 // ── Submit Bot modal ──
 const showSubmitModal = ref(false)
+const showApiKeyModal = ref(false)
+const createdApiKey = ref('')
+const createdGamerId = ref(0)
 const submitting = ref(false)
 const submitForm = ref({
   title: '',
@@ -366,7 +394,7 @@ async function handleSubmitBot() {
   const t = submitForm.value.type
   const isExternal = t === 'webhook' || t === 'external' || t === 'human'
   try {
-    await competeApi.createGamer({
+    const res = await competeApi.createGamer({
       gameId,
       title: submitForm.value.title,
       type: t,
@@ -376,16 +404,58 @@ async function handleSubmitBot() {
       webhookUrl: t === 'webhook' ? submitForm.value.webhookUrl : undefined,
       webhookSecret: t === 'webhook' && submitForm.value.webhookSecret ? submitForm.value.webhookSecret : undefined,
     })
-    message.success('Bot 提交成功！')
+    const created = res.data as any
     showSubmitModal.value = false
     submitForm.value = { title: '', type: 'code', language: 'python', code: '', opensource: true, webhookUrl: '', webhookSecret: '' }
     fetchMyBots()
+
+    // Show API key dialog for external/human bots
+    if ((t === 'external' || t === 'human') && created?.botApiKey) {
+      createdGamerId.value = created.id
+      createdApiKey.value = created.botApiKey
+      showApiKeyModal.value = true
+    } else {
+      message.success('Bot 提交成功！')
+    }
   } catch (e: any) {
     message.error(e?.response?.data?.message || e?.message || '提交失败')
   } finally {
     submitting.value = false
   }
 }
+
+const generatedExternalCode = computed(() => {
+  const server = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000` : 'http://SERVER:3000'
+  return `import requests, time, json
+
+SERVER = "${server}"
+GAMER_ID = ${createdGamerId.value}
+BOT_KEY = "${createdApiKey.value}"
+HEADERS = {"X-Bot-Key": BOT_KEY, "Content-Type": "application/json"}
+
+def my_logic(game_state):
+    # TODO: 实现你的决策逻辑
+    # game_state 包含当前棋盘状态
+    import random
+    return json.dumps({"0": random.randint(0, 8)})
+
+while True:
+    try:
+        r = requests.get(f"{SERVER}/compete/bot-turn",
+                         params={"gamerId": GAMER_ID},
+                         headers=HEADERS, timeout=35)
+        if r.status_code == 200:
+            data = r.json()
+            if not data.get("waiting"):
+                move = my_logic(data["gameState"])
+                requests.post(f"{SERVER}/compete/bot-respond",
+                              json={"turnToken": data["turnToken"], "response": move},
+                              headers=HEADERS, timeout=10)
+        time.sleep(0.1)
+    except Exception as e:
+        print(f"Error: {e}")
+        time.sleep(2)`
+})
 
 // ── Tab lazy load ──
 watch(activeTab, (tab) => {
