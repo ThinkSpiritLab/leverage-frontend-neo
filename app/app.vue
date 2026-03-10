@@ -1,5 +1,5 @@
 <template>
-  <NConfigProvider :theme="theme" style="height: 100%">
+  <NConfigProvider :theme="theme" :hljs="hljs" style="height: 100%">
     <NuxtLoadingIndicator color="#18a058" />
     <NuxtLayout>
       <NuxtPage />
@@ -9,6 +9,23 @@
 
 <script setup lang="ts">
 import { darkTheme, lightTheme } from 'naive-ui'
+import hljs from 'highlight.js/lib/core'
+import python from 'highlight.js/lib/languages/python'
+import cpp from 'highlight.js/lib/languages/cpp'
+import java from 'highlight.js/lib/languages/java'
+import javascript from 'highlight.js/lib/languages/javascript'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import plaintext from 'highlight.js/lib/languages/plaintext'
+
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('cpp', cpp)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('text', plaintext)
+hljs.registerLanguage('plaintext', plaintext)
 
 const { isDark } = useTheme()
 const theme = computed(() => isDark.value ? darkTheme : lightTheme)
