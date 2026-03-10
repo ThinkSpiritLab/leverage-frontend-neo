@@ -53,6 +53,11 @@ export interface Submission {
   createdAt: string
   user?: Pick<User, 'id' | 'username'>
   problem?: Pick<Problem, 'id' | 'title' | 'logicId' | 'prefix'>
+  // OJ/Botzone 扩展字段
+  provider?: string | null
+  externalJobId?: string | null
+  providerMeta?: Record<string, unknown> | null
+  misc?: Record<string, unknown> | null
 }
 
 // 竞赛
