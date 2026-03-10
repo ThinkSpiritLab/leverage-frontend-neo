@@ -1,5 +1,11 @@
 <template>
   <div class="gamer-page">
+    <!-- 面包屑 -->
+    <NBreadcrumb style="margin-bottom:12px">
+      <NBreadcrumbItem @click="navigateTo('/compete')">竞技场</NBreadcrumbItem>
+      <NBreadcrumbItem v-if="game" @click="navigateTo(`/compete/games/${game.id}`)">{{ game.name }}</NBreadcrumbItem>
+      <NBreadcrumbItem>{{ isNew ? '新建 Bot' : (gamerForm.name || `Bot#${gamerId}`) }}</NBreadcrumbItem>
+    </NBreadcrumb>
     <NSpin :show="loading">
       <NGrid v-if="game" :cols="12" :x-gap="16" :y-gap="16">
         <!-- 左侧：游戏信息 + Gamer 列表 -->
@@ -9,7 +15,7 @@
             <NCard title="游戏信息" size="small">
               <NDescriptions :column="1" size="small">
                 <NDescriptionsItem label="游戏">
-                  <NButton text type="primary" @click="navigateTo(`/compete/${game.id}`)">
+                  <NButton text type="primary" @click="navigateTo(`/compete/games/${game.id}`)">
                     {{ game.name }}
                   </NButton>
                 </NDescriptionsItem>

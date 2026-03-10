@@ -11,12 +11,32 @@
       <!-- 游戏列表 -->
       <NTabPane name="games" tab="游戏列表">
         <NSpin :show="gamesLoading">
-          <NDataTable
-            :columns="gameColumns"
-            :data="games"
-            :bordered="false"
-            :row-key="(row: any) => row.id"
-          />
+          <div class="game-grid">
+            <NCard
+              v-for="g in games"
+              :key="g.id"
+              class="game-card"
+              hoverable
+              @click="navigateTo(`/compete/games/${g.id}`)"
+            >
+              <template #header>
+                <NSpace align="center" justify="space-between">
+                  <NText strong>{{ g.title }}</NText>
+                  <NTag size="small" :type="g.disabled ? 'error' : 'success'" :bordered="false">
+                    {{ g.disabled ? '已禁用' : '进行中' }}
+                  </NTag>
+                </NSpace>
+              </template>
+              <NText depth="3" style="font-size:13px;display:block;min-height:36px">{{ g.description || '暂无描述' }}</NText>
+              <NDivider style="margin:10px 0" />
+              <NSpace size="small">
+                <NTag size="small" :bordered="false">⏱ {{ g.timeLimit }}ms</NTag>
+                <NTag size="small" :bordered="false">💾 {{ g.memoryLimit }}MB</NTag>
+                <NTag size="small" :bordered="false">👥 {{ g.gamerQuantity }}人</NTag>
+              </NSpace>
+            </NCard>
+            <NEmpty v-if="!games.length" description="暂无游戏" style="grid-column:1/-1;padding:48px 0" />
+          </div>
         </NSpin>
         <NPagination
           v-if="gamesTotal > gamesPageSize"
@@ -399,5 +419,21 @@ useHead({ title: '对战竞技 — Leverage OJ' })
 
 .page-header :deep(.n-h2) {
   margin: 0;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.game-card {
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
 }
 </style>

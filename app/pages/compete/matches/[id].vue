@@ -5,7 +5,7 @@
         <!-- 面包屑 -->
         <NBreadcrumb style="margin-bottom: 16px">
           <NBreadcrumbItem @click="navigateTo('/compete')">Bot 对战</NBreadcrumbItem>
-          <NBreadcrumbItem v-if="match.game" @click="navigateTo(`/compete/${match.game.id}`)">
+          <NBreadcrumbItem v-if="match.game" @click="navigateTo(`/compete/games/${match.game.id}`)">
             {{ match.game.name }}
           </NBreadcrumbItem>
           <NBreadcrumbItem>对局 #{{ match.id }}</NBreadcrumbItem>
@@ -67,6 +67,19 @@
             <NSpin size="small" style="margin-left: 8px" />
           </template>
         </NCard>
+
+        <!-- 胜者 Banner -->
+        <NAlert
+          v-if="isCompleted && winnerInfo"
+          :type="winnerInfo.isDraw ? 'warning' : 'success'"
+          :show-icon="false"
+          style="margin-bottom:16px;font-size:15px"
+        >
+          <NSpace align="center">
+            <span style="font-size:20px">{{ winnerInfo.isDraw ? '🤝' : '🏆' }}</span>
+            <NText strong style="font-size:15px">{{ winnerInfo.isDraw ? '平局！' : `胜者：${winnerInfo.names.join('、')}` }}</NText>
+          </NSpace>
+        </NAlert>
 
         <!-- 参与 Bot -->
         <NCard title="参与 Bot" style="margin-bottom: 16px">
@@ -272,6 +285,29 @@ const scoreRows = computed(() => {
   })
 })
 
+// ELO delta: gamerId → delta (from elo_history or providerMeta)
+const eloDeltas = computed<Record<string, number>>(() => {
+  const meta = match.value?.providerMeta as any
+  if (meta?.eloChanges) return meta.eloChanges
+  return {}
+})
+
+// Winner info from finalResult
+const winnerInfo = computed(() => {
+  const fr = parsedResult.value?.finalResult
+  if (!fr) return null
+  const gamerMap = Object.fromEntries(gamerList.value.map((g: any) => [String(g.id), g]))
+  const scores = Object.entries(fr) as [string, number][]
+  const maxScore = Math.max(...scores.map(([, v]) => v))
+  const minScore = Math.min(...scores.map(([, v]) => v))
+  const isDraw = maxScore === minScore
+  const winnerIds = isDraw ? [] : scores.filter(([, v]) => v === maxScore).map(([k]) => k)
+  return {
+    isDraw,
+    names: winnerIds.map(id => gamerMap[id]?.name || `Bot#${id}`),
+  }
+})
+
 const scoreColumns: DataTableColumns<any> = [
   { title: 'Bot 名称', key: 'name' },
   {
@@ -294,6 +330,7 @@ const gamerList = computed(() => {
         id: link.gamerId,
         name: link.gamer?.name || link.gamer?.title || `Bot#${link.index}`,
         language: link.gamer?.language,
+        type: link.gamer?.type,
         elo: link.gamer?.elo ?? 1200,
         user: link.gamer?.user,
         index: link.index,
@@ -319,18 +356,27 @@ const gamerColumns: DataTableColumns<any> = [
     },
   },
   {
-    title: '语言',
+    title: '类型',
     key: 'language',
     render(row) {
-      if (!row.language) return h('span', '-')
-      return h(NTag, { size: 'small', bordered: false }, { default: () => row.language })
+      const TYPE_MAP: Record<string, string> = { webhook: 'Webhook', external: '外部轮询', human: '真人', code: '' }
+      const label = TYPE_MAP[row.type] || row.language || '-'
+      return h(NTag, { size: 'small', bordered: false }, { default: () => label })
     },
   },
   {
     title: 'ELO',
     key: 'elo',
     render(row) {
-      return h('span', row.elo !== undefined ? String(row.elo) : '-')
+      const delta = eloDeltas.value[String(row.id)]
+      const base = h('span', row.elo !== undefined ? String(row.elo) : '-')
+      if (delta == null) return base
+      const sign = delta > 0 ? '+' : ''
+      const color = delta > 0 ? '#18a058' : delta < 0 ? '#d03050' : '#999'
+      return h('span', [
+        base,
+        h('span', { style: `color:${color};font-size:12px;margin-left:4px` }, `${sign}${delta}`),
+      ])
     },
   },
   {
