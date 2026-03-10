@@ -259,6 +259,20 @@ const scoreColumns: DataTableColumns<any> = [
 // ─── 参与 Bot 表格 ────────────────────────────────────────────────────────────
 const gamerList = computed(() => {
   if (!match.value) return []
+  // links: [{ index, gamerId, gamer: { id, title/name, language, elo, user } }]
+  if (Array.isArray(match.value.links) && match.value.links.length > 0) {
+    return match.value.links
+      .sort((a: any, b: any) => a.index - b.index)
+      .map((link: any) => ({
+        id: link.gamerId,
+        name: link.gamer?.name || link.gamer?.title || `Bot#${link.index}`,
+        language: link.gamer?.language,
+        elo: link.gamer?.elo ?? 1200,
+        user: link.gamer?.user,
+        index: link.index,
+      }))
+  }
+  // fallback for older matches without links
   const gamers = match.value.gamers || match.value.gamerIds || []
   return gamers.map((g: any, index: number) =>
     typeof g === 'object' ? g : { id: g, name: `Bot#${g}`, index },
