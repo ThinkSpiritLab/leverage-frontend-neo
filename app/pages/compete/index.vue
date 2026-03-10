@@ -167,7 +167,7 @@ const gameColumns: DataTableColumns<any> = [
     render(row) {
       return h(
         NButton,
-        { size: 'small', type: 'primary', onClick: () => navigateTo(`/compete/${row.id}`) },
+        { size: 'small', type: 'primary', onClick: () => navigateTo(`/compete/games/${row.id}`) },
         { default: () => '进入' },
       )
     },
@@ -213,7 +213,7 @@ const roomColumns: DataTableColumns<any> = [
       if (row.game?.id) {
         return h(
           NButton,
-          { text: true, type: 'primary', onClick: () => navigateTo(`/compete/${row.game.id}`) },
+          { text: true, type: 'primary', onClick: () => navigateTo(`/compete/games/${row.game.id}`) },
           { default: () => name },
         )
       }
