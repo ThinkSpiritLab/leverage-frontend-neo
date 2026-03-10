@@ -63,27 +63,28 @@
                     v-for="bot in myBots"
                     :key="bot.id"
                     class="bot-card"
-                    :class="{ selected: selectedGamerIds.includes(bot.id) }"
+                    :class="{ selected: selectedGamerIds.includes(bot.id), disabled: bot.disabled }"
                   >
                     <NSpace align="center" style="flex:1;min-width:0">
-                      <!-- checkbox for non-human -->
+                      <!-- checkbox for non-human, non-disabled -->
                       <NCheckbox
-                        v-if="bot.type !== 'human'"
+                        v-if="bot.type !== 'human' && !bot.disabled"
                         :checked="selectedGamerIds.includes(bot.id)"
                         :disabled="!selectedGamerIds.includes(bot.id) && selectedGamerIds.length >= (game?.gamerQuantity ?? 2)"
                         @update:checked="(v:boolean) => toggleGamer(bot.id, v)"
                       />
                       <div style="min-width:0;flex:1">
                         <NSpace align="center" :wrap="false">
-                          <NText strong style="white-space:nowrap">{{ bot.title || bot.name }}</NText>
-                          <NTag size="small" :type="botTagType(bot.type)">{{ botTypeLabel(bot) }}</NTag>
-                          <NTag size="small" type="info">⚡ {{ bot.elo ?? 1200 }}</NTag>
+                          <NText strong :style="bot.disabled ? 'color:#aaa;white-space:nowrap' : 'white-space:nowrap'">{{ bot.title || bot.name }}</NText>
+                          <NTag v-if="bot.disabled" size="small" type="error">已禁用</NTag>
+                          <NTag v-else size="small" :type="botTagType(bot.type)">{{ botTypeLabel(bot) }}</NTag>
+                          <NTag v-if="!bot.disabled" size="small" type="info">⚡ {{ bot.elo ?? 1200 }}</NTag>
                         </NSpace>
                       </div>
                     </NSpace>
                     <NSpace>
                       <NButton
-                        v-if="bot.type === 'human'"
+                        v-if="bot.type === 'human' && !bot.disabled"
                         size="small"
                         type="primary"
                         :loading="joiningAsHuman === bot.id"
@@ -91,7 +92,7 @@
                       >
                         🎮 加入对局
                       </NButton>
-                      <NButton size="small" text @click="navigateTo(`/compete/gamer/${bot.id}`)">编辑</NButton>
+                      <NButton size="small" text :disabled="bot.disabled" @click="navigateTo(`/compete/gamer/${bot.id}`)">编辑</NButton>
                     </NSpace>
                   </div>
                 </NSpace>
@@ -339,7 +340,7 @@ async function fetchMyBots() {
   try {
     const res = await competeApi.listGamers({ gameId: gameId.value, page: 1, perPage: 100 })
     const all: any[] = (res.data as any)?.items || []
-    myBots.value = all.filter((g:any) => g.userId === authStore.user?.id && !g.disabled)
+    myBots.value = all.filter((g:any) => g.userId === authStore.user?.id)
   } catch (e) { console.error(e) }
   finally { myBotsLoading.value = false }
 }
@@ -655,5 +656,11 @@ useHead(computed(() => ({ title: `${game.value?.title || '游戏'} — Leverage 
 .bot-card.selected {
   border-color: #18a058;
   background: #f0faf4;
+}
+
+.bot-card.disabled {
+  opacity: 0.5;
+  background: #fafafa;
+  cursor: not-allowed;
 }
 </style>
