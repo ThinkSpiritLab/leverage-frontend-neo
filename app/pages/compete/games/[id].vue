@@ -43,7 +43,17 @@
               <template #header>
                 <NSpace justify="space-between" align="center">
                   <span style="font-weight:600">我的 Bot</span>
-                  <NButton size="small" type="primary" @click="showSubmitModal = true">+ 提交新 Bot</NButton>
+                  <NSpace>
+                    <NButton
+                      size="small"
+                      type="warning"
+                      :loading="joiningAsHuman !== null"
+                      @click="quickJoinAsHuman"
+                    >
+                      🎮 我要参赛（真人）
+                    </NButton>
+                    <NButton size="small" type="primary" @click="showSubmitModal = true">+ 提交 Bot</NButton>
+                  </NSpace>
                 </NSpace>
               </template>
               <NSpin :show="myBotsLoading">
@@ -186,7 +196,6 @@
               <NRadio value="code">🖥️ 代码 Bot — 上传代码，在服务器沙箱运行</NRadio>
               <NRadio value="external">🔗 外部 Bot — 你的程序主动轮询服务器（无需公网 IP）</NRadio>
               <NRadio value="webhook">📡 Webhook Bot — 服务器主动调你的 URL（需公网 IP）</NRadio>
-              <NRadio value="human">🧑 真人 — 在浏览器网页上手动输入移动</NRadio>
             </NSpace>
           </NRadioGroup>
         </NFormItem>
@@ -218,11 +227,7 @@
             ⚠️ 需要公网 IP 或域名。
           </NAlert>
         </template>
-        <template v-else-if="submitForm.type === 'human'">
-          <NAlert type="info" :show-icon="false" style="font-size:13px">
-            🧑 提交后在"参赛"页面点击 <b>🎮 加入对局</b> 选择对手，对局开始后在详情页输入你的移动。
-          </NAlert>
-        </template>
+
       </NForm>
       <template #footer>
         <NSpace justify="end">
@@ -427,6 +432,37 @@ function joinAsHuman(bot: any) {
   selectedOpponents.value = []
   showJoinModal.value = true
   if (!allGamers.value.length) fetchAllGamers()
+}
+
+// 一键参赛：自动找/创建 human bot，然后弹选对手窗
+async function quickJoinAsHuman() {
+  joiningAsHuman.value = -1 // loading state
+  try {
+    // Check if already has a human bot for this game
+    await fetchMyBots()
+    const existing = myBots.value.find((b: any) => b.type === 'human')
+    if (existing) {
+      joinAsHuman(existing)
+    } else {
+      // Auto-create human bot silently
+      const username = authStore.user?.username || authStore.user?.email || '玩家'
+      const res = await competeApi.createGamer({
+        gameId: gameId.value,
+        title: `${username} 的参赛席位`,
+        type: 'human' as any,
+        language: 'webhook',
+        code: '',
+        opensource: false,
+      })
+      await fetchMyBots()
+      const created = res.data as any
+      joinAsHuman({ id: created.id })
+    }
+  } catch (e: any) {
+    message.error(e?.response?.data?.message || '操作失败')
+  } finally {
+    if (!showJoinModal.value) joiningAsHuman.value = null
+  }
 }
 
 async function confirmJoinAsHuman() {
