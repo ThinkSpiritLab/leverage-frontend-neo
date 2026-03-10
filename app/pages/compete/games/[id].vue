@@ -22,7 +22,13 @@
         <!-- 排行榜 -->
         <NTabPane name="leaderboard" tab="🏆 排行榜">
           <div style="margin-top:12px">
-            <NButton size="small" style="margin-bottom:12px" @click="fetchLeaderboard">刷新</NButton>
+            <NSpace style="margin-bottom:12px" align="center">
+              <NRadioGroup v-model:value="leaderboardBoard" @update:value="fetchLeaderboard">
+                <NRadioButton value="inner">内榜（Bot对Bot）</NRadioButton>
+                <NRadioButton value="outer">外榜（含真人/外部）</NRadioButton>
+              </NRadioGroup>
+              <NButton size="small" @click="fetchLeaderboard">刷新</NButton>
+            </NSpace>
             <NDataTable
               :columns="leaderboardColumns"
               :data="leaderboard"
@@ -172,24 +178,42 @@ onMounted(fetchGame)
 // ── Leaderboard ──
 const leaderboard = ref<any[]>([])
 const leaderboardLoading = ref(false)
+const leaderboardBoard = ref<'inner' | 'outer'>('inner')
+
+const TYPE_LABEL: Record<string, string> = {
+  code: '',
+  human: '🧑 真人',
+  external: '🔗 外部',
+  webhook: '🔗 Webhook',
+}
 
 async function fetchLeaderboard() {
   leaderboardLoading.value = true
   try {
-    const res = await competeApi.getLeaderboard(gameId)
+    const res = await competeApi.getLeaderboard(gameId, leaderboardBoard.value)
     leaderboard.value = Array.isArray(res.data) ? res.data : []
   } catch (e) { console.error(e) }
   finally { leaderboardLoading.value = false }
 }
 
-const leaderboardColumns: DataTableColumns<any> = [
-  { title: '#', key: '_rank', width: 50, render: (_r, i) => i + 1 },
-  { title: 'Bot 名称', key: 'name', render: r => h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/compete/gamer/${r.gamerId}`) }, () => r.name || `Bot#${r.gamerId}`) },
-  { title: 'ELO', key: 'elo', width: 80 },
+const leaderboardColumns = computed<DataTableColumns<any>>(() => [
+  { title: '#', key: '_rank', width: 50, render: (_r: any, i: number) => i + 1 },
+  {
+    title: 'Bot 名称',
+    key: 'name',
+    render: (r: any) => {
+      const tag = TYPE_LABEL[r.type] || ''
+      return h('span', [
+        h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/compete/gamer/${r.gamerId}`) }, () => r.name || `Bot#${r.gamerId}`),
+        tag ? h('span', { style: 'margin-left:6px;font-size:12px;color:#999' }, tag) : null,
+      ])
+    },
+  },
+  { title: leaderboardBoard.value === 'inner' ? 'ELO（内榜）' : 'ELO（外榜）', key: 'elo', width: 100 },
   { title: '胜场', key: 'wins', width: 70 },
   { title: '总场', key: 'total', width: 70 },
-  { title: '胜率', key: 'winRate', width: 80, render: r => r.winRate != null ? `${(r.winRate * 100).toFixed(1)}%` : '-' },
-]
+  { title: '胜率', key: 'winRate', width: 80, render: (r: any) => r.winRate != null ? `${(r.winRate * 100).toFixed(1)}%` : '-' },
+])
 
 // ── My Bots ──
 const myBots = ref<any[]>([])
