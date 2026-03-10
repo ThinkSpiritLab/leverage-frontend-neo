@@ -168,7 +168,7 @@ const adminMenuOptions = [
     label: 'Bot 对战管理',
     key: 'admin-compete',
     icon: renderIcon(GameControllerOutline),
-    onClick: () => navigateTo('/admin/compete/game/new'),
+    onClick: () => navigateTo('/admin/compete'),
   },
   {
     label: '标签管理',
