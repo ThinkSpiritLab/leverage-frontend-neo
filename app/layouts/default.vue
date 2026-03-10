@@ -194,6 +194,9 @@ const routeLabelMap: Record<string, string> = {
   '/notification': '通知',
   '/help': '帮助',
   '/admin': '管理后台',
+  '/compete': 'Bot 对战',
+  '/profile': '个人中心',
+  '/settings': '设置',
 }
 
 const currentRouteLabel = computed(() => {

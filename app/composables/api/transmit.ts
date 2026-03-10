@@ -4,6 +4,7 @@ export interface Judger {
   name: string
   version: string
   ttl: number
+  type?: string
 }
 
 export interface JudgeStats {

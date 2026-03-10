@@ -24,7 +24,7 @@
               <NDescriptionsItem label="游戏名称">{{ game.title }}</NDescriptionsItem>
               <NDescriptionsItem label="玩家数量">{{ game.gamerQuantity ?? '-' }}</NDescriptionsItem>
               <NDescriptionsItem label="时间限制">{{ game.timeLimit ? `${game.timeLimit} ms` : '-' }}</NDescriptionsItem>
-              <NDescriptionsItem label="内存限制">{{ game.memoryLimit ? `${Math.floor(game.memoryLimit / 1024 / 1024)} MB` : '-' }}</NDescriptionsItem>
+              <NDescriptionsItem label="内存限制">{{ game.memoryLimit ? `${game.memoryLimit ?? 0} MB` : '-' }}</NDescriptionsItem>
               <NDescriptionsItem label="状态">
                 <NTag :type="game.disabled ? 'error' : 'success'" size="small">
                   {{ game.disabled ? '已禁用' : '已启用' }}
@@ -189,7 +189,7 @@ const editForm = ref({
   title: '',
   gamerQuantity: 2,
   timeLimit: 1000,
-  memoryLimit: 256 * 1024 * 1024,
+  memoryLimit: 256,
   description: '',
   disabled: true,
   rendererHtml: '',
@@ -197,8 +197,8 @@ const editForm = ref({
 
 // 内存以 MB 为单位进行交互
 const editFormMemoryMB = computed({
-  get: () => Math.floor(editForm.value.memoryLimit / 1024 / 1024),
-  set: (v: number) => { editForm.value.memoryLimit = v * 1024 * 1024 },
+  get: () => editForm.value.memoryLimit,
+  set: (v: number) => { editForm.value.memoryLimit = v },
 })
 
 const editFormEnabled = computed({
@@ -304,11 +304,12 @@ async function fetchLeaderboard() {
 }
 
 const leaderboardColumns: DataTableColumns<any> = [
-  { title: '排名', key: 'rank', width: 80 },
-  { title: '玩家', key: 'name', render: r => r.name || r.username || r.gamerId },
-  { title: '积分', key: 'score', width: 100 },
-  { title: '胜场', key: 'wins', width: 80, render: r => r.wins ?? '-' },
-  { title: '败场', key: 'losses', width: 80, render: r => r.losses ?? '-' },
+  { title: '排名', key: '_rank', width: 60, render: (_r, idx) => idx + 1 },
+  { title: '玩家', key: 'name', render: r => r.name || r.username || `Bot#${r.gamerId}` },
+  { title: 'ELO', key: 'elo', width: 80 },
+  { title: '胜场', key: 'wins', width: 70, render: r => r.wins ?? '-' },
+  { title: '总场', key: 'total', width: 70, render: r => r.total ?? '-' },
+  { title: '胜率', key: 'winRate', width: 70, render: r => r.winRate != null ? `${(r.winRate * 100).toFixed(1)}%` : '-' },
 ]
 
 // ── 对局列表 ──
@@ -361,7 +362,7 @@ const matchColumns: DataTableColumns<any> = [
       size: 'small',
     }, { default: () => matchStatusLabel[r.status] || r.status || '-' }),
   },
-  { title: '参与者', key: 'gamers', render: r => r.gamers?.map((g: any) => g.name || g.id).join(', ') || '-' },
+  { title: '参与者', key: 'links', render: r => r.links?.map((l: any) => l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`).join(', ') || '-' },
   {
     title: '创建时间',
     key: 'createdAt',
