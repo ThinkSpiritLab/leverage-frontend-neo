@@ -61,66 +61,60 @@
             </NSpace>
           </template>
 
-          <!-- Always render iframe when rendererHtml exists, use v-show to prevent flash on turn reset -->
-          <div v-if="match.game?.rendererHtml" v-show="humanTurn" style="margin-bottom:12px">
+          <!-- Renderer iframe: always mounted when rendererHtml exists, hidden when not your turn -->
+          <div
+            v-if="match.game?.rendererHtml"
+            v-show="!!humanTurn"
+            style="margin-bottom:12px"
+          >
             <iframe
               ref="humanRendererRef"
-              :srcdoc="match.game?.rendererHtml || ''"
+              :srcdoc="match.game.rendererHtml"
               sandbox="allow-scripts"
               style="width:100%;height:420px;border:1px solid #e0e0e6;border-radius:8px"
               @load="onHumanRendererLoad"
             />
-            <NText v-if="!iframeInteractive" depth="3" style="font-size:12px;display:block;margin-top:4px">
-              渲染器未声明交互支持，请使用下方输入框
-            </NText>
           </div>
 
+          <!-- Your-turn controls (countdown + fallback board + text input) -->
           <template v-if="humanTurn">
-            <!-- Countdown -->
             <NSpace align="center" style="margin-bottom:12px">
               <NText type="success" strong>轮到你了！</NText>
-              <NTag
-                :type="countdownSec > 30 ? 'success' : countdownSec > 10 ? 'warning' : 'error'"
-                size="small"
-              >
+              <NTag :type="countdownSec > 30 ? 'success' : countdownSec > 10 ? 'warning' : 'error'" size="small">
                 ⏱ {{ countdownSec }}s
               </NTag>
             </NSpace>
 
-            <!-- Renderer iframe is rendered outside v-if to avoid re-mounting (see above) -->
-
-            <!-- Inline TicTacToe board (fallback when no rendererHtml) -->
-            <div v-else-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
-              <div
-                v-for="(cell, i) in tttBoard"
-                :key="i"
-                class="ttt-cell"
-                :class="{ 'can-click': cell === 0 }"
-                @click="cell === 0 && !submittingMove && clickCell(i)"
-              >
-                <span v-if="cell === 1" style="color:#d03050;font-size:22px;font-weight:bold">✕</span>
-                <span v-else-if="cell === 2" style="color:#2080f0;font-size:22px;font-weight:bold">○</span>
-                <span v-else style="color:#aaa;font-size:12px">{{ i }}</span>
+            <!-- Inline board fallback (no rendererHtml) -->
+            <template v-if="!match.game?.rendererHtml">
+              <div v-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
+                <div
+                  v-for="(cell, i) in tttBoard"
+                  :key="i"
+                  class="ttt-cell"
+                  :class="{ 'can-click': cell === 0 }"
+                  @click="cell === 0 && !submittingMove && clickCell(i)"
+                >
+                  <span v-if="cell === 1" style="color:#d03050;font-size:22px;font-weight:bold">✕</span>
+                  <span v-else-if="cell === 2" style="color:#2080f0;font-size:22px;font-weight:bold">○</span>
+                  <span v-else style="color:#aaa;font-size:12px">{{ i }}</span>
+                </div>
               </div>
-            </div>
-
-            <!-- JSON text input: shown when renderer isn't interactive, and no visual board -->
-            <template v-if="!iframeInteractive">
-              <details v-if="match.game?.rendererHtml" style="margin-bottom:8px">
-                <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
-                <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:160px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
-              </details>
-              <NSpace v-if="!match.game?.rendererHtml || !tttBoard" align="center" style="margin-top:8px">
-                <NInput
-                  v-model:value="humanMove"
-                  placeholder='输入移动（如 {"0": 4}）'
-                  style="width: 300px; font-family: monospace"
-                  @keyup.enter="submitHumanMove"
-                />
-                <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
-              </NSpace>
             </template>
+
+            <!-- Text input: shown when renderer isn't interactive (or no renderer) -->
+            <NSpace v-if="!iframeInteractive" align="center" style="margin-top:4px">
+              <NInput
+                v-model:value="humanMove"
+                placeholder='输入移动（如 {"0": 4}）'
+                style="width: 300px; font-family: monospace"
+                @keyup.enter="submitHumanMove"
+              />
+              <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
+            </NSpace>
           </template>
+
+          <!-- Waiting state -->
           <template v-else>
             <NSpace align="center">
               <NSpin size="small" />
