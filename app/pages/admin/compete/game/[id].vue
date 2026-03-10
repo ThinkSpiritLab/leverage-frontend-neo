@@ -102,6 +102,33 @@
         <!-- 自定义渲染器 HTML -->
         <NFormItem label="自定义渲染器 HTML">
           <div style="width: 100%">
+            <!-- 开发指南折叠区 -->
+            <NCollapse style="margin-bottom:8px;border:1px solid #e0e0e6;border-radius:6px;padding:0 8px">
+              <NCollapseItem title="📖 渲染器开发指南 & 模板" name="guide">
+                <div style="font-size:13px;line-height:1.7">
+                  <p style="margin:0 0 8px"><strong>渲染器通过 postMessage 与平台通信，支持回放和人类出手两种模式。</strong></p>
+                  <div style="background:#f5f5f5;border-radius:4px;padding:8px;margin-bottom:8px">
+                    <strong>消息协议：</strong>
+                    <ul style="margin:4px 0;padding-left:20px">
+                      <li>启动时发送：<code>window.parent.postMessage({'{'} type: 'capabilities', interactive: true {'}'}, '*')</code></li>
+                      <li>接收 <code>{'{'} type: 'gameLog', gameLog, round {'}'}</code> — 回放模式</li>
+                      <li>接收 <code>{'{'} type: 'gameState', gameState, playerIndex {'}'}</code> — 人类出手</li>
+                      <li>发送 <code>{'{'} type: 'humanMove', move: '{"0": 42}' {'}'}</code> — 提交移动（字符串！）</li>
+                    </ul>
+                    <strong>BotInput 格式：</strong>
+                    <pre style="margin:4px 0;font-size:11px;overflow:auto">gameState.requests[last] // JSON 字符串，需 JSON.parse()
+// 例如："{'{'\"stones\": 15, \"turn\": 0'}'"</pre>
+                  </div>
+                  <NButton
+                    size="small" type="primary" secondary
+                    @click="editForm.rendererHtml = minimalTemplate"
+                  >
+                    插入最小模板
+                  </NButton>
+                </div>
+              </NCollapseItem>
+            </NCollapse>
+
             <NInput
               v-model:value="editForm.rendererHtml"
               type="textarea"
@@ -157,7 +184,7 @@
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NTag, useMessage } from 'naive-ui'
+import { NTag, NButton, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
 
@@ -215,6 +242,70 @@ const editFormEnabled = computed({
 
 const rendererHtmlLen = computed(() => editForm.value.rendererHtml?.length ?? 0)
 const rendererHtmlOverLimit = computed(() => rendererHtmlLen.value > 512000)
+
+const minimalTemplate = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #0f1117; color: #e2e8f0; padding: 16px; min-height: 400px; }
+  button { padding: 10px 24px; border: none; border-radius: 8px; background: #3182ce; color: #fff; font-size: 1rem; cursor: pointer; margin: 4px; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div id="app">等待游戏数据…</div>
+<script>
+  // 1. 声明交互能力（必须第一行）
+  window.parent.postMessage({ type: 'capabilities', interactive: true }, '*');
+
+  const app = document.getElementById('app');
+  let submitted = false;
+
+  // 2. 监听平台消息
+  window.addEventListener('message', (e) => {
+    const data = e.data;
+    if (!data || !data.type) return;
+    if (data.type === 'gameLog') renderReplay(data.gameLog, data.round);
+    else if (data.type === 'gameState') renderHumanTurn(data.gameState, data.playerIndex);
+  });
+
+  // 3. 回放模式
+  function renderReplay(gameLog, highlightRound) {
+    const rounds = gameLog.rounds || [];
+    let html = '<h3>📺 回放</h3><ul>';
+    for (const r of rounds) {
+      html += \`<li>第 \${r.round} 轮：\${JSON.stringify(r.botResponses)}</li>\`;
+    }
+    html += '</ul>';
+    if (gameLog.finalResult) html += \`<p>最终结果：\${JSON.stringify(gameLog.finalResult)}</p>\`;
+    app.innerHTML = html;
+  }
+
+  // 4. 人类出手模式
+  function renderHumanTurn(gameState, playerIndex) {
+    if (submitted) return;
+    const requests = gameState.requests || [];
+    const lastReq = requests.length > 0 ? JSON.parse(requests[requests.length - 1]) : {};
+    app.innerHTML = \`
+      <h3>🎮 你的回合（玩家 \${playerIndex}）</h3>
+      <p>当前请求：<code>\${JSON.stringify(lastReq)}</code></p>
+      <button id="btn">提交操作</button>
+    \`;
+    document.getElementById('btn').addEventListener('click', () => {
+      if (submitted) return;
+      submitted = true;
+      document.getElementById('btn').disabled = true;
+      const move = {};
+      move[String(playerIndex)] = 1; // ← 替换为实际操作值
+      window.parent.postMessage({ type: 'humanMove', move: JSON.stringify(move) }, '*');
+      app.innerHTML += '<p>✅ 已提交，等待结果…</p>';
+    });
+  }
+<\/script>
+</body>
+</html>`
 
 const rendererHtmlPlaceholder = `<!DOCTYPE html>
 <html>
