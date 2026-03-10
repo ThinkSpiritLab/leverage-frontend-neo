@@ -523,6 +523,19 @@ function clickCell(i: number) {
 // SSE connection
 let sseSource: EventSource | null = null
 
+async function pollPendingTurn() {
+  // If there's already a turn waiting for this gamer (e.g. page loaded mid-game),
+  // fetch it via the bot-turn long-poll (short timeout so it doesn't block).
+  const gamer = myHumanGamer.value
+  if (!gamer || humanTurn.value) return
+  try {
+    const res = await useCompeteApi().botTurnPoll(gamer.id)
+    if (res?.data?.turnToken) {
+      humanTurn.value = { turnToken: res.data.turnToken, gameState: res.data.gameState }
+    }
+  } catch { /* not our turn yet */ }
+}
+
 function connectHumanSSE() {
   if (!myHumanGamer.value) return
   const token = authStore.token
@@ -545,6 +558,9 @@ function connectHumanSSE() {
   sseSource.onerror = () => {
     // Auto-reconnect handled by browser
   }
+
+  // Also poll once immediately in case there's already a pending turn
+  pollPendingTurn()
 }
 
 async function submitHumanMove() {
@@ -561,9 +577,15 @@ async function submitHumanMove() {
   }
 }
 
-onMounted(() => {
-  if (myHumanGamer.value) connectHumanSSE()
-})
+// Connect SSE as soon as we know the user is a human player in this match.
+// myHumanGamer depends on match.value, so we watch until it's non-null.
+const stopWatchSSE = watch(myHumanGamer, (gamer) => {
+  if (gamer && !sseSource) {
+    connectHumanSSE()
+    stopWatchSSE()
+  }
+}, { immediate: true })
+
 onUnmounted(() => { sseSource?.close() })
 
 useHead(computed(() => ({ title: `对战记录 #${matchId.value} — Leverage OJ` })))
