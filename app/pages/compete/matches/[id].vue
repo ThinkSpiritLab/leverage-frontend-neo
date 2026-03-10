@@ -528,7 +528,7 @@ function connectHumanSSE() {
   const token = authStore.token
   if (!token) return
 
-  const url = `/compete/matches/${matchId.value}/human-sse`
+  const url = `/compete/matches/${matchId.value}/human-sse?token=${encodeURIComponent(token)}`
   sseSource = new EventSource(url)
 
   sseSource.onmessage = (e) => {
