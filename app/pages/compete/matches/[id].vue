@@ -469,15 +469,9 @@ const humanRendererRef = ref<HTMLIFrameElement | null>(null)
 const humanRendererSrcdoc = computed(() => match.value?.game?.rendererHtml || '')
 
 function onHumanRendererLoad() {
-  // Send current game state to renderer with player index
   const turn = humanTurn.value
-  const win = humanRendererRef.value?.contentWindow
-  console.log('[Renderer] onLoad, humanTurn=', !!turn, 'contentWindow=', !!win)
-  if (turn && win) {
-    const msg = { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 }
-    console.log('[Renderer] sending gameState, playerIndex=', msg.playerIndex)
-    win.postMessage(msg, '*')
-  }
+  console.log('[Renderer] @load fired, humanTurn=', !!turn)
+  if (turn) sendGameStateToRenderer(turn)
 }
 
 // Whether the current renderer iframe declared interactive support
@@ -502,20 +496,26 @@ onMounted(() => { window.addEventListener('message', onIframeMessage) })
 onUnmounted(() => { window.removeEventListener('message', onIframeMessage) })
 
 // Watch humanTurn changes to push gameState to iframe
-watch(() => humanTurn.value, async (turn) => {
-  if (turn) {
-    // Wait for Vue to render the iframe before sending the message
-    await nextTick()
-    await nextTick() // two ticks to ensure ref is bound
+// Send gameState to iframe; retry until iframe window is ready (handles async load)
+function sendGameStateToRenderer(turn: { turnToken: string; gameState: any }) {
+  const msg = { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 }
+  let attempts = 0
+  const tryPost = () => {
     const win = humanRendererRef.value?.contentWindow
-    console.log('[Renderer] watch humanTurn, contentWindow=', !!win)
+    console.log(`[Renderer] tryPost attempt ${attempts}, contentWindow=`, !!win, 'humanTurn=', !!humanTurn.value)
     if (win) {
-      win.postMessage(
-        { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 },
-        '*',
-      )
+      console.log('[Renderer] sending gameState, playerIndex=', msg.playerIndex)
+      win.postMessage(msg, '*')
+    } else if (attempts < 20) {
+      attempts++
+      setTimeout(tryPost, 100)
     }
   }
+  setTimeout(tryPost, 50) // slight delay for Vue to render iframe
+}
+
+watch(() => humanTurn.value, (turn) => {
+  if (turn) sendGameStateToRenderer(turn)
 })
 
 // TicTacToe board helper — returns flat 9-cell array or null if not ttt
