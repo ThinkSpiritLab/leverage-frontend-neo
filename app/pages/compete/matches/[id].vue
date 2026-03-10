@@ -353,7 +353,7 @@ const myHumanGamer = computed(() => {
 const humanTurn = ref<{ turnToken: string; gameState: any } | null>(null)
 const humanMove = ref('')
 const submittingMove = ref(false)
-const humanMsg = useMessage?.() || null
+// message composable not needed here
 
 // SSE connection
 let sseSource: EventSource | null = null

@@ -23,10 +23,10 @@
         <NTabPane name="leaderboard" tab="🏆 排行榜">
           <div style="margin-top:12px">
             <NSpace style="margin-bottom:12px" align="center">
-              <NRadioGroup v-model:value="leaderboardBoard" @update:value="fetchLeaderboard">
-                <NRadioButton value="inner">内榜（Bot对Bot）</NRadioButton>
-                <NRadioButton value="outer">外榜（含真人/外部）</NRadioButton>
-              </NRadioGroup>
+              <NSwitch v-model:value="showNonBot" @update:value="fetchLeaderboard">
+                <template #checked>显示真人/外部</template>
+                <template #unchecked>仅 Bot 竞争</template>
+              </NSwitch>
               <NButton size="small" @click="fetchLeaderboard">刷新</NButton>
             </NSpace>
             <NDataTable
@@ -178,7 +178,8 @@ onMounted(fetchGame)
 // ── Leaderboard ──
 const leaderboard = ref<any[]>([])
 const leaderboardLoading = ref(false)
-const leaderboardBoard = ref<'inner' | 'outer'>('inner')
+const showNonBot = ref(false)
+const leaderboardBoard = computed(() => showNonBot.value ? 'outer' : 'inner')
 
 const TYPE_LABEL: Record<string, string> = {
   code: '',
@@ -190,7 +191,7 @@ const TYPE_LABEL: Record<string, string> = {
 async function fetchLeaderboard() {
   leaderboardLoading.value = true
   try {
-    const res = await competeApi.getLeaderboard(gameId, leaderboardBoard.value)
+    const res = await competeApi.getLeaderboard(gameId, leaderboardBoard.value as 'inner' | 'outer')
     leaderboard.value = Array.isArray(res.data) ? res.data : []
   } catch (e) { console.error(e) }
   finally { leaderboardLoading.value = false }
@@ -209,7 +210,7 @@ const leaderboardColumns = computed<DataTableColumns<any>>(() => [
       ])
     },
   },
-  { title: leaderboardBoard.value === 'inner' ? 'ELO（内榜）' : 'ELO（外榜）', key: 'elo', width: 100 },
+  { title: showNonBot.value ? 'ELO（外榜）' : 'ELO（内榜）', key: 'elo', width: 100 },
   { title: '胜场', key: 'wins', width: 70 },
   { title: '总场', key: 'total', width: 70 },
   { title: '胜率', key: 'winRate', width: 80, render: (r: any) => r.winRate != null ? `${(r.winRate * 100).toFixed(1)}%` : '-' },
