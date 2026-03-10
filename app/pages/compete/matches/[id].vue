@@ -526,7 +526,7 @@ let sseSource: EventSource | null = null
 function connectHumanSSE() {
   console.log('[SSE] connectHumanSSE called, myHumanGamer=', myHumanGamer.value)
   if (!myHumanGamer.value) { console.warn('[SSE] no humanGamer, abort'); return }
-  const token = authStore.token
+  const token = authStore.accessToken
   console.log('[SSE] token present:', !!token)
   if (!token) return
 
