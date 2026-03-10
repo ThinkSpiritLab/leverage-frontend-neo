@@ -2,7 +2,7 @@
 definePageMeta({ layout: 'admin' })
 
 const { data: games, refresh } = await useAsyncData('admin-games', () =>
-  useCompeteApi().getGames({ page: 1, perPage: 50 })
+  useCompeteApi().listGames({ page: 1, perPage: 50 })
 )
 
 async function deleteGame(id: number) {
