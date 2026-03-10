@@ -465,32 +465,18 @@ const submittingMove = ref(false)
 const humanRendererRef = ref<HTMLIFrameElement | null>(null)
 
 // srcdoc injects a postMessage listener into the renderer HTML for human turns
-const humanRendererSrcdoc = computed(() => {
-  const html = match.value?.game?.rendererHtml || ''
-  // Inject a listener that auto-submits move when renderer sends { type: 'humanMove', move }
-  const injected = `<script>
-window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'gameState') {
-    // Forward to renderer as humanTurn signal
-    window.postMessage(e.data, '*');
-  }
-});
-<\/script>`
-  // Insert before </body> or at end
-  return html.includes('</body>') ? html.replace('</body>', injected + '</body>') : html + injected
-})
+// Use raw rendererHtml — the renderer is responsible for handling gameState/gameLog messages
+const humanRendererSrcdoc = computed(() => match.value?.game?.rendererHtml || '')
 
 function onHumanRendererLoad() {
   // Send current game state to renderer with player index
-  if (humanTurn.value && humanRendererRef.value?.contentWindow) {
-    humanRendererRef.value.contentWindow.postMessage(
-      {
-        type: 'gameState',
-        gameState: humanTurn.value.gameState,
-        playerIndex: myHumanGamer.value?.index ?? 0,
-      },
-      '*',
-    )
+  const turn = humanTurn.value
+  const win = humanRendererRef.value?.contentWindow
+  console.log('[Renderer] onLoad, humanTurn=', !!turn, 'contentWindow=', !!win)
+  if (turn && win) {
+    const msg = { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 }
+    console.log('[Renderer] sending gameState, playerIndex=', msg.playerIndex)
+    win.postMessage(msg, '*')
   }
 }
 
