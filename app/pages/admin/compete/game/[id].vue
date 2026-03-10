@@ -72,8 +72,8 @@
     </NSpin>
 
     <!-- 编辑弹窗 -->
-    <NModal v-model:show="showEditModal" title="编辑游戏" preset="dialog" style="width: 560px">
-      <NForm :model="editForm" label-placement="left" label-width="100px" style="margin-top: 12px">
+    <NModal v-model:show="showEditModal" title="编辑游戏" preset="card" style="width: 680px; max-height: 90vh; overflow-y: auto">
+      <NForm :model="editForm" label-placement="left" label-width="120px">
         <NFormItem label="游戏名称" required>
           <NInput v-model:value="editForm.title" placeholder="输入游戏名称" />
         </NFormItem>
@@ -92,11 +92,57 @@
         <NFormItem label="启用">
           <NSwitch v-model:value="editFormEnabled" />
         </NFormItem>
+
+        <!-- 自定义渲染器 HTML -->
+        <NFormItem label="自定义渲染器 HTML">
+          <div style="width: 100%">
+            <NInput
+              v-model:value="editForm.rendererHtml"
+              type="textarea"
+              :rows="10"
+              :placeholder="rendererHtmlPlaceholder"
+              style="font-family: monospace; font-size: 12px"
+            />
+            <NSpace justify="space-between" align="center" style="margin-top: 6px">
+              <NText :type="rendererHtmlOverLimit ? 'error' : 'default'" style="font-size: 12px">
+                {{ rendererHtmlLen.toLocaleString() }} / 512,000 字符
+              </NText>
+              <NButton size="small" secondary @click="showRendererPreview = true">
+                预览
+              </NButton>
+            </NSpace>
+            <NAlert v-if="rendererHtmlOverLimit" type="error" :show-icon="false" style="margin-top: 4px; font-size: 12px">
+              超出 512KB 限制，请精简代码
+            </NAlert>
+          </div>
+        </NFormItem>
       </NForm>
-      <template #action>
+      <template #footer>
         <NSpace justify="end">
           <NButton @click="showEditModal = false">取消</NButton>
-          <NButton type="primary" :loading="saving" @click="handleSaveEdit">保存</NButton>
+          <NButton type="primary" :loading="saving" :disabled="rendererHtmlOverLimit" @click="handleSaveEdit">保存</NButton>
+        </NSpace>
+      </template>
+    </NModal>
+
+    <!-- 渲染器预览弹窗 -->
+    <NModal v-model:show="showRendererPreview" title="渲染器预览" preset="card" style="width: 760px">
+      <NAlert type="info" :show-icon="false" style="margin-bottom: 12px; font-size: 12px">
+        以下使用示例 gameLog 数据测试你的渲染器。iframe 仅允许执行脚本（sandbox=allow-scripts），无法访问父页面。
+      </NAlert>
+      <iframe
+        v-if="editForm.rendererHtml && showRendererPreview"
+        :srcdoc="editForm.rendererHtml"
+        sandbox="allow-scripts"
+        style="width:100%;height:420px;border:1px solid #e0e0e0;border-radius:4px;display:block"
+        :ref="(el) => { previewIframeEl = el as HTMLIFrameElement | null }"
+        @load="onPreviewIframeLoad"
+      />
+      <NEmpty v-else description="请先填写渲染器 HTML" />
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="sendPreviewMessage">重发 gameLog 消息</NButton>
+          <NButton type="primary" @click="showRendererPreview = false">关闭</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -146,6 +192,7 @@ const editForm = ref({
   memoryLimit: 256 * 1024 * 1024,
   description: '',
   disabled: true,
+  rendererHtml: '',
 })
 
 // 内存以 MB 为单位进行交互
@@ -159,6 +206,52 @@ const editFormEnabled = computed({
   set: (v: boolean) => { editForm.value.disabled = !v },
 })
 
+const rendererHtmlLen = computed(() => editForm.value.rendererHtml?.length ?? 0)
+const rendererHtmlOverLimit = computed(() => rendererHtmlLen.value > 512000)
+
+const rendererHtmlPlaceholder = `<!DOCTYPE html>
+<html>
+<body>
+<div id="app"></div>
+<script>
+  window.addEventListener('message', function({ data }) {
+    if (data.type === 'gameLog') {
+      document.getElementById('app').innerHTML =
+        '<pre>' + JSON.stringify(data.gameLog, null, 2) + '<\\/pre>';
+    }
+  });
+<\/script>
+</body>
+</html>`
+
+// ── 渲染器预览 ──
+const showRendererPreview = ref(false)
+const previewIframeEl = ref<HTMLIFrameElement | null>(null)
+
+const previewGameLog = {
+  gameId: 'preview',
+  rounds: [
+    {
+      round: 1,
+      judgerDisplay: { info: '示例回合数据' },
+      botOutputs: { '0': '示例输出A', '1': '示例输出B' },
+    },
+  ],
+  finalResult: { '0': 100, '1': 80 },
+  verdict: 'Player 0 wins',
+}
+
+function sendPreviewMessage() {
+  previewIframeEl.value?.contentWindow?.postMessage(
+    { type: 'gameLog', gameLog: previewGameLog, round: 0 },
+    '*',
+  )
+}
+
+function onPreviewIframeLoad() {
+  sendPreviewMessage()
+}
+
 function openEditModal() {
   if (!game.value) return
   editForm.value = {
@@ -168,6 +261,7 @@ function openEditModal() {
     memoryLimit: game.value.memoryLimit ?? 256 * 1024 * 1024,
     description: game.value.description || '',
     disabled: !!game.value.disabled,
+    rendererHtml: game.value.rendererHtml || '',
   }
   showEditModal.value = true
 }
@@ -177,9 +271,16 @@ async function handleSaveEdit() {
     message.warning('游戏名称不能为空')
     return
   }
+  if (rendererHtmlOverLimit.value) {
+    message.error('自定义渲染器 HTML 超出 512KB 限制')
+    return
+  }
   saving.value = true
   try {
-    await competeApi.updateGame(gameId, editForm.value)
+    const payload: Record<string, any> = { ...editForm.value }
+    // 空字符串转 null，避免保存空字段
+    if (!payload.rendererHtml) payload.rendererHtml = null
+    await competeApi.updateGame(gameId, payload)
     message.success('游戏信息已更新')
     showEditModal.value = false
     fetchGame()

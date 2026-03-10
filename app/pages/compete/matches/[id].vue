@@ -84,7 +84,13 @@
 
           <!-- 游戏回放 -->
           <template v-if="gameLog">
-            <BotzoneBotzoneReplaySection :game-log="gameLog" />
+            <NCard title="游戏回放" style="margin-bottom: 16px">
+              <BotzoneGameRenderer
+                :game-log="gameLog"
+                :renderer-html="match.game?.rendererHtml"
+                :current-round="replayRound"
+              />
+            </NCard>
           </template>
         </template>
 
@@ -119,6 +125,9 @@ definePageMeta({
 const route = useRoute()
 const matchId = computed(() => Number(route.params.id))
 const competeApi = useCompeteApi()
+
+// 回放当前回合（供 GameRenderer 使用）
+const replayRound = ref(0)
 
 const match = ref<any>(null)
 const loading = ref(false)
