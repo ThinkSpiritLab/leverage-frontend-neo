@@ -194,10 +194,10 @@ const leaderboardLoading = ref(false)
 async function fetchLeaderboard() {
   leaderboardLoading.value = true
   try {
-    const res = await competeApi.getLeaderboard(gameId.value)
-    const raw = Array.isArray(res.data) ? res.data : []
-    // 按 ELO 降序排列
-    leaderboard.value = [...raw].sort((a, b) => (b.elo ?? b.score ?? 0) - (a.elo ?? a.score ?? 0))
+    // 用 gamers 列表（含 elo），按 elo 降序展示所有 bot
+    const res = await competeApi.getGamers({ gameId: gameId.value, page: 1, perPage: 100 })
+    const raw = Array.isArray(res.data?.items) ? res.data.items : []
+    leaderboard.value = [...raw].sort((a, b) => (b.elo ?? 1200) - (a.elo ?? 1200))
   }
   catch (e) {
     console.error(e)
