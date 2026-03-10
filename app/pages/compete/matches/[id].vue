@@ -62,14 +62,15 @@
           </template>
 
           <!-- Renderer iframe: always mounted when rendererHtml exists, hidden when not your turn -->
+          <!-- cachedRendererHtml prevents srcdoc from changing on every poll (which would reload the iframe) -->
           <div
-            v-if="match.game?.rendererHtml"
+            v-if="cachedRendererHtml"
             v-show="!!humanTurn"
             style="margin-bottom:12px"
           >
             <iframe
               ref="humanRendererRef"
-              :srcdoc="match.game.rendererHtml"
+              :srcdoc="cachedRendererHtml"
               sandbox="allow-scripts"
               style="width:100%;height:420px;border:1px solid #e0e0e6;border-radius:8px"
               @load="onHumanRendererLoad"
@@ -86,7 +87,7 @@
             </NSpace>
 
             <!-- Inline board fallback (no rendererHtml) -->
-            <template v-if="!match.game?.rendererHtml">
+            <template v-if="!cachedRendererHtml">
               <div v-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
                 <div
                   v-for="(cell, i) in tttBoard"
@@ -219,6 +220,11 @@ const competeApi = useCompeteApi()
 const replayRound = ref(0)
 
 const match = ref<any>(null)
+// Cached rendererHtml — only updates when content actually changes (prevents iframe reload on poll)
+const cachedRendererHtml = ref<string>('')
+watch(() => match.value?.game?.rendererHtml, (html) => {
+  if (html && html !== cachedRendererHtml.value) cachedRendererHtml.value = html
+}, { immediate: true })
 const loading = ref(false)
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 
