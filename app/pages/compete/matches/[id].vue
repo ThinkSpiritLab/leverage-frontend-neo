@@ -524,16 +524,22 @@ function clickCell(i: number) {
 let sseSource: EventSource | null = null
 
 function connectHumanSSE() {
-  if (!myHumanGamer.value) return
+  console.log('[SSE] connectHumanSSE called, myHumanGamer=', myHumanGamer.value)
+  if (!myHumanGamer.value) { console.warn('[SSE] no humanGamer, abort'); return }
   const token = authStore.token
+  console.log('[SSE] token present:', !!token)
   if (!token) return
 
   const config = useRuntimeConfig()
   const apiBase = (config.public.apiBase as string).replace(/\/$/, '')
   const url = `${apiBase}/compete/matches/${matchId.value}/human-sse?token=${encodeURIComponent(token)}`
+  console.log('[SSE] connecting to', url)
   sseSource = new EventSource(url)
 
+  sseSource.onopen = () => { console.log('[SSE] connection opened') }
+
   sseSource.onmessage = (e) => {
+    console.log('[SSE] message:', e.data)
     try {
       const data = JSON.parse(e.data)
       if (data.type === 'your-turn') {
@@ -544,8 +550,8 @@ function connectHumanSSE() {
     } catch { /* ignore */ }
   }
 
-  sseSource.onerror = () => {
-    // Auto-reconnect handled by browser
+  sseSource.onerror = (e) => {
+    console.error('[SSE] error:', e, 'readyState:', sseSource?.readyState)
   }
 
   // Backend will replay any pending turn immediately on SSE connect
@@ -568,6 +574,7 @@ async function submitHumanMove() {
 // Connect SSE as soon as we know the user is a human player in this match.
 // myHumanGamer depends on match.value, so we watch until it's non-null.
 const stopWatchSSE = watch(myHumanGamer, (gamer) => {
+  console.log('[SSE] myHumanGamer watch fired, gamer=', gamer, 'sseSource=', !!sseSource)
   if (gamer && !sseSource) {
     connectHumanSSE()
     stopWatchSSE()
