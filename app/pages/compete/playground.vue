@@ -312,72 +312,16 @@
       </NTabPane>
 
       <!-- ══════════════════════════════════════
-           Tab 5: Wiki
+           Tab 5: Wiki（交互式教程）
       ══════════════════════════════════════ -->
-      <NTabPane name="wiki" tab="📖 文档">
+      <NTabPane name="wiki" tab="📖 教程">
         <div style="margin-top:12px">
-          <NSelect v-model:value="wikiGameId" :options="[{label:'选择游戏...',value:null},...gameOptions]"
-            placeholder="选择游戏查看协议..." clearable style="max-width:300px;margin-bottom:16px"
-            @update:value="loadWikiGame" />
-
-          <NGrid v-if="wikiGame" :cols="12" :x-gap="16" :y-gap="12">
-            <NGridItem :span="4">
-              <NCard :title="wikiGame.name" size="small">
-                <NDescriptions :column="1" size="small" style="margin-bottom:8px">
-                  <NDescriptionsItem label="玩家数">{{ wikiGame.gamerQuantity }}</NDescriptionsItem>
-                  <NDescriptionsItem label="时间限制">{{ wikiGame.timeLimit }}ms</NDescriptionsItem>
-                  <NDescriptionsItem label="内存限制">{{ wikiGame.memoryLimit }}MB</NDescriptionsItem>
-                </NDescriptions>
-                <NText style="font-size:13px;white-space:pre-wrap">{{ wikiGame.description || '暂无描述' }}</NText>
-                <div style="margin-top:12px">
-                  <NButton size="small" type="primary" secondary block @click="goPlayWithGame">→ 在 Bot 测试中打开</NButton>
-                </div>
-              </NCard>
-            </NGridItem>
-            <NGridItem :span="8">
-              <NCard title="Bot IO 协议" size="small">
-                <NAlert type="info" :show-icon="false" style="margin-bottom:12px;font-size:12px">
-                  Bot 从 stdin 读当前局面 JSON，向 stdout 输出移动。简单 Bot 直接输出值；进阶 Bot 输出 JSON 对象（含 <code>move</code> + <code>debug</code> 字段）。
-                </NAlert>
-                <NTabs type="line" size="small">
-                  <NTabPane name="simple" tab="简单 Bot">
-                    <pre class="wiki-code">{{ simpleBotTemplate }}</pre>
-                  </NTabPane>
-                  <NTabPane name="json" tab="JSON Bot（含 debug）">
-                    <pre class="wiki-code">{{ jsonBotTemplate }}</pre>
-                  </NTabPane>
-                </NTabs>
-              </NCard>
-            </NGridItem>
-          </NGrid>
-
-          <!-- General docs -->
-          <NCollapse v-if="!wikiGame" style="margin-top:8px">
-            <NCollapseItem title="🤖 Bot 输出格式" name="bot">
-              <div style="font-size:13px;line-height:1.8">
-                <ul>
-                  <li>简单输出：直接打印移动值（数字/字符串），<strong>不能以 <code>{'{'}</code> 开头</strong></li>
-                  <li>JSON 输出：<code>{'{'}"move": 42, "debug": "我的思路"{'}'}</code> — debug 信息会显示在时序图中</li>
-                  <li>stderr 输出会自动收集并在时序图中展示</li>
-                </ul>
-              </div>
-            </NCollapseItem>
-            <NCollapseItem title="⚖️ 裁判 IO 协议" name="judge">
-              <div style="font-size:13px;line-height:1.8">
-                <p><strong>裁判是长驻进程，每轮读一行 stdin，写一行 stdout：</strong></p>
-                <pre class="wiki-code">{{ judgeProtocolExample }}</pre>
-              </div>
-            </NCollapseItem>
-            <NCollapseItem title="🎨 渲染器 postMessage 协议" name="renderer">
-              <div style="font-size:13px;line-height:1.8">
-                <ul>
-                  <li>启动时：<code>window.parent.postMessage({'{'} type: 'capabilities', interactive: true {'}'}, '*')</code></li>
-                  <li>接收 <code>gameLog</code>（回放）或 <code>gameState + playerIndex</code>（人类出手）</li>
-                  <li>落子时发送：<code>{'{'} type: 'humanMove', move: '{"0": 42}' {'}'}</code></li>
-                </ul>
-              </div>
-            </NCollapseItem>
-          </NCollapse>
+          <WikiContent
+            :games="games"
+            :default-game-id="bot.gameId"
+            @go-playground="handleWikiGoPlayground"
+            @go-renderer="handleWikiGoRenderer"
+          />
         </div>
       </NTabPane>
     </NTabs>
@@ -414,6 +358,7 @@ import { LANGUAGE_OPTIONS } from '~/types'
 import type { TimelineRound } from '~/components/compete/MatchTimeline.vue'
 import ProgramSlot from '~/components/compete/ProgramSlot.vue'
 import MatchTimeline from '~/components/compete/MatchTimeline.vue'
+import WikiContent from '~/components/compete/WikiContent.vue'
 
 const message = useMessage()
 const competeApi = useCompeteApi()
@@ -923,6 +868,21 @@ for line in sys.stdin:
     # ... your judging logic ...
     print(json.dumps({"commands": {"0": {}, "1": {}}, "verdict": "continue"}))
     sys.stdout.flush()`
+
+// ══════════════════════════════════════
+// WIKI → Playground navigation
+// ══════════════════════════════════════
+function handleWikiGoPlayground(opts: { tab?: string; code?: string; lang?: string; gameId?: number }) {
+  if (opts.code) botCode.value = opts.code
+  if (opts.lang) bot.value.language = opts.lang
+  if (opts.gameId) { bot.value.gameId = opts.gameId; onBotGameChange(opts.gameId) }
+  activeTab.value = opts.tab || 'bot'
+}
+
+function handleWikiGoRenderer(opts: { html?: string }) {
+  if (opts.html) { rendererHtml.value = opts.html; rendererPreview.value = opts.html }
+  activeTab.value = 'renderer'
+}
 </script>
 
 <style scoped>
