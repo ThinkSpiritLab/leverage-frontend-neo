@@ -502,12 +502,19 @@ onMounted(() => { window.addEventListener('message', onIframeMessage) })
 onUnmounted(() => { window.removeEventListener('message', onIframeMessage) })
 
 // Watch humanTurn changes to push gameState to iframe
-watch(() => humanTurn.value, (turn) => {
-  if (turn && humanRendererRef.value?.contentWindow) {
-    humanRendererRef.value.contentWindow.postMessage(
-      { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 },
-      '*',
-    )
+watch(() => humanTurn.value, async (turn) => {
+  if (turn) {
+    // Wait for Vue to render the iframe before sending the message
+    await nextTick()
+    await nextTick() // two ticks to ensure ref is bound
+    const win = humanRendererRef.value?.contentWindow
+    console.log('[Renderer] watch humanTurn, contentWindow=', !!win)
+    if (win) {
+      win.postMessage(
+        { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 },
+        '*',
+      )
+    }
   }
 })
 
