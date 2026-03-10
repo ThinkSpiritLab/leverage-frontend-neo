@@ -47,6 +47,27 @@
           </NDescriptions>
         </NCard>
 
+        <!-- 人类玩家输入区 -->
+        <NCard v-if="myHumanGamer && match?.status === 1" title="🎮 你的回合" style="margin-bottom: 16px; border: 2px solid #18a058">
+          <template v-if="humanTurn">
+            <NText type="success" strong style="display:block;margin-bottom:8px">轮到你了！查看棋盘状态，输入你的移动：</NText>
+            <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-bottom:12px;overflow:auto;max-height:200px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
+            <NSpace>
+              <NInput
+                v-model:value="humanMove"
+                placeholder='输入移动（如 {"0": 4}）'
+                style="width: 300px; font-family: monospace"
+                @keyup.enter="submitHumanMove"
+              />
+              <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
+            </NSpace>
+          </template>
+          <template v-else>
+            <NText depth="3">等待对手移动中…</NText>
+            <NSpin size="small" style="margin-left: 8px" />
+          </template>
+        </NCard>
+
         <!-- 参与 Bot -->
         <NCard title="参与 Bot" style="margin-bottom: 16px">
           <NDataTable
@@ -320,6 +341,65 @@ const gamerColumns: DataTableColumns<any> = [
     },
   },
 ]
+
+// ─── Human Player (SSE + 提交移动) ────────────────────────────────────────────
+
+const authStore = useAuthStore()
+const myHumanGamer = computed(() => {
+  if (!authStore.user) return null
+  return gamerList.value.find((g: any) => g.type === 'human' && g.userId === authStore.user?.id) || null
+})
+
+const humanTurn = ref<{ turnToken: string; gameState: any } | null>(null)
+const humanMove = ref('')
+const submittingMove = ref(false)
+const humanMsg = useMessage?.() || null
+
+// SSE connection
+let sseSource: EventSource | null = null
+
+function connectHumanSSE() {
+  if (!myHumanGamer.value) return
+  const token = authStore.token
+  if (!token) return
+
+  const url = `/compete/matches/${matchId.value}/human-sse`
+  sseSource = new EventSource(url)
+
+  sseSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      if (data.type === 'your-turn') {
+        humanTurn.value = { turnToken: data.turnToken, gameState: data.gameState }
+      } else if (data.type === 'game-over') {
+        humanTurn.value = null
+      }
+    } catch { /* ignore */ }
+  }
+
+  sseSource.onerror = () => {
+    // Auto-reconnect handled by browser
+  }
+}
+
+async function submitHumanMove() {
+  if (!humanTurn.value || !humanMove.value.trim()) return
+  submittingMove.value = true
+  try {
+    await useCompeteApi().botRespond(humanTurn.value.turnToken, humanMove.value.trim())
+    humanTurn.value = null
+    humanMove.value = ''
+  } catch (e: any) {
+    console.error('submitHumanMove error', e)
+  } finally {
+    submittingMove.value = false
+  }
+}
+
+onMounted(() => {
+  if (myHumanGamer.value) connectHumanSSE()
+})
+onUnmounted(() => { sseSource?.close() })
 
 useHead(computed(() => ({ title: `对战记录 #${matchId.value} — Leverage OJ` })))
 </script>

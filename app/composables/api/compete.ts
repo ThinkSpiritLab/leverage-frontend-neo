@@ -34,7 +34,12 @@ export function useCompeteApi() {
     }) => api.patch<any>(`/compete/gamers/${id}`, dto),
     triggerAutoMatch: (gameId: number) =>
       api.post<any>(`/compete/games/${gameId}/trigger-auto-match`),
+    botTurnPoll: (gamerId: number) =>
+      api.get<any>('/compete/bot-turn', { params: { gamerId } }),
+    botRespond: (turnToken: string, response: string) =>
+      api.post<any>('/compete/bot-respond', { turnToken, response }),
     getGamer: (id: number) => api.get<any>(`/compete/gamers/${id}`),
+    getEloHistory: (id: number) => api.get<any[]>(`/compete/gamers/${id}/elo-history`),
     listMatches: (params: { gameId?: number; page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/matches', { params }),
     getMatch: (id: number) => api.get<any>(`/compete/matches/${id}`),
