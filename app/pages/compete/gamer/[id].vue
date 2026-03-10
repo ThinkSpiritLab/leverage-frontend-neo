@@ -86,7 +86,12 @@
                 >
                   <div class="gamer-list-item">
                     <span class="gamer-name">{{ g.name }}</span>
-                    <NTag size="small" :bordered="false">{{ g.language || '-' }}</NTag>
+                    <NTag size="small" :bordered="false">{{
+                      g.type === 'webhook' ? 'Webhook' :
+                      g.type === 'external' ? '外部轮询' :
+                      g.type === 'human' ? '真人' :
+                      g.language || '-'
+                    }}</NTag>
                   </div>
                 </NListItem>
               </NList>
