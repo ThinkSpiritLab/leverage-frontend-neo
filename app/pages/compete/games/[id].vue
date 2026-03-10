@@ -11,10 +11,11 @@
         </div>
         <NText depth="3">{{ game.description }}</NText>
         <NDivider style="margin:12px 0" />
-        <NSpace>
+        <NSpace align="center">
           <NText depth="3">⏱ 时限 {{ game.timeLimit }}ms</NText>
           <NText depth="3">💾 内存 {{ game.memoryLimit }}MB</NText>
           <NText depth="3">👥 {{ game.gamerQuantity }} 人对战</NText>
+          <NButton type="primary" size="small" @click="navigateTo(`/compete/${gameId}`)">⚔️ 创建对局</NButton>
         </NSpace>
       </div>
 
