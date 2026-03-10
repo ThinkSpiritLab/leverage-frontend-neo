@@ -138,15 +138,9 @@
 
             <template #footer>
               <NSpace justify="space-between">
-                <NPopconfirm
-                  v-if="!isNew"
-                  @positive-click="handleDelete"
-                >
-                  <template #trigger>
-                    <NButton type="error" ghost>删除 Bot</NButton>
-                  </template>
-                  确定删除这个 Bot 吗？有对局历史的 Bot 会被禁用而非彻底删除。
-                </NPopconfirm>
+                <NButton v-if="!isNew" type="error" ghost :loading="deleting" @click="confirmDelete">
+                  删除 Bot
+                </NButton>
                 <div v-else />
                 <NSpace>
                   <NButton @click="navigateTo(`/compete/${game.id}`)">取消</NButton>
@@ -170,7 +164,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import type { FormInst } from 'naive-ui'
 import { useAuthStore } from '~/stores/auth'
 
@@ -186,6 +180,8 @@ const isNew = computed(() => gamerId.value === 0)
 const competeApi = useCompeteApi()
 const authStore = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
+const deleting = ref(false)
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const loading = ref(true)
@@ -370,18 +366,31 @@ async function handleSave() {
   }
 }
 
+function confirmDelete() {
+  dialog.warning({
+    title: '删除 Bot',
+    content: '确定删除这个 Bot 吗？有对局历史的 Bot 会被禁用（保留历史），无历史的 Bot 将彻底删除。',
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: handleDelete,
+  })
+}
+
 async function handleDelete() {
+  deleting.value = true
   try {
     const res = await competeApi.deleteGamer(gamerId.value)
     const d = res.data as any
     if (d?.deleted) {
-      message.success('Bot 已删除')
+      message.success('Bot 已彻底删除')
     } else {
       message.info('Bot 有对局历史，已禁用（不再参与对局）')
     }
     navigateTo(`/compete/${game.value?.id}`)
   } catch (e: any) {
     message.error(e?.response?.data?.message || '删除失败')
+  } finally {
+    deleting.value = false
   }
 }
 
