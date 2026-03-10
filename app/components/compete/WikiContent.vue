@@ -63,6 +63,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { NButton, NSpace, NText } from 'naive-ui'
+import WikiBotTutorial from './WikiBotTutorial.vue'
+import WikiJudgeTutorial from './WikiJudgeTutorial.vue'
+import WikiRendererTutorial from './WikiRendererTutorial.vue'
 
 const props = defineProps<{
   games: any[]
