@@ -13,10 +13,27 @@ export function useCompeteApi() {
       api.get<any[]>(`/compete/games/${gameId}/leaderboard`),
     listGamers: (params: { gameId?: number; page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/gamers', { params }),
-    createGamer: (dto: { gameId: number; title: string; code: string; language: string; opensource?: boolean }) =>
-      api.post<any>('/compete/gamers', dto),
-    updateGamer: (id: number, dto: { title?: string; code?: string; language?: string; opensource?: boolean }) =>
-      api.patch<any>(`/compete/gamers/${id}`, dto),
+    createGamer: (dto: {
+      gameId: number
+      title: string
+      type?: 'code' | 'webhook'
+      code?: string
+      language?: string
+      opensource?: boolean
+      webhookUrl?: string
+      webhookSecret?: string
+    }) => api.post<any>('/compete/gamers', dto),
+    updateGamer: (id: number, dto: {
+      title?: string
+      type?: 'code' | 'webhook'
+      code?: string
+      language?: string
+      opensource?: boolean
+      webhookUrl?: string
+      webhookSecret?: string
+    }) => api.patch<any>(`/compete/gamers/${id}`, dto),
+    triggerAutoMatch: (gameId: number) =>
+      api.post<any>(`/compete/games/${gameId}/trigger-auto-match`),
     getGamer: (id: number) => api.get<any>(`/compete/gamers/${id}`),
     listMatches: (params: { gameId?: number; page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/matches', { params }),

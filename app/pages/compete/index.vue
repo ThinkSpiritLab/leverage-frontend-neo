@@ -147,7 +147,7 @@ const gameColumns: DataTableColumns<any> = [
     render(row) {
       return h(
         NButton,
-        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/${row.id}`) },
+        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/games/${row.id}`) },
         { default: () => row.name },
       )
     },
