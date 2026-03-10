@@ -1,7 +1,7 @@
 <template>
   <div class="game-renderer">
     <!-- 自定义 HTML 沙箱渲染器 -->
-    <BotzoneBotzoneReplaySection v-if="!rendererHtml && gameLog" :game-log="gameLog" />
+    <BotzoneReplaySection v-if="!rendererHtml && gameLog" :game-log="gameLog" />
     <template v-else-if="rendererHtml">
       <BotzoneSandboxedRenderer
         v-if="gameLog"
