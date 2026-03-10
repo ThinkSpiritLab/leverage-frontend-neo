@@ -322,7 +322,7 @@ const myGamerColumns: DataTableColumns<any> = [
     render(row) {
       return h(
         NButton,
-        { size: 'small', onClick: () => openEditGamerModal(row) },
+        { size: 'small', onClick: () => navigateTo(`/compete/gamer/${row.id}`) },
         { default: () => '编辑' },
       )
     },
