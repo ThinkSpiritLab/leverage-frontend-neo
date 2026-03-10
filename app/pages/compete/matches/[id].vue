@@ -530,9 +530,12 @@ function connectHumanSSE() {
   console.log('[SSE] token present:', !!token)
   if (!token) return
 
-  const config = useRuntimeConfig()
-  const apiBase = (config.public.apiBase as string).replace(/\/$/, '')
-  const url = `${apiBase}/compete/matches/${matchId.value}/human-sse?token=${encodeURIComponent(token)}`
+  // SSE must bypass the Vite proxy (which buffers SSE responses).
+  // Connect directly to the backend on port 3000, same hostname as the browser.
+  const backendBase = process.client
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : 'http://localhost:3000'
+  const url = `${backendBase}/compete/matches/${matchId.value}/human-sse?token=${encodeURIComponent(token)}`
   console.log('[SSE] connecting to', url)
   sseSource = new EventSource(url)
 
