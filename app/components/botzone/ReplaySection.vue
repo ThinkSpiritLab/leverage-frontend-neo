@@ -147,10 +147,24 @@
 
 <script setup lang="ts">
 import type { BotzoneGameLog } from '~/types/botzone'
+import TicTacToeRenderer from './renderers/TicTacToe.vue'
+
+// gameId → visual renderer component map
+const RENDERERS: Record<string, unknown> = {
+  '1': TicTacToeRenderer,  // 井字棋
+}
 
 const props = defineProps<{
   gameLog?: BotzoneGameLog | null
+  gameId?: string | number
 }>()
+
+const viewMode = ref<'visual' | 'json'>('visual')
+
+const gameRendererComponent = computed(() => {
+  const id = String(props.gameId ?? props.gameLog?.gameId ?? '')
+  return RENDERERS[id] ?? null
+})
 
 const currentRoundIndex = ref(0)
 
