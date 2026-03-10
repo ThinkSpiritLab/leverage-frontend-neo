@@ -2,309 +2,400 @@
   <div class="playground-page">
     <NBreadcrumb style="margin-bottom:12px">
       <NBreadcrumbItem @click="navigateTo('/compete')">竞技场</NBreadcrumbItem>
-      <NBreadcrumbItem>Playground</NBreadcrumbItem>
+      <NBreadcrumbItem>🧪 Playground</NBreadcrumbItem>
     </NBreadcrumb>
 
     <NTabs v-model:value="activeTab" type="card" animated>
-      <!-- ── Bot 测试 Tab ── -->
+
+      <!-- ══════════════════════════════════════
+           Tab 1: Bot 测试
+      ══════════════════════════════════════ -->
       <NTabPane name="bot" tab="🤖 Bot 测试">
         <NGrid :cols="12" :x-gap="16" :y-gap="12" style="margin-top:12px">
-          <!-- 左侧配置 -->
-          <NGridItem :span="4">
+
+          <!-- 配置面板 -->
+          <NGridItem :span="3">
             <NSpace vertical :size="12">
-              <!-- 游戏选择 -->
-              <NCard title="选择游戏" size="small">
-                <NSelect
-                  v-model:value="botConfig.gameId"
-                  :options="gameOptions"
-                  placeholder="选择游戏..."
-                  filterable
-                  @update:value="onGameChange"
-                />
+              <NCard title="游戏 & 对手" size="small">
+                <NSpace vertical :size="8">
+                  <NSelect v-model:value="bot.gameId" :options="gameOptions" placeholder="选择游戏..." filterable @update:value="onBotGameChange" />
+                  <NSelect v-model:value="bot.opponentGamerId" :options="opponentOptions" placeholder="选择对手..." filterable :disabled="!bot.gameId" :loading="opponentsLoading" />
+                </NSpace>
               </NCard>
 
-              <!-- 对手选择 -->
-              <NCard title="选择对手" size="small">
-                <NSpin :show="opponentsLoading">
-                  <NEmpty v-if="!botConfig.gameId" description="请先选择游戏" style="padding:12px 0" />
-                  <NSelect
-                    v-else
-                    v-model:value="botConfig.opponentGamerId"
-                    :options="opponentOptions"
-                    placeholder="选择对手 Bot..."
-                    filterable
-                  />
-                </NSpin>
-              </NCard>
-
-              <!-- 语言选择 -->
-              <NCard title="编程语言" size="small">
-                <NSelect
-                  v-model:value="botConfig.language"
-                  :options="LANGUAGE_OPTIONS"
-                />
-              </NCard>
-
-              <!-- 运行 -->
-              <NButton
-                type="primary"
-                block
-                :loading="runningBot"
-                :disabled="!botConfig.gameId || !botConfig.opponentGamerId || !botCode.trim()"
-                @click="runBotTest"
-              >
-                ▶ 运行测试
+              <NButton type="primary" block :loading="bot.running"
+                :disabled="!bot.gameId || !bot.opponentGamerId || !botCode.trim()"
+                @click="runBotTest">
+                ▶ 运行测试对局
               </NButton>
 
-              <!-- 发布 -->
-              <NButton
-                v-if="lastTestMatchId && lastTestGamerId"
-                block
-                secondary
-                type="success"
-                @click="showPublishModal = true"
-              >
-                🚀 满意了，发布为 Bot
+              <NButton v-if="bot.matchId" block secondary
+                @click="navigateTo(`/compete/matches/${bot.matchId}`)">
+                查看完整对局 →
+              </NButton>
+
+              <NButton v-if="bot.matchId && bot.status === 2" block type="success" secondary
+                @click="publishBotModal = true">
+                🚀 发布为 Bot
               </NButton>
             </NSpace>
           </NGridItem>
 
-          <!-- 中间：代码编辑器 -->
-          <NGridItem :span="8">
-            <NCard size="small" style="height:100%">
+          <!-- 代码编辑器 -->
+          <NGridItem :span="9">
+            <NCard size="small">
               <template #header>
                 <NSpace align="center" justify="space-between">
                   <span>代码编辑器</span>
-                  <NButton size="small" text @click="insertTemplate">插入模板</NButton>
+                  <NSpace>
+                    <NSelect v-model:value="bot.language" :options="LANGUAGE_OPTIONS" size="small" style="width:130px" @update:value="onBotLangChange" />
+                    <NButton size="small" text @click="insertBotTemplate">📋 插入模板</NButton>
+                  </NSpace>
                 </NSpace>
               </template>
-              <CodeEditor
-                v-model="botCode"
-                :language="editorLang"
-                height="460px"
-              />
+              <CodeEditor v-model="botCode" :language="botEditorLang" height="400px" />
             </NCard>
           </NGridItem>
 
-          <!-- 测试结果（全宽） -->
-          <NGridItem v-if="testMatchId" :span="12">
-            <NCard title="📋 测试结果" size="small">
-              <NSpace align="center" style="margin-bottom:12px">
-                <NTag :type="testMatchStatusType" size="small">{{ testMatchStatusLabel }}</NTag>
-                <NText depth="3" style="font-size:12px">对局 #{{ testMatchId }}</NText>
-                <NButton size="small" text type="primary" @click="navigateTo(`/compete/matches/${testMatchId}`)">
-                  查看完整对局 →
-                </NButton>
-                <NSpin v-if="testMatchStatus === 1" size="small" />
-              </NSpace>
-
-              <!-- 回合日志 -->
-              <div v-if="testMatchLog" class="match-log">
-                <div
-                  v-for="(round, i) in testMatchLog.rounds"
-                  :key="i"
-                  class="log-round"
-                >
-                  <div class="log-round-header">
-                    <NTag size="small" :bordered="false" type="info">第 {{ round.round }} 轮</NTag>
-                  </div>
-                  <div class="log-section">
-                    <span class="log-label">📥 BotInput</span>
-                    <pre class="log-pre">{{ JSON.stringify(round.judgeCmd?.content ?? {}, null, 2) }}</pre>
-                  </div>
-                  <div class="log-section">
-                    <span class="log-label">📤 BotOutput</span>
-                    <pre class="log-pre">{{ JSON.stringify(round.botResponses ?? {}, null, 2) }}</pre>
-                  </div>
-                  <div v-if="round.judgeCmd?.display" class="log-section">
-                    <span class="log-label">🖼 Display</span>
-                    <pre class="log-pre">{{ JSON.stringify(round.judgeCmd.display, null, 2) }}</pre>
-                  </div>
-                </div>
-
-                <NAlert
-                  v-if="testMatchLog.finalResult"
-                  :type="myTestPlayerWon ? 'success' : 'error'"
-                  :show-icon="false"
-                  style="margin-top:8px"
-                >
-                  最终结果：{{ JSON.stringify(testMatchLog.finalResult) }}
-                  {{ myTestPlayerWon ? '🏆 你赢了！' : '😔 你输了' }}
-                </NAlert>
-              </div>
+          <!-- 测试结果 -->
+          <NGridItem v-if="bot.matchId" :span="12">
+            <NCard size="small">
+              <template #header>
+                <NSpace align="center">
+                  <span>📋 测试日志</span>
+                  <NTag :type="matchStatusType(bot.status)" size="small">{{ matchStatusLabel(bot.status) }}</NTag>
+                  <NSpin v-if="bot.status === 1" size="small" />
+                </NSpace>
+              </template>
+              <MatchTimeline
+                v-if="bot.timeline.length > 0"
+                :rounds="bot.timeline"
+                :final-result="bot.finalResult"
+                :bot-names="bot.botNames"
+              />
+              <NEmpty v-else-if="bot.status === 1" description="对局运行中..." style="padding:24px 0" />
             </NCard>
           </NGridItem>
         </NGrid>
       </NTabPane>
 
-      <!-- ── 渲染器测试 Tab ── -->
-      <NTabPane name="renderer" tab="🎨 渲染器测试">
+      <!-- ══════════════════════════════════════
+           Tab 2: 裁判测试
+      ══════════════════════════════════════ -->
+      <NTabPane name="judge" tab="⚖️ 裁判测试">
         <NGrid :cols="12" :x-gap="16" :y-gap="12" style="margin-top:12px">
-          <!-- 编辑器 -->
-          <NGridItem :span="6">
+
+          <!-- 配置 -->
+          <NGridItem :span="3">
+            <NSpace vertical :size="12">
+              <NCard title="游戏 & Bots" size="small">
+                <NSpace vertical :size="8">
+                  <NSelect v-model:value="judge.gameId" :options="gameOptions" placeholder="使用哪个游戏的Bots..." filterable @update:value="onJudgeGameChange" />
+                  <NSelect v-model:value="judge.bot0Id" :options="judgeOpponentOptions" placeholder="Bot 0 (先手)..." :loading="judgeOpponentsLoading" />
+                  <NSelect v-model:value="judge.bot1Id" :options="judgeOpponentOptions" placeholder="Bot 1 (后手)..." :loading="judgeOpponentsLoading" />
+                </NSpace>
+              </NCard>
+              <NButton type="primary" block :loading="judge.running"
+                :disabled="!judgeCode.trim() || !judge.bot0Id || !judge.bot1Id"
+                @click="runJudgeTest">
+                ▶ 测试裁判
+              </NButton>
+              <NAlert type="info" :show-icon="false" style="font-size:12px">
+                裁判程序将替代游戏内置裁判运行，不影响 ELO
+              </NAlert>
+            </NSpace>
+          </NGridItem>
+
+          <!-- 裁判代码 -->
+          <NGridItem :span="9">
+            <NCard size="small">
+              <template #header>
+                <NSpace align="center" justify="space-between">
+                  <span>裁判代码</span>
+                  <NSpace>
+                    <NSelect v-model:value="judge.language" :options="LANGUAGE_OPTIONS" size="small" style="width:130px" @update:value="onJudgeLangChange" />
+                    <NButton size="small" text @click="insertJudgeTemplate">📋 插入裁判模板</NButton>
+                  </NSpace>
+                </NSpace>
+              </template>
+              <CodeEditor v-model="judgeCode" :language="judgeEditorLang" height="400px" />
+            </NCard>
+          </NGridItem>
+
+          <!-- 结果 -->
+          <NGridItem v-if="judge.matchId" :span="12">
+            <NCard size="small">
+              <template #header>
+                <NSpace align="center">
+                  <span>⚖️ 裁判测试日志</span>
+                  <NTag :type="matchStatusType(judge.status)" size="small">{{ matchStatusLabel(judge.status) }}</NTag>
+                  <NSpin v-if="judge.status === 1" size="small" />
+                </NSpace>
+              </template>
+              <MatchTimeline
+                v-if="judge.timeline.length > 0"
+                :rounds="judge.timeline"
+                :final-result="judge.finalResult"
+                judger-name="我的裁判"
+                :bot-names="judge.botNames"
+              />
+            </NCard>
+          </NGridItem>
+        </NGrid>
+      </NTabPane>
+
+      <!-- ══════════════════════════════════════
+           Tab 3: 组合调试器
+      ══════════════════════════════════════ -->
+      <NTabPane name="combo" tab="🔬 组合调试">
+        <div style="margin-top:12px">
+          <NAlert type="info" :show-icon="false" style="margin-bottom:16px;font-size:13px">
+            将裁判 + 两个 Bot 组合运行，查看完整通信时序图。可自己编写或引入已有程序。
+          </NAlert>
+
+          <!-- 三个 Slot -->
+          <NGrid :cols="3" :x-gap="16" style="margin-bottom:16px">
+            <NGridItem>
+              <ProgramSlot
+                label="裁判"
+                icon="⚖️"
+                :model-value="combo.judgeCode"
+                :lang="combo.judgeLang"
+                :game-id="combo.gameId"
+                slot-type="judge"
+                @update:model-value="combo.judgeCode = $event"
+                @update:lang="combo.judgeLang = $event"
+                @update:imported-id="combo.importedJudgeId = $event"
+              />
+            </NGridItem>
+            <NGridItem>
+              <ProgramSlot
+                label="Bot 0 (先手)"
+                icon="🔵"
+                :model-value="combo.bot0Code"
+                :lang="combo.bot0Lang"
+                :game-id="combo.gameId"
+                slot-type="bot"
+                @update:model-value="combo.bot0Code = $event"
+                @update:lang="combo.bot0Lang = $event"
+                @update:imported-id="combo.importedBot0Id = $event"
+              />
+            </NGridItem>
+            <NGridItem>
+              <ProgramSlot
+                label="Bot 1 (后手)"
+                icon="🔴"
+                :model-value="combo.bot1Code"
+                :lang="combo.bot1Lang"
+                :game-id="combo.gameId"
+                slot-type="bot"
+                @update:model-value="combo.bot1Code = $event"
+                @update:lang="combo.bot1Lang = $event"
+                @update:imported-id="combo.importedBot1Id = $event"
+              />
+            </NGridItem>
+          </NGrid>
+
+          <!-- 运行控制 -->
+          <NCard size="small" style="margin-bottom:16px">
+            <NSpace align="center" justify="space-between">
+              <NSelect v-model:value="combo.gameId" :options="gameOptions" placeholder="参考游戏（用于搜索Bot）..." filterable style="width:280px" />
+              <NSpace>
+                <NButton
+                  type="primary"
+                  :loading="combo.running"
+                  :disabled="comboNotReady"
+                  @click="runCombo"
+                >
+                  ▶ 运行组合调试
+                </NButton>
+                <NButton v-if="combo.matchId" @click="navigateTo(`/compete/matches/${combo.matchId}`)">
+                  查看原始对局
+                </NButton>
+              </NSpace>
+            </NSpace>
+            <NText v-if="comboNotReady" depth="3" style="font-size:12px;display:block;margin-top:6px">
+              ⚠️ 裁判和两个 Bot 都需要配置（编写或引入）
+            </NText>
+          </NCard>
+
+          <!-- 时序图 -->
+          <NCard v-if="combo.matchId" title="📡 通信时序图" size="small">
+            <template #header-extra>
+              <NSpace align="center">
+                <NTag :type="matchStatusType(combo.status)" size="small">{{ matchStatusLabel(combo.status) }}</NTag>
+                <NSpin v-if="combo.status === 1" size="small" />
+              </NSpace>
+            </template>
+            <MatchTimeline
+              v-if="combo.timeline.length > 0"
+              :rounds="combo.timeline"
+              :final-result="combo.finalResult"
+              judger-name="自定义裁判"
+              :bot-names="{ '0': 'Bot 0', '1': 'Bot 1' }"
+            />
+            <NEmpty v-else description="等待对局完成..." style="padding:32px 0" />
+          </NCard>
+        </div>
+      </NTabPane>
+
+      <!-- ══════════════════════════════════════
+           Tab 4: 渲染器测试
+      ══════════════════════════════════════ -->
+      <NTabPane name="renderer" tab="🎨 渲染器">
+        <NGrid :cols="2" :x-gap="16" :y-gap="12" style="margin-top:12px">
+          <NGridItem>
             <NCard size="small">
               <template #header>
                 <NSpace align="center" justify="space-between">
                   <span>渲染器 HTML</span>
-                  <NSpace>
-                    <NButton size="small" @click="insertRendererTemplate">最小模板</NButton>
-                    <NButton size="small" type="primary" @click="reloadPreview">刷新预览</NButton>
-                  </NSpace>
+                  <NButton size="small" text @click="insertRendererTemplate">最小模板</NButton>
                 </NSpace>
               </template>
-              <CodeEditor v-model="rendererHtml" language="html" height="440px" />
+              <CodeEditor v-model="rendererHtml" language="html" height="420px" />
             </NCard>
           </NGridItem>
-
-          <!-- 预览 -->
-          <NGridItem :span="6">
-            <NCard size="small" style="height:100%">
+          <NGridItem>
+            <NCard size="small">
               <template #header>
                 <NSpace align="center" justify="space-between">
                   <span>实时预览</span>
                   <NSpace>
-                    <NButton size="small" @click="sendTestGameLog">发送 gameLog</NButton>
-                    <NButton size="small" @click="sendTestGameState">发送 gameState</NButton>
+                    <NButton size="small" @click="sendGameLog">发送 gameLog</NButton>
+                    <NButton size="small" @click="sendGameState">发送 gameState</NButton>
+                    <NButton size="small" type="primary" @click="reloadRenderer">刷新</NButton>
                   </NSpace>
                 </NSpace>
               </template>
               <div style="border:1px solid #e0e0e6;border-radius:6px;overflow:hidden">
-                <iframe
-                  ref="rendererPreviewRef"
-                  :srcdoc="rendererPreviewHtml"
-                  sandbox="allow-scripts"
-                  style="width:100%;height:440px;border:none"
-                />
+                <iframe ref="rendererRef" :srcdoc="rendererPreview" sandbox="allow-scripts"
+                  style="width:100%;height:420px;border:none" />
               </div>
             </NCard>
           </NGridItem>
 
-          <!-- 发送测试数据控制 -->
-          <NGridItem :span="12">
-            <NCard title="🧪 测试数据" size="small">
+          <!-- Test data -->
+          <NGridItem :span="2">
+            <NCard title="🧪 测试数据注入" size="small">
               <NGrid :cols="2" :x-gap="12">
                 <NGridItem>
-                  <NFormItem label="gameLog JSON">
-                    <NInput
-                      v-model:value="testGameLogJson"
-                      type="textarea"
-                      :rows="6"
-                      placeholder='{"rounds": [...], "finalResult": {...}}'
-                      style="font-family:monospace;font-size:12px"
-                    />
+                  <NFormItem label="gameLog JSON" style="margin-bottom:0">
+                    <NInput v-model:value="testGameLog" type="textarea" :rows="5" style="font-family:monospace;font-size:12px" />
                   </NFormItem>
                 </NGridItem>
                 <NGridItem>
-                  <NFormItem label="gameState JSON (BotInput)">
-                    <NInput
-                      v-model:value="testGameStateJson"
-                      type="textarea"
-                      :rows="6"
-                      placeholder='{"requests": ["..."], "responses": []}'
-                      style="font-family:monospace;font-size:12px"
-                    />
+                  <NFormItem label="gameState / BotInput" style="margin-bottom:0">
+                    <NInput v-model:value="testGameState" type="textarea" :rows="5" style="font-family:monospace;font-size:12px" />
                   </NFormItem>
                 </NGridItem>
               </NGrid>
-              <NText depth="3" style="font-size:12px">
-                iframe 消息：{{ lastIframeMessage || '—' }}
-              </NText>
+              <div style="margin-top:8px">
+                <NText depth="3" style="font-size:12px">
+                  iframe 最后消息：<code>{{ lastIframeMsg || '—' }}</code>
+                </NText>
+              </div>
             </NCard>
           </NGridItem>
 
-          <!-- 发布到游戏 -->
-          <NGridItem :span="12">
-            <NCard title="发布渲染器" size="small">
-              <NGrid :cols="2" :x-gap="12">
-                <NGridItem>
-                  <NSelect v-model:value="rendererTargetGameId" :options="gameOptions" placeholder="选择目标游戏..." />
-                </NGridItem>
-                <NGridItem>
-                  <NButton type="success" :loading="publishingRenderer" :disabled="!rendererTargetGameId || !rendererHtml" @click="publishRenderer">
-                    🚀 发布到游戏
-                  </NButton>
-                </NGridItem>
-              </NGrid>
+          <!-- Publish -->
+          <NGridItem :span="2">
+            <NCard title="发布渲染器到游戏" size="small">
+              <NSpace align="center">
+                <NSelect v-model:value="rendererTargetGame" :options="gameOptions" placeholder="目标游戏..." style="width:260px" />
+                <NButton type="success" :loading="publishingRenderer" :disabled="!rendererTargetGame || !rendererHtml" @click="publishRenderer">
+                  🚀 发布
+                </NButton>
+              </NSpace>
             </NCard>
           </NGridItem>
         </NGrid>
       </NTabPane>
 
-      <!-- ── Wiki Tab ── -->
+      <!-- ══════════════════════════════════════
+           Tab 5: Wiki
+      ══════════════════════════════════════ -->
       <NTabPane name="wiki" tab="📖 文档">
         <div style="margin-top:12px">
-          <!-- 游戏协议 -->
-          <NSelect
-            v-model:value="wikiGameId"
-            :options="[{ label: '选择游戏查看协议...', value: null }, ...gameOptions]"
-            style="max-width:300px;margin-bottom:16px"
-            @update:value="loadWikiGame"
-          />
+          <NSelect v-model:value="wikiGameId" :options="[{label:'选择游戏...',value:null},...gameOptions]"
+            placeholder="选择游戏查看协议..." clearable style="max-width:300px;margin-bottom:16px"
+            @update:value="loadWikiGame" />
 
           <NGrid v-if="wikiGame" :cols="12" :x-gap="16" :y-gap="12">
             <NGridItem :span="4">
               <NCard :title="wikiGame.name" size="small">
-                <NDescriptions :column="1" size="small">
+                <NDescriptions :column="1" size="small" style="margin-bottom:8px">
                   <NDescriptionsItem label="玩家数">{{ wikiGame.gamerQuantity }}</NDescriptionsItem>
                   <NDescriptionsItem label="时间限制">{{ wikiGame.timeLimit }}ms</NDescriptionsItem>
                   <NDescriptionsItem label="内存限制">{{ wikiGame.memoryLimit }}MB</NDescriptionsItem>
                 </NDescriptions>
-                <NDivider style="margin:8px 0" />
                 <NText style="font-size:13px;white-space:pre-wrap">{{ wikiGame.description || '暂无描述' }}</NText>
+                <div style="margin-top:12px">
+                  <NButton size="small" type="primary" secondary block @click="goPlayWithGame">→ 在 Bot 测试中打开</NButton>
+                </div>
               </NCard>
             </NGridItem>
             <NGridItem :span="8">
-              <NCard title="IO 协议" size="small">
-                <NAlert type="info" :show-icon="false" style="margin-bottom:12px;font-size:13px">
-                  BotInput 通过 <code>stdin</code> 传入，BotOutput 读 <code>stdout</code>。每轮交换一次。
+              <NCard title="Bot IO 协议" size="small">
+                <NAlert type="info" :show-icon="false" style="margin-bottom:12px;font-size:12px">
+                  Bot 从 stdin 读当前局面 JSON，向 stdout 输出移动。简单 Bot 直接输出值；进阶 Bot 输出 JSON 对象（含 <code>move</code> + <code>debug</code> 字段）。
                 </NAlert>
-                <pre style="background:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;overflow:auto">{{ botInputTemplate }}</pre>
-                <NDivider />
-                <NButton type="primary" secondary @click="activeTab = 'bot'; botConfig.gameId = wikiGame.id; onGameChange(wikiGame.id)">
-                  → 在 Playground 中测试
-                </NButton>
+                <NTabs type="line" size="small">
+                  <NTabPane name="simple" tab="简单 Bot">
+                    <pre class="wiki-code">{{ simpleBotTemplate }}</pre>
+                  </NTabPane>
+                  <NTabPane name="json" tab="JSON Bot（含 debug）">
+                    <pre class="wiki-code">{{ jsonBotTemplate }}</pre>
+                  </NTabPane>
+                </NTabs>
               </NCard>
             </NGridItem>
           </NGrid>
 
-          <!-- 通用文档 -->
-          <NCollapse v-else style="margin-top:8px">
-            <NCollapseItem title="📡 postMessage 渲染器协议" name="renderer-protocol">
+          <!-- General docs -->
+          <NCollapse v-if="!wikiGame" style="margin-top:8px">
+            <NCollapseItem title="🤖 Bot 输出格式" name="bot">
               <div style="font-size:13px;line-height:1.8">
-                <p>渲染器以 iframe 嵌入，通过 postMessage 与父页面通信：</p>
                 <ul>
-                  <li>启动时发送 <code>{'{'} type: 'capabilities', interactive: true {'}'}</code></li>
-                  <li>接收 <code>{'{'} type: 'gameLog', gameLog, round {'}'}</code> — 回放模式</li>
-                  <li>接收 <code>{'{'} type: 'gameState', gameState, playerIndex {'}'}</code> — 人类出手</li>
-                  <li>发送 <code>{'{'} type: 'humanMove', move: '...' {'}'}</code> — 提交移动</li>
+                  <li>简单输出：直接打印移动值（数字/字符串），<strong>不能以 <code>{'{'}</code> 开头</strong></li>
+                  <li>JSON 输出：<code>{'{'}"move": 42, "debug": "我的思路"{'}'}</code> — debug 信息会显示在时序图中</li>
+                  <li>stderr 输出会自动收集并在时序图中展示</li>
                 </ul>
               </div>
             </NCollapseItem>
-            <NCollapseItem title="🤖 Bot 接口规范" name="bot-protocol">
+            <NCollapseItem title="⚖️ 裁判 IO 协议" name="judge">
               <div style="font-size:13px;line-height:1.8">
-                <p>Bot 读 stdin，写 stdout。每轮一次。</p>
-                <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px">{{ generalBotTemplate }}</pre>
+                <p><strong>裁判是长驻进程，每轮读一行 stdin，写一行 stdout：</strong></p>
+                <pre class="wiki-code">{{ judgeProtocolExample }}</pre>
               </div>
             </NCollapseItem>
-            <NCollapseItem title="⚖️ 裁判接口（未来）" name="judge-protocol">
-              <NText depth="3">敬请期待——用户自定义裁判功能开发中</NText>
+            <NCollapseItem title="🎨 渲染器 postMessage 协议" name="renderer">
+              <div style="font-size:13px;line-height:1.8">
+                <ul>
+                  <li>启动时：<code>window.parent.postMessage({'{'} type: 'capabilities', interactive: true {'}'}, '*')</code></li>
+                  <li>接收 <code>gameLog</code>（回放）或 <code>gameState + playerIndex</code>（人类出手）</li>
+                  <li>落子时发送：<code>{'{'} type: 'humanMove', move: '{"0": 42}' {'}'}</code></li>
+                </ul>
+              </div>
             </NCollapseItem>
           </NCollapse>
         </div>
       </NTabPane>
     </NTabs>
 
-    <!-- 发布 Bot 弹窗 -->
-    <NModal v-model:show="showPublishModal" title="发布为 Bot" preset="card" style="width:400px">
+    <!-- Publish Bot Modal -->
+    <NModal v-model:show="publishBotModal" title="发布为 Bot" preset="card" style="width:400px">
       <NForm label-placement="left" label-width="80">
         <NFormItem label="Bot 名称">
-          <NInput v-model:value="publishName" placeholder="给你的 Bot 起个名字" />
+          <NInput v-model:value="publishBotName" placeholder="给 Bot 起个名字" />
+        </NFormItem>
+        <NFormItem label="是否开源">
+          <NSwitch v-model:value="publishBotOpenSource" />
         </NFormItem>
       </NForm>
       <template #footer>
         <NSpace justify="end">
-          <NButton @click="showPublishModal = false">取消</NButton>
-          <NButton type="primary" :loading="publishing" @click="publishBot">发布</NButton>
+          <NButton @click="publishBotModal = false">取消</NButton>
+          <NButton type="primary" :loading="publishingBot" @click="publishBot">发布</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -312,14 +403,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   NTabs, NTabPane, NGrid, NGridItem, NCard, NSpace, NButton, NSelect, NInput,
-  NTag, NText, NAlert, NDescriptions, NDescriptionsItem, NDivider, NEmpty,
-  NSpin, NCollapse, NCollapseItem, NModal, NForm, NFormItem, NRadioGroup, NRadioButton,
+  NTag, NText, NAlert, NDescriptions, NDescriptionsItem, NEmpty, NSpin,
+  NCollapse, NCollapseItem, NModal, NForm, NFormItem, NSwitch,
   useMessage,
 } from 'naive-ui'
 import { LANGUAGE_OPTIONS } from '~/types'
+import type { TimelineRound } from '~/components/compete/MatchTimeline.vue'
+import ProgramSlot from '~/components/compete/ProgramSlot.vue'
+import MatchTimeline from '~/components/compete/MatchTimeline.vue'
 
 const message = useMessage()
 const competeApi = useCompeteApi()
@@ -327,182 +421,388 @@ const authStore = useAuthStore()
 
 const activeTab = ref('bot')
 
-// ── 游戏列表 ──
+// ── Games ──
 const games = ref<any[]>([])
-const gameOptions = computed(() => games.value.map(g => ({ label: g.name, value: g.id })))
+const gameOptions = computed(() => games.value.map(g => ({ label: g.name || g.title, value: g.id })))
 
-async function loadGames() {
+onMounted(async () => {
   try {
     const res = await competeApi.listGames({ page: 1, perPage: 100 })
     games.value = (res.data as any)?.items || res.data || []
   } catch (e) { console.error(e) }
+})
+
+// ── Helper: convert match result to timeline ──
+function buildTimeline(result: any): TimelineRound[] {
+  if (!result?.rounds) return []
+  return result.rounds.map((r: any) => {
+    const events: any[] = []
+    const cmd = r.judgeCmd
+    if (cmd?.content) {
+      for (const [pid, data] of Object.entries(cmd.content)) {
+        events.push({ from: 'Judge', to: `Bot${pid}`, type: 'cmd', data, debug: cmd.debug, stderr: cmd.stderr })
+      }
+    }
+    if (r.botResponses) {
+      for (const [pid, resp] of Object.entries(r.botResponses)) {
+        const debugInfo = r.debug?.[`bot_${pid}`]
+        const stderrInfo = r.debug?.[`bot_${pid}_stderr`]
+        events.push({ from: `Bot${pid}`, to: 'Judge', type: 'resp', data: resp, debug: debugInfo, stderr: stderrInfo })
+      }
+    }
+    return { round: r.round, events, display: cmd?.display }
+  })
 }
-onMounted(loadGames)
 
-// ── Bot 测试 ──
-const botConfig = ref({ gameId: null as number | null, opponentGamerId: null as number | null, language: 'python' })
+function matchStatusLabel(s: number) {
+  return ({ 0: '等待中', 1: '运行中', 2: '已完成', 3: '失败' } as Record<number, string>)[s] || '-'
+}
+function matchStatusType(s: number): 'default' | 'info' | 'success' | 'error' {
+  return ({ 0: 'default', 1: 'info', 2: 'success', 3: 'error' } as Record<number, any>)[s] || 'default'
+}
+
+// ── Poll helper ──
+function startPoll(matchId: number, onUpdate: (m: any) => void, onDone: (m: any) => void) {
+  const timer = setInterval(async () => {
+    try {
+      const res = await competeApi.getMatch(matchId)
+      const m = res.data as any
+      onUpdate(m)
+      if (m.status === 2 || m.status === 3) {
+        clearInterval(timer)
+        onDone(m)
+      }
+    } catch (e) { console.error(e) }
+  }, 1500)
+  onUnmounted(() => clearInterval(timer))
+  return timer
+}
+
+// ══════════════════════════════════════
+// BOT TEST
+// ══════════════════════════════════════
+const bot = ref({
+  gameId: null as number | null,
+  opponentGamerId: null as number | null,
+  language: 'python',
+  running: false,
+  matchId: null as number | null,
+  status: 0,
+  timeline: [] as TimelineRound[],
+  finalResult: null as any,
+  botNames: {} as Record<string, string>,
+})
 const botCode = ref('')
-const opponents = ref<any[]>([])
+const botOpponents = ref<any[]>([])
 const opponentsLoading = ref(false)
-const runningBot = ref(false)
-const testMatchId = ref<number | null>(null)
-const testMatchStatus = ref(0)
-const testMatchLog = ref<any>(null)
-const lastTestGamerId = ref<number | null>(null)
-const lastTestMatchId = ref<number | null>(null)
-let pollTimer: ReturnType<typeof setInterval> | null = null
+const publishBotModal = ref(false)
+const publishBotName = ref('')
+const publishBotOpenSource = ref(false)
+const publishingBot = ref(false)
 
-const opponentOptions = computed(() => opponents.value.map(g => ({
+const opponentOptions = computed(() => botOpponents.value.map(g => ({
   label: `${g.title || g.name} (ELO ${g.elo ?? 1200})`,
   value: g.id,
 })))
 
-const editorLang = computed(() => {
-  const langMap: Record<string, string> = { python: 'python', cpp: 'cpp', java: 'java', javascript: 'javascript', go: 'go' }
-  return langMap[botConfig.value.language] || 'python'
-})
+const botEditorLang = computed(() => editorLangMap[bot.value.language] || 'python')
 
-const testMatchStatusLabel = computed(() => ({ 0: '等待中', 1: '进行中', 2: '已完成', 3: '失败' }[testMatchStatus.value] || '-'))
-const testMatchStatusType = computed((): any => ({ 0: 'default', 1: 'info', 2: 'success', 3: 'error' }[testMatchStatus.value] || 'default'))
+const editorLangMap: Record<string, string> = {
+  python: 'python', cpp: 'cpp', java: 'java', javascript: 'javascript', go: 'go', c: 'c',
+}
 
-const myTestPlayerWon = computed(() => {
-  if (!testMatchLog.value?.finalResult || !lastTestGamerId.value) return false
-  const fr = testMatchLog.value.finalResult
-  const myScore = fr[String(lastTestGamerId.value)]
-  const maxScore = Math.max(...Object.values(fr) as number[])
-  return myScore === maxScore
-})
-
-async function onGameChange(gameId: number | null) {
-  if (!gameId) return
+async function onBotGameChange(id: number | null) {
+  if (!id) return
   opponentsLoading.value = true
   try {
-    const res = await competeApi.listGamers({ gameId, page: 1, perPage: 100 })
+    const res = await competeApi.listGamers({ gameId: id, page: 1, perPage: 100 })
     const all = (res.data as any)?.items || res.data || []
-    opponents.value = all.filter((g: any) => g.type === 'code' && !g.disabled)
+    botOpponents.value = all.filter((g: any) => g.type === 'code' && !g.disabled)
   } catch (e) { console.error(e) }
   finally { opponentsLoading.value = false }
 }
 
-function insertTemplate() {
-  const templates: Record<string, string> = {
-    python: `import sys
+function onBotLangChange(lang: string) {
+  bot.value.language = lang
+}
+
+const BOT_TEMPLATES: Record<string, string> = {
+  python: `import sys
 import json
 
-def main():
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
-        data = json.loads(line)
-        # data is BotInput, e.g. {"round": 1, "rounds": 5}
-        # Your logic here:
-        response = 42  # Replace with your move
-        print(json.dumps(response))
-        sys.stdout.flush()
-
-if __name__ == '__main__':
-    main()
+for line in sys.stdin:
+    line = line.strip()
+    if not line: continue
+    data = json.loads(line)
+    
+    # TODO: implement your logic
+    move = 0
+    
+    # Output with debug info (visible in timeline)
+    print(json.dumps({"move": move, "debug": f"received: {data}"}))
+    sys.stdout.flush()
 `,
-    cpp: `#include <bits/stdc++.h>
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
+  cpp: `#include <bits/stdc++.h>
 using namespace std;
-
 int main() {
     string line;
     while (getline(cin, line)) {
         if (line.empty()) continue;
-        auto data = json::parse(line);
-        // Your logic here
-        cout << 42 << endl;  // Replace with your move
+        // Parse JSON and implement logic
+        cout << 0 << endl;  // your move
+        cerr << "Debug: got " << line << endl;
     }
-    return 0;
 }
 `,
-  }
-  botCode.value = templates[botConfig.value.language] || templates.python
+  java: `import java.util.*;
+import java.io.*;
+public class Bot {
+    public static void main(String[] args) throws Exception {
+        Scanner sc = new Scanner(System.in);
+        while (sc.hasNextLine()) {
+            String line = sc.nextLine().trim();
+            if (line.isEmpty()) continue;
+            // TODO: parse JSON and implement logic
+            System.out.println("0");
+            System.out.flush();
+        }
+    }
+}
+`,
+  javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    if (!line.trim()) return;
+    const data = JSON.parse(line);
+    // TODO: implement logic
+    process.stdout.write(JSON.stringify({move: 0, debug: \`got \${JSON.stringify(data)}\`}) + '\\n');
+});
+`,
+  go: `package main
+import ("bufio";"encoding/json";"fmt";"os")
+func main() {
+    scanner := bufio.NewScanner(os.Stdin)
+    for scanner.Scan() {
+        line := scanner.Text()
+        if line == "" { continue }
+        var data interface{}
+        json.Unmarshal([]byte(line), &data)
+        // TODO: implement logic
+        fmt.Println(0)
+    }
+}
+`,
+}
+
+function insertBotTemplate() {
+  botCode.value = BOT_TEMPLATES[bot.value.language] || BOT_TEMPLATES.python
 }
 
 async function runBotTest() {
-  if (!botConfig.value.gameId || !botConfig.value.opponentGamerId) return
-  runningBot.value = true
-  testMatchLog.value = null
-  testMatchId.value = null
+  if (!bot.value.gameId || !bot.value.opponentGamerId) return
+  bot.value.running = true
+  bot.value.timeline = []
+  bot.value.finalResult = null
   try {
-    const res = await competeApi.runPlayground(botConfig.value.gameId, {
+    const res = await competeApi.runPlayground(bot.value.gameId, {
       code: botCode.value,
-      language: botConfig.value.language,
-      opponentGamerId: botConfig.value.opponentGamerId,
+      language: bot.value.language,
+      opponentGamerId: bot.value.opponentGamerId,
     })
     const data = res.data as any
-    testMatchId.value = data.matchId
-    lastTestGamerId.value = data.testGamerId
-    lastTestMatchId.value = data.matchId
-    testMatchStatus.value = 0
-    startPollTestMatch()
+    bot.value.matchId = data.matchId
+    bot.value.status = 0
+    const opp = botOpponents.value.find(g => g.id === bot.value.opponentGamerId)
+    bot.value.botNames = { '0': '我的 Bot', '1': opp?.title || opp?.name || 'Opponent' }
+    startPoll(data.matchId, (m) => { bot.value.status = m.status },
+      (m) => {
+        bot.value.status = m.status
+        const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
+        bot.value.finalResult = r?.finalResult
+        bot.value.timeline = buildTimeline(r)
+      })
   } catch (e: any) {
     message.error(e?.message || '运行失败')
   } finally {
-    runningBot.value = false
+    bot.value.running = false
   }
 }
 
-function startPollTestMatch() {
-  if (pollTimer) clearInterval(pollTimer)
-  pollTimer = setInterval(async () => {
-    if (!testMatchId.value) return
-    try {
-      const res = await competeApi.getMatch(testMatchId.value)
-      const m = res.data as any
-      testMatchStatus.value = m.status
-      if (m.status === 2 || m.status === 3) {
-        clearInterval(pollTimer!)
-        pollTimer = null
-        const result = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
-        testMatchLog.value = result
-      }
-    } catch (e) { console.error(e) }
-  }, 1500)
-}
-
-onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
-
-// ── 发布 Bot ──
-const showPublishModal = ref(false)
-const publishName = ref('')
-const publishing = ref(false)
-
 async function publishBot() {
-  if (!publishName.value.trim() || !botConfig.value.gameId) return
-  publishing.value = true
+  if (!publishBotName.value.trim() || !bot.value.gameId) return
+  publishingBot.value = true
   try {
     const res = await competeApi.createGamer({
-      gameId: botConfig.value.gameId,
-      title: publishName.value,
-      language: botConfig.value.language,
+      gameId: bot.value.gameId,
+      title: publishBotName.value,
+      language: bot.value.language,
       code: botCode.value,
       type: 'code',
-      opensource: false,
+      opensource: publishBotOpenSource.value,
     })
-    const gamer = res.data as any
     message.success('Bot 发布成功！')
-    showPublishModal.value = false
-    navigateTo(`/compete/gamer/${gamer.id}`)
+    publishBotModal.value = false
+    navigateTo(`/compete/gamer/${(res.data as any).id}`)
   } catch (e: any) {
     message.error(e?.message || '发布失败')
   } finally {
-    publishing.value = false }
+    publishingBot.value = false
+  }
 }
 
-// ── 渲染器测试 ──
+// ══════════════════════════════════════
+// JUDGE TEST
+// ══════════════════════════════════════
+const judge = ref({
+  gameId: null as number | null,
+  bot0Id: null as number | null,
+  bot1Id: null as number | null,
+  language: 'python',
+  running: false,
+  matchId: null as number | null,
+  status: 0,
+  timeline: [] as TimelineRound[],
+  finalResult: null as any,
+  botNames: {} as Record<string, string>,
+})
+const judgeCode = ref('')
+const judgeOpponents = ref<any[]>([])
+const judgeOpponentsLoading = ref(false)
+
+const judgeOpponentOptions = computed(() => judgeOpponents.value.map(g => ({
+  label: `${g.title || g.name} (ELO ${g.elo ?? 1200})`,
+  value: g.id,
+})))
+const judgeEditorLang = computed(() => editorLangMap[judge.value.language] || 'python')
+
+async function onJudgeGameChange(id: number | null) {
+  if (!id) return
+  judgeOpponentsLoading.value = true
+  try {
+    const res = await competeApi.listGamers({ gameId: id, page: 1, perPage: 100 })
+    const all = (res.data as any)?.items || res.data || []
+    judgeOpponents.value = all.filter((g: any) => g.type === 'code' && !g.disabled)
+  } catch (e) { console.error(e) }
+  finally { judgeOpponentsLoading.value = false }
+}
+
+function onJudgeLangChange(lang: string) { judge.value.language = lang }
+
+const JUDGE_TEMPLATE_PY = `import sys
+import json
+
+round_num = 0
+
+for line in sys.stdin:
+    line = line.strip()
+    if not line: continue
+    data = json.loads(line)
+    round_num = data.get('round', round_num + 1)
+    responses = data.get('responses', {})
+    
+    if not responses:
+        # First call: initialize game, send first commands
+        result = {
+            "commands": {
+                "0": {"round": 1, "info": "game start"},
+                "1": {"round": 1, "info": "game start"}
+            },
+            "display": {"round": 1},
+            "verdict": "continue",
+            "debug": "Game initialized"
+        }
+    else:
+        # Process responses, decide next state
+        # responses = {"0": <move_from_bot0>, "1": <move_from_bot1>}
+        
+        if round_num >= 5:  # Game over condition
+            result = {
+                "commands": {},
+                "display": {"result": responses},
+                "verdict": "finish",
+                "scores": {"0": 1, "1": 0},  # Your scoring logic
+                "debug": f"Game over after {round_num} rounds"
+            }
+        else:
+            result = {
+                "commands": {
+                    "0": {"round": round_num + 1},
+                    "1": {"round": round_num + 1}
+                },
+                "display": {"round": round_num + 1, "lastMoves": responses},
+                "verdict": "continue",
+                "debug": f"Round {round_num} done. Moves: {responses}"
+            }
+    
+    print(json.dumps(result))
+    sys.stdout.flush()
+`
+
+function insertJudgeTemplate() {
+  judgeCode.value = JUDGE_TEMPLATE_PY
+}
+
+async function runJudgeTest() {
+  if (!judge.value.bot0Id || !judge.value.bot1Id) return
+  judge.value.running = true
+  judge.value.timeline = []
+  judge.value.finalResult = null
+  try {
+    // TODO: backend endpoint for judge test (needs custom judge code)
+    // For now use playground with judge override
+    message.info('裁判测试端点开发中，敬请期待')
+  } catch (e: any) {
+    message.error(e?.message || '运行失败')
+  } finally {
+    judge.value.running = false
+  }
+}
+
+// ══════════════════════════════════════
+// COMBO DEBUGGER
+// ══════════════════════════════════════
+const combo = ref({
+  gameId: null as number | null,
+  judgeCode: '', judgeLang: 'python', importedJudgeId: null as number | null,
+  bot0Code: '', bot0Lang: 'python', importedBot0Id: null as number | null,
+  bot1Code: '', bot1Lang: 'python', importedBot1Id: null as number | null,
+  running: false,
+  matchId: null as number | null,
+  status: 0,
+  timeline: [] as TimelineRound[],
+  finalResult: null as any,
+})
+
+const comboNotReady = computed(() =>
+  (!combo.value.judgeCode.trim() && !combo.value.importedJudgeId) ||
+  (!combo.value.bot0Code.trim() && !combo.value.importedBot0Id) ||
+  (!combo.value.bot1Code.trim() && !combo.value.importedBot1Id)
+)
+
+async function runCombo() {
+  combo.value.running = true
+  combo.value.timeline = []
+  combo.value.finalResult = null
+  try {
+    // TODO: backend endpoint for combo (judge + 2 bots, all custom code)
+    message.info('组合调试端点开发中（等待 botzone-neo 自定义裁判支持）')
+  } catch (e: any) {
+    message.error(e?.message || '运行失败')
+  } finally {
+    combo.value.running = false
+  }
+}
+
+// ══════════════════════════════════════
+// RENDERER TEST
+// ══════════════════════════════════════
 const rendererHtml = ref('')
-const rendererPreviewHtml = ref('')
-const rendererPreviewRef = ref<HTMLIFrameElement | null>(null)
-const testGameLogJson = ref('{\n  "rounds": [],\n  "finalResult": {"1": 1, "2": 0}\n}')
-const testGameStateJson = ref('{\n  "requests": ["{\\\"round\\\": 1, \\\"rounds\\\": 5}"],\n  "responses": []\n}')
-const lastIframeMessage = ref('')
-const rendererTargetGameId = ref<number | null>(null)
+const rendererPreview = ref('')
+const rendererRef = ref<HTMLIFrameElement | null>(null)
+const testGameLog = ref('{\n  "rounds": [],\n  "finalResult": {"0": 1, "1": 0}\n}')
+const testGameState = ref('{\n  "requests": ["{\\"round\\": 1, \\"rounds\\": 5}"],\n  "responses": []\n}')
+const lastIframeMsg = ref('')
+const rendererTargetGame = ref<number | null>(null)
 const publishingRenderer = ref(false)
 
 function insertRendererTemplate() {
@@ -512,67 +812,65 @@ function insertRendererTemplate() {
 </head><body>
 <div id="app">等待游戏数据…</div>
 <script>
-  window.parent.postMessage({ type: 'capabilities', interactive: true }, '*');
-  const app = document.getElementById('app');
-  let submitted = false;
-  window.addEventListener('message', (e) => {
-    if (!e.data?.type) return;
-    if (e.data.type === 'gameLog') {
-      app.innerHTML = '<h3>回放</h3><pre>' + JSON.stringify(e.data.gameLog, null, 2) + '</pre>';
-    } else if (e.data.type === 'gameState') {
-      const req = JSON.parse(e.data.gameState.requests.slice(-1)[0] || '{}');
-      app.innerHTML = \`<h3>你的回合 (玩家 \${e.data.playerIndex})</h3><p>\${JSON.stringify(req)}</p>
-        <button id="btn">提交</button>\`;
-      document.getElementById('btn').onclick = () => {
-        if (submitted) return; submitted = true;
-        document.getElementById('btn').disabled = true;
-        const move = {}; move[String(e.data.playerIndex)] = 1;
-        window.parent.postMessage({ type: 'humanMove', move: JSON.stringify(move) }, '*');
+  window.parent.postMessage({type:'capabilities',interactive:true},'*');
+  const app=document.getElementById('app');let done=false;
+  window.addEventListener('message',(e)=>{
+    if(!e.data?.type)return;
+    if(e.data.type==='gameLog'){
+      app.innerHTML='<h3>回放</h3><pre>'+JSON.stringify(e.data.gameLog,null,2)+'</pre>';
+    } else if(e.data.type==='gameState'){
+      const req=JSON.parse(e.data.gameState.requests?.slice(-1)[0]||'{}');
+      app.innerHTML=\`<h3>你的回合(玩家\${e.data.playerIndex})</h3><p>\${JSON.stringify(req)}</p><button id="b">提交</button>\`;
+      document.getElementById('b').onclick=()=>{
+        if(done)return;done=true;
+        const m={};m[String(e.data.playerIndex)]=1;
+        window.parent.postMessage({type:'humanMove',move:JSON.stringify(m)},'*');
       };
     }
   });
 <\/script></body></html>`
 }
 
-function reloadPreview() {
-  rendererPreviewHtml.value = rendererHtml.value
+function reloadRenderer() {
+  rendererPreview.value = rendererHtml.value
 }
 
-function sendTestGameLog() {
+function sendGameLog() {
   try {
-    const gameLog = JSON.parse(testGameLogJson.value)
-    rendererPreviewRef.value?.contentWindow?.postMessage({ type: 'gameLog', gameLog, round: gameLog.rounds?.length - 1 }, '*')
-  } catch (e) { message.error('gameLog JSON 格式错误') }
+    const gameLog = JSON.parse(testGameLog.value)
+    rendererRef.value?.contentWindow?.postMessage({ type: 'gameLog', gameLog, round: 0 }, '*')
+  } catch { message.error('gameLog JSON 格式错误') }
 }
 
-function sendTestGameState() {
+function sendGameState() {
   try {
-    const gameState = JSON.parse(testGameStateJson.value)
-    rendererPreviewRef.value?.contentWindow?.postMessage({ type: 'gameState', gameState, playerIndex: 0 }, '*')
-  } catch (e) { message.error('gameState JSON 格式错误') }
+    const gameState = JSON.parse(testGameState.value)
+    rendererRef.value?.contentWindow?.postMessage({ type: 'gameState', gameState, playerIndex: 0 }, '*')
+  } catch { message.error('gameState JSON 格式错误') }
 }
 
 function onIframeMsg(e: MessageEvent) {
   if (e.data?.type && e.data.type !== 'capabilities') {
-    lastIframeMessage.value = JSON.stringify(e.data)
+    lastIframeMsg.value = JSON.stringify(e.data)
   }
 }
 onMounted(() => window.addEventListener('message', onIframeMsg))
 onUnmounted(() => window.removeEventListener('message', onIframeMsg))
-
-watch(rendererHtml, (html) => { if (html) rendererPreviewHtml.value = html })
+watch(rendererHtml, html => { if (html) rendererPreview.value = html })
 
 async function publishRenderer() {
-  if (!rendererTargetGameId.value || !rendererHtml.value) return
+  if (!rendererTargetGame.value || !rendererHtml.value) return
   publishingRenderer.value = true
   try {
-    await competeApi.updateGame(rendererTargetGameId.value, { rendererHtml: rendererHtml.value })
-    message.success('渲染器已发布到游戏！')
+    await competeApi.updateGame(rendererTargetGame.value, { rendererHtml: rendererHtml.value })
+    message.success('渲染器已发布！')
   } catch (e: any) { message.error(e?.message || '发布失败') }
   finally { publishingRenderer.value = false }
 }
 
-// ── Wiki ──
+// ══════════════════════════════════════
+// WIKI
+// ══════════════════════════════════════
 const wikiGameId = ref<number | null>(null)
 const wikiGame = ref<any>(null)
 
@@ -584,60 +882,54 @@ async function loadWikiGame(id: number | null) {
   } catch (e) { console.error(e) }
 }
 
-const botInputTemplate = computed(() => {
-  if (!wikiGame.value) return ''
-  return `# 每轮从 stdin 读一行 JSON（BotInput）
-# 写一行 JSON 到 stdout（你的移动）
+function goPlayWithGame() {
+  if (!wikiGame.value) return
+  activeTab.value = 'bot'
+  bot.value.gameId = wikiGame.value.id
+  onBotGameChange(wikiGame.value.id)
+}
+
+const simpleBotTemplate = `import sys, json
+
+for line in sys.stdin:
+    data = json.loads(line.strip())
+    # data = game-specific input JSON
+    
+    move = 42  # your logic here
+    print(move)  # simple: just print the value
+    sys.stdout.flush()`
+
+const jsonBotTemplate = `import sys, json
+
+for line in sys.stdin:
+    data = json.loads(line.strip())
+    move = 42  # your logic
+    
+    # JSON format: supports debug info shown in timeline
+    print(json.dumps({"move": move, "debug": f"chose {move}"}))
+    sys.stdout.flush()
+    
+    # You can also write to stderr for debug:
+    print(f"Input was: {data}", file=sys.stderr)`
+
+const judgeProtocolExample = `# stdin each round:  {"round": 1, "responses": {"0": 42, "1": 87}}
+# stdout each round: {"commands": {"0": {...}, "1": {...}}, "display": {...},
+#                    "verdict": "continue"|"finish", "scores": {...}, "debug": "..."}
 
 import sys, json
-
 for line in sys.stdin:
     data = json.loads(line.strip())
-    # data = ${JSON.stringify({ example: 'depends on game' })}
-    
-    move = <your_move>   # 根据游戏规则决定
-    print(json.dumps(move))
-    sys.stdout.flush()`
-})
-
-const generalBotTemplate = `import sys, json
-
-for line in sys.stdin:
-    data = json.loads(line.strip())
-    # Process BotInput, output your move
-    move = 42
-    print(json.dumps(move))
+    responses = data.get('responses', {})
+    # ... your judging logic ...
+    print(json.dumps({"commands": {"0": {}, "1": {}}, "verdict": "continue"}))
     sys.stdout.flush()`
 </script>
 
 <style scoped>
-.playground-page {
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.match-log {
-  max-height: 500px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e6;
-  border-radius: 6px;
-  padding: 8px;
-}
-.log-round {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 8px 0;
-}
-.log-round:last-child { border-bottom: none; }
-.log-round-header { margin-bottom: 6px; }
-.log-section { margin: 4px 0; }
-.log-label { font-size: 11px; color: #888; font-weight: 600; display: block; margin-bottom: 2px; }
-.log-pre {
-  background: #f8f8f8;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: monospace;
-  margin: 0;
-  overflow-x: auto;
-  max-height: 120px;
+.playground-page { max-width: 1500px; margin: 0 auto; }
+.wiki-code {
+  background: #f5f5f5; padding: 12px; border-radius: 6px;
+  font-size: 12px; font-family: monospace; overflow: auto;
+  max-height: 300px; white-space: pre; margin: 0;
 }
 </style>
