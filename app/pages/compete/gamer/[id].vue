@@ -137,15 +137,23 @@
             </NForm>
 
             <template #footer>
-              <NSpace justify="end">
-                <NButton @click="navigateTo(`/compete/${game.id}`)">取消</NButton>
-                <NButton
-                  type="primary"
-                  :loading="saving"
-                  @click="handleSave"
+              <NSpace justify="space-between">
+                <NPopconfirm
+                  v-if="!isNew"
+                  @positive-click="handleDelete"
                 >
-                  {{ isNew ? '创建 Bot' : '保存修改' }}
-                </NButton>
+                  <template #trigger>
+                    <NButton type="error" ghost>删除 Bot</NButton>
+                  </template>
+                  确定删除这个 Bot 吗？有对局历史的 Bot 会被禁用而非彻底删除。
+                </NPopconfirm>
+                <div v-else />
+                <NSpace>
+                  <NButton @click="navigateTo(`/compete/${game.id}`)">取消</NButton>
+                  <NButton type="primary" :loading="saving" @click="handleSave">
+                    {{ isNew ? '创建 Bot' : '保存修改' }}
+                  </NButton>
+                </NSpace>
               </NSpace>
             </template>
           </NCard>
@@ -359,6 +367,21 @@ async function handleSave() {
   }
   finally {
     saving.value = false
+  }
+}
+
+async function handleDelete() {
+  try {
+    const res = await competeApi.deleteGamer(gamerId.value)
+    const d = res.data as any
+    if (d?.deleted) {
+      message.success('Bot 已删除')
+    } else {
+      message.info('Bot 有对局历史，已禁用（不再参与对局）')
+    }
+    navigateTo(`/compete/${game.value?.id}`)
+  } catch (e: any) {
+    message.error(e?.response?.data?.message || '删除失败')
   }
 }
 

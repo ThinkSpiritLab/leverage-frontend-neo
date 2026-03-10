@@ -40,6 +40,7 @@ export function useCompeteApi() {
       api.post<any>('/compete/bot-respond', { turnToken, response }),
     getGamer: (id: number) => api.get<any>(`/compete/gamers/${id}`),
     getEloHistory: (id: number) => api.get<any[]>(`/compete/gamers/${id}/elo-history`),
+    deleteGamer: (id: number) => api.delete<any>(`/compete/gamers/${id}`),
     listMatches: (params: { gameId?: number; page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/matches', { params }),
     getMatch: (id: number) => api.get<any>(`/compete/matches/${id}`),
