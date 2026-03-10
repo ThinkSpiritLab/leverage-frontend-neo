@@ -688,14 +688,32 @@ function insertJudgeTemplate() {
 }
 
 async function runJudgeTest() {
-  if (!judge.value.bot0Id || !judge.value.bot1Id) return
+  if (!judgeCode.value.trim() || !judge.value.bot0Id || !judge.value.bot1Id) return
   judge.value.running = true
   judge.value.timeline = []
   judge.value.finalResult = null
   try {
-    // TODO: backend endpoint for judge test (needs custom judge code)
-    // For now use playground with judge override
-    message.info('裁判测试端点开发中，敬请期待')
+    const gameId = judge.value.gameId || bot.value.gameId
+    if (!gameId) { message.error('请先选择一个游戏'); return }
+    const res = await competeApi.runPlaygroundJudge(gameId, {
+      judgerCode: judgeCode.value,
+      judgerLanguage: judge.value.language,
+      bot0: { gamerId: judge.value.bot0Id },
+      bot1: { gamerId: judge.value.bot1Id },
+    })
+    const { matchId } = res.data as any
+    judge.value.matchId = matchId
+    judge.value.status = 0
+    const b0 = judgeOpponents.value.find(g => g.id === judge.value.bot0Id)
+    const b1 = judgeOpponents.value.find(g => g.id === judge.value.bot1Id)
+    judge.value.botNames = { '0': b0?.title || b0?.name || 'Bot0', '1': b1?.title || b1?.name || 'Bot1' }
+    startPoll(matchId, (m) => { judge.value.status = m.status },
+      (m) => {
+        judge.value.status = m.status
+        const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
+        judge.value.finalResult = r?.finalResult
+        judge.value.timeline = buildTimeline(r)
+      })
   } catch (e: any) {
     message.error(e?.message || '运行失败')
   } finally {
@@ -729,8 +747,28 @@ async function runCombo() {
   combo.value.timeline = []
   combo.value.finalResult = null
   try {
-    // TODO: backend endpoint for combo (judge + 2 bots, all custom code)
-    message.info('组合调试端点开发中（等待 botzone-neo 自定义裁判支持）')
+    const gameId = combo.value.gameId
+    if (!gameId) { message.error('请先选择参考游戏'); combo.value.running = false; return }
+    const bot0Spec = combo.value.importedBot0Id
+      ? { gamerId: combo.value.importedBot0Id }
+      : { code: combo.value.bot0Code, language: combo.value.bot0Lang }
+    const bot1Spec = combo.value.importedBot1Id
+      ? { gamerId: combo.value.importedBot1Id }
+      : { code: combo.value.bot1Code, language: combo.value.bot1Lang }
+    const judgeSpec = combo.value.importedJudgeId
+      ? {} // use game's judge
+      : { judgerCode: combo.value.judgeCode, judgerLanguage: combo.value.judgeLang }
+    const res = await competeApi.runPlaygroundJudge(gameId, { ...judgeSpec, bot0: bot0Spec, bot1: bot1Spec })
+    const { matchId } = res.data as any
+    combo.value.matchId = matchId
+    combo.value.status = 0
+    startPoll(matchId, (m) => { combo.value.status = m.status },
+      (m) => {
+        combo.value.status = m.status
+        const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
+        combo.value.finalResult = r?.finalResult
+        combo.value.timeline = buildTimeline(r)
+      })
   } catch (e: any) {
     message.error(e?.message || '运行失败')
   } finally {

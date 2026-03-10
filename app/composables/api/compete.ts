@@ -7,6 +7,11 @@ export function useCompeteApi() {
       api.get<{ items: any[]; total: number }>('/compete/games', { params }),
     getGame: (id: number) => api.get<any>(`/compete/games/${id}`),
     updateGame: (id: number, dto: Record<string, any>) => api.patch<any>(`/compete/games/${id}`, dto),
+    runPlaygroundJudge: (gameId: number, dto: {
+      judgerCode?: string; judgerLanguage?: string;
+      bot0: { gamerId?: number; code?: string; language?: string };
+      bot1: { gamerId?: number; code?: string; language?: string };
+    }) => api.post<{ matchId: number; testGamerIds: number[] }>(`/compete/games/${gameId}/playground-judge`, dto),
     runPlayground: (gameId: number, dto: { code: string; language: string; opponentGamerId: number }) =>
       api.post<any>(`/compete/games/${gameId}/playground`, dto),
     deleteGame: (id: number) => api.delete<any>(`/compete/games/${id}`),
