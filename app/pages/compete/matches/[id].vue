@@ -223,7 +223,13 @@ const gameLog = computed<BotzoneGameLog | null>(() => {
   if (!r.rounds || !Array.isArray(r.rounds) || r.rounds.length === 0) return null
   return {
     gameId: String(match.value?.gameId || ''),
-    rounds: r.rounds,
+    // botzone-neo format: { round, judgeCmd, botResponses }
+    // frontend type expects: { round, judgerDisplay, botOutputs }
+    rounds: r.rounds.map((rd: any) => ({
+      round: rd.round,
+      judgerDisplay: rd.judgeCmd?.display ?? rd.judgerDisplay,
+      botOutputs: rd.botResponses ?? rd.botOutputs ?? {},
+    })),
     finalResult: r.finalResult || {},
     verdict: r.verdict || '',
   }
