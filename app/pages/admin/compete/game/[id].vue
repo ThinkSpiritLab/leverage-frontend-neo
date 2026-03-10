@@ -155,6 +155,30 @@
             </NAlert>
           </div>
         </NFormItem>
+        <!-- 裁判程序 -->
+        <NCollapse style="margin-top:8px;border:1px solid #e0e0e6;border-radius:6px">
+          <NCollapseItem title="⚖️ 裁判程序" name="judger">
+            <NFormItem label="裁判语言" label-width="120px">
+              <NSelect
+                v-model:value="editForm.judgerLanguage"
+                :options="LANGUAGE_OPTIONS"
+                style="max-width:200px"
+              />
+            </NFormItem>
+            <NFormItem label="裁判代码" label-width="120px">
+              <div style="width:100%">
+                <CodeEditor
+                  v-model="editForm.judgerCode"
+                  :language="judgerEditorLanguage"
+                  height="320px"
+                />
+              </div>
+            </NFormItem>
+            <NAlert type="info" :show-icon="false" style="font-size:12px;margin-top:4px">
+              留空则使用内置裁判；填写后将使用自定义裁判程序
+            </NAlert>
+          </NCollapseItem>
+        </NCollapse>
       </NForm>
       <template #footer>
         <NSpace justify="end">
@@ -193,6 +217,7 @@ import { h, computed } from 'vue'
 import { NTag, NButton, NSpace, NCollapse, NCollapseItem, NRadioGroup, NRadioButton, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
+import { LANGUAGE_OPTIONS } from '~/types'
 
 definePageMeta({
   layout: 'admin',
@@ -240,6 +265,8 @@ const editForm = ref({
   disabled: true,
   rendererHtml: '',
   allowHuman: false,
+  judgerCode: '',
+  judgerLanguage: 9,
 })
 
 // 内存以 MB 为单位进行交互
@@ -255,6 +282,12 @@ const editFormEnabled = computed({
 
 const rendererHtmlLen = computed(() => editForm.value.rendererHtml?.length ?? 0)
 const rendererHtmlOverLimit = computed(() => rendererHtmlLen.value > 512000)
+
+// 将 LANGUAGE_OPTIONS value (number) 映射到 CodeEditor language string
+const langValueToEditor: Record<number, string> = {
+  0: 'c', 1: 'cpp', 6: 'java', 8: 'python', 9: 'python', 10: 'javascript', 11: 'typescript',
+}
+const judgerEditorLanguage = computed(() => langValueToEditor[editForm.value.judgerLanguage] ?? 'python')
 
 const minimalTemplate = `<!DOCTYPE html>
 <html lang="zh">
@@ -363,7 +396,7 @@ function onPreviewIframeLoad() {
   sendPreviewMessage()
 }
 
-function openEditModal() {
+async function openEditModal() {
   if (!game.value) return
   editForm.value = {
     title: game.value.title || '',
@@ -374,6 +407,20 @@ function openEditModal() {
     disabled: !!game.value.disabled,
     rendererHtml: game.value.rendererHtml || '',
     allowHuman: !!game.value.allowHuman,
+    judgerCode: '',
+    judgerLanguage: 9,
+  }
+  // 加载裁判程序
+  if (!isNew) {
+    try {
+      const jRes = await competeApi.getGameJudger(gameId)
+      const judger = jRes.data
+      if (judger) {
+        editForm.value.judgerCode = judger.code || ''
+        editForm.value.judgerLanguage = judger.language ?? 9
+      }
+    }
+    catch { /* 无裁判程序，忽略 */ }
   }
   showEditModal.value = true
 }
@@ -389,8 +436,16 @@ async function handleSaveEdit() {
   }
   saving.value = true
   try {
-    const payload: Record<string, any> = { ...editForm.value }
+    const { judgerCode, judgerLanguage, ...rest } = editForm.value
+    const payload: Record<string, any> = { ...rest }
     if (!payload.rendererHtml) payload.rendererHtml = null
+    if (judgerCode) {
+      payload.judgerCode = judgerCode
+      payload.judgerLanguage = judgerLanguage
+    }
+    else {
+      payload.judgerCode = null
+    }
     if (isNew) {
       const res = await competeApi.createGame(payload)
       message.success('游戏创建成功')

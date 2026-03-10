@@ -68,6 +68,60 @@
               </div>
             </NCard>
 
+            <!-- ELO 变化历史折线图 -->
+            <NCard v-if="eloHistory.length > 1" title="📈 ELO 变化历史" size="small">
+              <svg
+                :viewBox="`0 0 ${ELO_W} ${ELO_H}`"
+                style="width:100%;height:130px;display:block"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <linearGradient id="eloAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#18a058" stop-opacity="0.25" />
+                    <stop offset="100%" stop-color="#18a058" stop-opacity="0.02" />
+                  </linearGradient>
+                </defs>
+                <!-- Y 轴网格线 -->
+                <line
+                  v-for="i in 3" :key="i"
+                  :x1="ELO_PAD" :x2="ELO_W - ELO_PAD"
+                  :y1="ELO_PAD + ((i - 1) / 2) * (ELO_H - ELO_PAD * 2)"
+                  :y2="ELO_PAD + ((i - 1) / 2) * (ELO_H - ELO_PAD * 2)"
+                  stroke="#e0e0e0" stroke-width="1"
+                />
+                <!-- ELO 标签 -->
+                <text :x="ELO_PAD - 4" :y="ELO_PAD + 4" text-anchor="end" font-size="10" fill="#aaa">
+                  {{ eloChartPoints.maxElo }}
+                </text>
+                <text :x="ELO_PAD - 4" :y="ELO_H - ELO_PAD + 4" text-anchor="end" font-size="10" fill="#aaa">
+                  {{ eloChartPoints.minElo }}
+                </text>
+                <!-- 面积填充 -->
+                <path :d="eloAreaPath" fill="url(#eloAreaGrad)" />
+                <!-- 折线 -->
+                <polyline
+                  :points="eloPolylineStr"
+                  fill="none"
+                  stroke="#18a058"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                />
+                <!-- 数据点 -->
+                <circle
+                  v-for="p in eloChartPoints.points"
+                  :key="p.index"
+                  :cx="p.x" :cy="p.y" r="4"
+                  fill="#18a058"
+                  stroke="#fff"
+                  stroke-width="1.5"
+                  style="cursor:default"
+                >
+                  <title>第{{ p.index }}场: ELO {{ p.eloBefore }} → {{ p.elo }} ({{ p.delta >= 0 ? '+' : '' }}{{ p.delta }})</title>
+                </circle>
+              </svg>
+            </NCard>
+
             <!-- 我的 Bot 列表 -->
             <NCard title="我的 Bot" size="small">
               <template #header-extra>
@@ -328,6 +382,7 @@ onMounted(async () => {
       if (game.value) {
         await fetchMyGamers(game.value.id)
         fetchEloRank(game.value.id, gamer.elo ?? 1200, gamerId.value)
+        fetchEloHistory(gamerId.value)
       }
     }
   }
@@ -338,6 +393,53 @@ onMounted(async () => {
   finally {
     loading.value = false
   }
+})
+
+// ─── ELO History ──────────────────────────────────────────────────────────────
+const eloHistory = ref<Array<{
+  id: number; gamerId: number; matchId: number
+  eloBefore: number; eloAfter: number; eloDelta: number; createdAt: string
+}>>([])
+
+const ELO_W = 400
+const ELO_H = 140
+const ELO_PAD = 28
+
+const eloChartPoints = computed(() => {
+  const hist = eloHistory.value
+  if (hist.length < 2) return { points: [], minElo: 0, maxElo: 0 }
+  const elos = hist.map(e => e.eloAfter)
+  const rawMin = Math.min(...elos)
+  const rawMax = Math.max(...elos)
+  const pad2 = Math.max(20, Math.round((rawMax - rawMin) * 0.1))
+  const minElo = rawMin - pad2
+  const maxElo = rawMax + pad2
+  const range = maxElo - minElo || 1
+  const n = hist.length
+  const points = hist.map((e, i) => ({
+    x: (i / (n - 1)) * (ELO_W - ELO_PAD * 2) + ELO_PAD,
+    y: ELO_H - ELO_PAD - ((e.eloAfter - minElo) / range) * (ELO_H - ELO_PAD * 2),
+    elo: e.eloAfter,
+    eloBefore: e.eloBefore,
+    delta: e.eloDelta,
+    index: i + 1,
+  }))
+  return { points, minElo, maxElo }
+})
+
+const eloPolylineStr = computed(() => {
+  const { points } = eloChartPoints.value
+  return points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+})
+
+const eloAreaPath = computed(() => {
+  const { points } = eloChartPoints.value
+  if (!points.length) return ''
+  const start = points[0]
+  const end = points[points.length - 1]
+  const bottom = ELO_H - ELO_PAD
+  const ptStr = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+  return `M ${start.x.toFixed(1)},${bottom} L ${ptStr} L ${end.x.toFixed(1)},${bottom} Z`
 })
 
 // ─── ELO Rank Bar ─────────────────────────────────────────────────────────────
@@ -372,6 +474,14 @@ async function fetchEloRank(gameId: number, myElo: number, myGamerId: number) {
         .map((r: any) => ({ id: r.gamerId, name: r.name || `Bot#${r.gamerId}`, elo: Number(r.elo), pct: pct(Number(r.elo)) })),
     }
   } catch (e) { console.error('fetchEloRank', e) }
+}
+
+async function fetchEloHistory(id: number) {
+  try {
+    const res = await competeApi.getEloHistory(id)
+    eloHistory.value = Array.isArray(res.data) ? res.data : []
+  }
+  catch (e) { console.error('fetchEloHistory', e) }
 }
 
 async function fetchMyGamers(gameId: number) {

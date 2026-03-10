@@ -4,6 +4,14 @@
       <NH2>Bot 对战</NH2>
       <NSpace>
         <NButton secondary @click="navigateTo('/compete/playground')">🧪 Playground</NButton>
+        <NButton
+          v-if="canCreateGame"
+          secondary
+          type="info"
+          @click="navigateTo('/admin/compete/game/new')"
+        >
+          ➕ 创建新游戏
+        </NButton>
         <NButton type="primary" @click="showCreateRoom = true">创建房间</NButton>
       </NSpace>
     </div>
@@ -123,6 +131,7 @@
 import { h } from 'vue'
 import { NButton, NTag, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
+import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({
   layout: 'default',
@@ -131,6 +140,11 @@ definePageMeta({
 
 const competeApi = useCompeteApi()
 const message = useMessage()
+const authStore = useAuthStore()
+
+const canCreateGame = computed(() =>
+  ['supervisor', 'admin', 'sa'].includes(authStore.user?.role ?? ''),
+)
 
 const activeTab = ref('games')
 
