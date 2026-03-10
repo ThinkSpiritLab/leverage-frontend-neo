@@ -494,6 +494,15 @@ function onIframeMessage(e: MessageEvent) {
   }
 }
 
+// Handle game-over SSE: immediately refresh match data and stop polling
+function handleGameOverSSE(finalResult: Record<string, number>) {
+  console.log('[SSE] game-over received, finalResult=', finalResult)
+  humanTurn.value = null
+  stopCountdown()
+  fetchMatch()
+  stopPolling()
+}
+
 onMounted(() => { window.addEventListener('message', onIframeMessage) })
 onUnmounted(() => { window.removeEventListener('message', onIframeMessage) })
 
@@ -610,7 +619,9 @@ function connectHumanSSE() {
       if (data.type === 'your-turn') {
         humanTurn.value = { turnToken: data.turnToken, gameState: data.gameState }
       } else if (data.type === 'game-over') {
-        humanTurn.value = null
+        handleGameOverSSE(data.finalResult ?? {})
+      } else if (data.type === 'connected') {
+        console.log('[SSE] server confirmed connection')
       }
     } catch { /* ignore */ }
   }
