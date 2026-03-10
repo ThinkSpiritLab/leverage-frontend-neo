@@ -73,8 +73,22 @@
               </NTag>
             </NSpace>
 
-            <!-- TicTacToe visual board (if applicable) — click to auto-submit -->
-            <div v-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
+            <!-- Renderer iframe (preferred: handles both visual & interactive) -->
+            <div v-if="match.game?.rendererHtml" style="margin-bottom:12px">
+              <iframe
+                ref="humanRendererRef"
+                :srcdoc="humanRendererSrcdoc"
+                sandbox="allow-scripts"
+                style="width:100%;height:420px;border:1px solid #e0e0e6;border-radius:8px"
+                @load="onHumanRendererLoad"
+              />
+              <NText v-if="!iframeInteractive" depth="3" style="font-size:12px;display:block;margin-top:4px">
+                渲染器未声明交互支持，请使用下方输入框
+              </NText>
+            </div>
+
+            <!-- Inline TicTacToe board (fallback when no rendererHtml) -->
+            <div v-else-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
               <div
                 v-for="(cell, i) in tttBoard"
                 :key="i"
@@ -87,42 +101,23 @@
                 <span v-else style="color:#aaa;font-size:12px">{{ i }}</span>
               </div>
             </div>
-            <NText v-if="tttBoard" depth="3" style="font-size:12px;display:block;margin-bottom:12px">点击空格直接落子</NText>
 
-            <!-- Game renderer for human turn (if rendererHtml available) -->
-            <div v-if="!tttBoard && match.game?.rendererHtml" style="margin-bottom:12px">
-              <iframe
-                ref="humanRendererRef"
-                :srcdoc="humanRendererSrcdoc"
-                sandbox="allow-scripts"
-                style="width:100%;height:400px;border:1px solid #e0e0e6;border-radius:8px"
-                @load="onHumanRendererLoad"
-              />
-              <NText depth="3" style="font-size:12px;display:block;margin-top:4px">
-                如果渲染器支持，可以在上方直接操作；或使用下方文本框输入
-              </NText>
-            </div>
-
-            <!-- Raw JSON fallback (collapsed if renderer available) -->
-            <details v-if="!tttBoard && !match.game?.rendererHtml" style="margin-bottom:12px">
-              <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
-              <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:200px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
-            </details>
-            <details v-else-if="!tttBoard" style="margin-bottom:12px">
-              <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
-              <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:160px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
-            </details>
-
-            <!-- Text input: shown as fallback when no visual board -->
-            <NSpace v-if="!tttBoard" align="center">
-              <NInput
-                v-model:value="humanMove"
-                placeholder='输入移动（如 {"0": 4}）'
-                style="width: 300px; font-family: monospace"
-                @keyup.enter="submitHumanMove"
-              />
-              <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
-            </NSpace>
+            <!-- JSON text input: shown when renderer isn't interactive, and no visual board -->
+            <template v-if="!iframeInteractive">
+              <details v-if="match.game?.rendererHtml" style="margin-bottom:8px">
+                <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
+                <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:160px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
+              </details>
+              <NSpace v-if="!match.game?.rendererHtml || !tttBoard" align="center" style="margin-top:8px">
+                <NInput
+                  v-model:value="humanMove"
+                  placeholder='输入移动（如 {"0": 4}）'
+                  style="width: 300px; font-family: monospace"
+                  @keyup.enter="submitHumanMove"
+                />
+                <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
+              </NSpace>
+            </template>
           </template>
           <template v-else>
             <NSpace align="center">
@@ -486,18 +481,32 @@ window.addEventListener('message', function(e) {
 })
 
 function onHumanRendererLoad() {
-  // Send current game state to renderer
+  // Send current game state to renderer with player index
   if (humanTurn.value && humanRendererRef.value?.contentWindow) {
     humanRendererRef.value.contentWindow.postMessage(
-      { type: 'gameState', gameState: humanTurn.value.gameState },
+      {
+        type: 'gameState',
+        gameState: humanTurn.value.gameState,
+        playerIndex: myHumanGamer.value?.index ?? 0,
+      },
       '*',
     )
   }
 }
 
-// Listen for humanMove from iframe
+// Whether the current renderer iframe declared interactive support
+const iframeInteractive = ref(false)
+
+// Listen for messages from iframe renderer
 function onIframeMessage(e: MessageEvent) {
-  if (e.data?.type === 'humanMove' && e.data.move && !submittingMove.value) {
+  if (!e.data) return
+  // Renderer declares interactive capability → hide text input
+  if (e.data.type === 'capabilities') {
+    iframeInteractive.value = !!e.data.interactive
+    return
+  }
+  // Renderer sends back a move → auto-submit
+  if (e.data.type === 'humanMove' && e.data.move && !submittingMove.value) {
     humanMove.value = e.data.move
     submitHumanMove()
   }
@@ -510,7 +519,7 @@ onUnmounted(() => { window.removeEventListener('message', onIframeMessage) })
 watch(() => humanTurn.value, (turn) => {
   if (turn && humanRendererRef.value?.contentWindow) {
     humanRendererRef.value.contentWindow.postMessage(
-      { type: 'gameState', gameState: turn.gameState },
+      { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 },
       '*',
     )
   }
@@ -567,9 +576,9 @@ function stopCountdown() {
   countdownSec.value = 0
 }
 
-// Start/stop countdown when humanTurn changes
+// Start/stop countdown when humanTurn changes; reset iframe interactive state
 watch(() => humanTurn.value, (turn) => {
-  if (turn) startCountdown()
+  if (turn) { startCountdown(); iframeInteractive.value = false }
   else stopCountdown()
 })
 
