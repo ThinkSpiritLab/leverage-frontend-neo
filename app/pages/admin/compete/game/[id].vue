@@ -175,7 +175,7 @@
               </div>
             </NFormItem>
             <NAlert type="info" :show-icon="false" style="font-size:12px;margin-top:4px">
-              留空则使用内置裁判；填写后将使用自定义裁判程序
+              ⚠️ 必须填写裁判程序，否则对局将无法运行。只有系统预置游戏（猜数字/Nim/井字棋）有内置裁判，新建游戏必须提供裁判代码。
             </NAlert>
           </NCollapseItem>
         </NCollapse>
@@ -432,6 +432,10 @@ async function handleSaveEdit() {
   }
   if (rendererHtmlOverLimit.value) {
     message.error('自定义渲染器 HTML 超出 512KB 限制')
+    return
+  }
+  if (isNew.value && !editForm.value.judgerCode?.trim()) {
+    message.error('新建游戏必须填写裁判程序代码（裁判程序定义游戏规则）')
     return
   }
   saving.value = true
