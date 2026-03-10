@@ -79,6 +79,7 @@ import {
   BriefcaseOutline,
   ListOutline,
   ServerOutline,
+  GameControllerOutline,
 } from '@vicons/ionicons5'
 useHead({ titleTemplate: (s) => s ? `${s} — Leverage OJ 管理后台` : 'Leverage OJ 管理后台' })
 
@@ -162,6 +163,12 @@ const adminMenuOptions = [
         onClick: () => navigateTo('/admin/rejudge/log'),
       },
     ],
+  },
+  {
+    label: 'Bot 对战管理',
+    key: 'admin-compete',
+    icon: renderIcon(GameControllerOutline),
+    onClick: () => navigateTo('/admin/compete/game/new'),
   },
   {
     label: '标签管理',

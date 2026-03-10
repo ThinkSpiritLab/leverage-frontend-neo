@@ -93,6 +93,7 @@ import {
   PodiumOutline,
   ChatbubbleOutline,
   NotificationsOutline,
+  GameControllerOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -138,6 +139,12 @@ const baseMenuOptions = [
     key: 'ranklist',
     icon: renderIcon(PodiumOutline),
     onClick: () => navigateTo('/ranklist'),
+  },
+  {
+    label: 'Bot 对战',
+    key: 'compete',
+    icon: renderIcon(GameControllerOutline),
+    onClick: () => navigateTo('/compete'),
   },
   {
     label: '消息',
