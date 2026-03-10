@@ -11,9 +11,9 @@ export function useCompeteApi() {
       api.get<any[]>(`/compete/games/${gameId}/leaderboard`),
     listGamers: (params: { gameId?: number; page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/gamers', { params }),
-    createGamer: (dto: { gameId: number; name: string; code: string; language: string }) =>
+    createGamer: (dto: { gameId: number; title: string; code: string; language: string; opensource?: boolean }) =>
       api.post<any>('/compete/gamers', dto),
-    updateGamer: (id: number, dto: { name?: string; code?: string; language?: string }) =>
+    updateGamer: (id: number, dto: { title?: string; code?: string; language?: string; opensource?: boolean }) =>
       api.patch<any>(`/compete/gamers/${id}`, dto),
     getGamer: (id: number) => api.get<any>(`/compete/gamers/${id}`),
     listMatches: (params: { gameId?: number; page?: number; perPage?: number }) =>

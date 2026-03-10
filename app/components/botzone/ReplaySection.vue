@@ -73,35 +73,60 @@
         </NButton>
       </NSpace>
 
-      <!-- 裁判显示字段 -->
-      <NCard embedded size="small" title="裁判输出 (judgerDisplay)" style="margin-bottom: 12px">
-        <NCode
-          :code="judgerDisplayStr"
-          language="json"
-          show-line-numbers
-          style="font-size: 12px"
-        />
-      </NCard>
+      <!-- 视图切换 -->
+      <NSpace align="center" style="margin-bottom: 12px">
+        <NText style="font-size: 13px; color: var(--n-text-color-3)">显示模式：</NText>
+        <NRadioGroup v-model:value="viewMode" size="small">
+          <NRadioButton value="visual">可视化</NRadioButton>
+          <NRadioButton value="json">JSON</NRadioButton>
+        </NRadioGroup>
+      </NSpace>
 
-      <!-- 每位玩家的输出 -->
-      <NCard embedded size="small" title="各玩家输出 (botOutputs)">
-        <NEmpty v-if="botOutputKeys.length === 0" description="本回合无玩家输出" />
-        <NCollapse v-else :default-expanded-names="botOutputKeys.slice(0, 2)">
-          <NCollapseItem
-            v-for="player in botOutputKeys"
-            :key="player"
-            :title="`玩家 ${player}`"
-            :name="player"
-          >
-            <NCode
-              :code="botOutputStr(player)"
-              language="json"
-              show-line-numbers
-              style="font-size: 12px"
-            />
-          </NCollapseItem>
-        </NCollapse>
-      </NCard>
+      <!-- 可视化模式 -->
+      <template v-if="viewMode === 'visual'">
+        <!-- 游戏可视化渲染器 -->
+        <NCard v-if="gameRendererComponent" embedded size="small" title="棋盘" style="margin-bottom: 12px">
+          <component :is="gameRendererComponent" :judger-display="currentRound.judgerDisplay" />
+        </NCard>
+        <NCard v-else embedded size="small" title="裁判输出" style="margin-bottom: 12px">
+          <NCode :code="judgerDisplayStr" language="json" show-line-numbers style="font-size: 12px" />
+        </NCard>
+
+        <!-- 玩家输出 (折叠) -->
+        <NCard embedded size="small" title="各玩家输出">
+          <NEmpty v-if="botOutputKeys.length === 0" description="本回合无玩家输出" />
+          <NCollapse v-else :default-expanded-names="botOutputKeys.slice(0, 2)">
+            <NCollapseItem
+              v-for="player in botOutputKeys"
+              :key="player"
+              :title="`玩家 ${player}`"
+              :name="player"
+            >
+              <NCode :code="botOutputStr(player)" language="json" show-line-numbers style="font-size: 12px" />
+            </NCollapseItem>
+          </NCollapse>
+        </NCard>
+      </template>
+
+      <!-- JSON 模式 -->
+      <template v-else>
+        <NCard embedded size="small" title="裁判输出 (judgerDisplay)" style="margin-bottom: 12px">
+          <NCode :code="judgerDisplayStr" language="json" show-line-numbers style="font-size: 12px" />
+        </NCard>
+        <NCard embedded size="small" title="各玩家输出 (botOutputs)">
+          <NEmpty v-if="botOutputKeys.length === 0" description="本回合无玩家输出" />
+          <NCollapse v-else :default-expanded-names="botOutputKeys.slice(0, 2)">
+            <NCollapseItem
+              v-for="player in botOutputKeys"
+              :key="player"
+              :title="`玩家 ${player}`"
+              :name="player"
+            >
+              <NCode :code="botOutputStr(player)" language="json" show-line-numbers style="font-size: 12px" />
+            </NCollapseItem>
+          </NCollapse>
+        </NCard>
+      </template>
 
       <!-- 末局时额外高亮显示得分 -->
       <NAlert

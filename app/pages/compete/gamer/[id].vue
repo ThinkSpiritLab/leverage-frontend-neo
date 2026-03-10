@@ -262,22 +262,30 @@ async function handleSave() {
       const gameId = Number(route.query.gameId)
       const res = await competeApi.createGamer({
         gameId,
-        name: gamerForm.name,
+        title: gamerForm.name,
         code: gamerForm.code,
         language: gamerForm.language,
+        opensource: false,
       })
       message.success('Bot 创建成功！')
       // 跳转到新 gamer 的编辑页
       navigateTo(`/compete/gamer/${res.data.id}`)
     }
     else {
-      await competeApi.updateGamer(gamerId.value, {
-        name: gamerForm.name,
+      const res = await competeApi.updateGamer(gamerId.value, {
+        title: gamerForm.name,
         code: gamerForm.code,
         language: gamerForm.language,
       })
-      message.success('Bot 已保存！')
-      if (game.value) await fetchMyGamers(game.value.id)
+      message.success('Bot 已保存（新版本已创建）！')
+      // Fork 返回新 gamer，跳转到新版本页面
+      const newId = res.data?.id
+      if (newId) {
+        navigateTo(`/compete/gamer/${newId}`)
+      }
+      else if (game.value) {
+        await fetchMyGamers(game.value.id)
+      }
     }
   }
   catch (e: any) {
