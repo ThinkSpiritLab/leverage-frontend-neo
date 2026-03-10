@@ -355,6 +355,31 @@
             </template>
           </NCard>
         </NGridItem>
+
+        <!-- 对局记录 Tab（跨整行） -->
+        <NGridItem v-if="!isNew" :span="12">
+          <NCard title="📋 对局记录" size="small">
+            <!-- 加载中状态 -->
+            <NSpin :show="gamerMatchesLoading">
+              <NEmpty v-if="!gamerMatchesLoading && gamerMatches.length === 0" description="暂无对局记录" style="padding:16px 0" />
+              <NDataTable
+                v-else
+                :columns="gamerMatchColumns"
+                :data="gamerMatches"
+                :bordered="false"
+                :row-key="(row: any) => row.id"
+              />
+            </NSpin>
+            <NPagination
+              v-if="gamerMatchesTotal > gamerMatchesPageSize"
+              v-model:page="gamerMatchesPage"
+              :page-size="gamerMatchesPageSize"
+              :item-count="gamerMatchesTotal"
+              style="margin-top: 16px; justify-content: flex-end"
+              @update:page="fetchGamerMatches"
+            />
+          </NCard>
+        </NGridItem>
       </NGrid>
 
       <NResult v-else-if="!loading" status="404" title="未找到相关内容">
@@ -367,8 +392,9 @@
 </template>
 
 <script setup lang="ts">
-import { useMessage, useDialog } from 'naive-ui'
-import type { FormInst } from 'naive-ui'
+import { h } from 'vue'
+import { useMessage, useDialog, NButton, NTag } from 'naive-ui'
+import type { FormInst, DataTableColumns } from 'naive-ui'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({
@@ -471,6 +497,7 @@ onMounted(async () => {
         fetchEloRank(game.value.id, gamer.elo ?? 1200, gamerId.value)
         fetchEloHistory(gamerId.value)
         fetchGamerStats(gamerId.value)
+        fetchGamerMatches()
       }
     }
   }
@@ -730,6 +757,108 @@ async function handleDelete() {
     deleting.value = false
   }
 }
+
+// ─── 对局记录 ──────────────────────────────────────────────────────────────────
+const gamerMatches = ref<any[]>([])
+const gamerMatchesLoading = ref(false)
+const gamerMatchesPage = ref(1)
+const gamerMatchesPageSize = 10
+const gamerMatchesTotal = ref(0)
+
+async function fetchGamerMatches() {
+  if (isNew.value) return
+  gamerMatchesLoading.value = true
+  try {
+    const res = await competeApi.listMatches({
+      gamerId: gamerId.value,
+      page: gamerMatchesPage.value,
+      perPage: gamerMatchesPageSize,
+    })
+    gamerMatches.value = res.data.items ?? []
+    gamerMatchesTotal.value = res.data.total ?? 0
+  }
+  catch (e) {
+    console.error('fetchGamerMatches', e)
+  }
+  finally {
+    gamerMatchesLoading.value = false
+  }
+}
+
+const gamerMatchColumns: DataTableColumns<any> = [
+  {
+    title: '对局 ID',
+    key: 'id',
+    width: 90,
+    render(row) {
+      return h(
+        NButton,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/matches/${row.id}`) },
+        { default: () => `#${row.id}` },
+      )
+    },
+  },
+  {
+    title: '对手',
+    key: 'opponents',
+    render(row) {
+      const links: any[] = (row.links || []).filter((l: any) => l.gamerId !== gamerId.value)
+      if (!links.length) return h('span', { style: 'color:#aaa' }, '-')
+      const parts: any[] = []
+      links.forEach((l: any, i: number) => {
+        if (i > 0) parts.push(h('span', { style: 'color:#999;margin:0 3px' }, 'vs'))
+        parts.push(
+          h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${l.gamerId}`) },
+            () => l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`),
+        )
+      })
+      return h('span', parts)
+    },
+  },
+  {
+    title: '结果',
+    key: 'result',
+    width: 90,
+    render(row) {
+      if (row.status !== 2) return h(NTag, { size: 'small', bordered: false }, { default: () => '-' })
+      try {
+        const fr = typeof row.result === 'string' ? JSON.parse(row.result).finalResult : row.result?.finalResult
+        if (!fr) return h(NTag, { size: 'small', bordered: false }, { default: () => '-' })
+        const myEntry = Object.entries(fr).find(([id]) => Number(id) === gamerId.value)
+        if (!myEntry) return h(NTag, { size: 'small', bordered: false }, { default: () => '-' })
+        const myScore = myEntry[1] as number
+        const scores = Object.values(fr) as number[]
+        const maxScore = Math.max(...scores)
+        const allSame = scores.every(s => s === scores[0])
+        if (allSame) return h(NTag, { type: 'warning', size: 'small', bordered: false }, { default: () => '平' })
+        if (myScore === maxScore) return h(NTag, { type: 'success', size: 'small', bordered: false }, { default: () => '胜' })
+        return h(NTag, { type: 'error', size: 'small', bordered: false }, { default: () => '负' })
+      }
+      catch { return h(NTag, { size: 'small', bordered: false }, { default: () => '-' }) }
+    },
+  },
+  {
+    title: 'ELO 变化',
+    key: 'eloDelta',
+    width: 100,
+    render(row) {
+      const link = (row.links || []).find((l: any) => l.gamerId === gamerId.value)
+      const delta = link?.eloDelta
+      if (delta == null) return h('span', { style: 'color:#aaa' }, '-')
+      const color = delta > 0 ? '#18a058' : delta < 0 ? '#e03030' : '#aaa'
+      return h('span', { style: `color:${color};font-weight:600` }, `${delta > 0 ? '+' : ''}${delta}`)
+    },
+  },
+  {
+    title: '时间',
+    key: 'createdAt',
+    width: 160,
+    render(row) {
+      if (!row.createdAt) return h('span', '-')
+      return h('span', new Date(row.createdAt).toLocaleString('zh-CN'))
+    },
+  },
+]
 
 useHead({ title: 'Bot 详情 — Leverage OJ' })
 </script>

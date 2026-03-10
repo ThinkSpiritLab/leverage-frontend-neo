@@ -251,7 +251,7 @@
       <NFormItem label="Bot API Key">
         <NInputGroup>
           <NInput :value="createdApiKey" readonly style="font-family:monospace;font-size:13px" />
-          <NButton @click="()=>navigator.clipboard?.writeText(createdApiKey)">复制</NButton>
+          <NButton @click="copyApiKey">复制</NButton>
         </NInputGroup>
       </NFormItem>
       <NFormItem label="Gamer ID">
@@ -570,6 +570,10 @@ const showSubmitModal = ref(false)
 const showApiKeyModal = ref(false)
 const createdApiKey = ref('')
 const createdGamerId = ref(0)
+
+function copyApiKey() {
+  navigator.clipboard?.writeText(createdApiKey.value)
+}
 const submitting = ref(false)
 const submitForm = ref({
   title: '', type: 'code' as string,

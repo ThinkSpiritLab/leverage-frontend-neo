@@ -35,6 +35,93 @@
       </div>
     </NCard>
 
+    <!-- Bot 统计卡片 -->
+    <NCard title="🤖 Bot 统计">
+      <NSpin :show="statsLoading">
+        <NGrid :cols="3" :x-gap="16" :y-gap="12">
+          <NGridItem>
+            <div class="stat-block">
+              <div class="stat-value">{{ userStats?.totalBots ?? '-' }}</div>
+              <div class="stat-label">总 Bot 数</div>
+            </div>
+          </NGridItem>
+          <NGridItem>
+            <div class="stat-block">
+              <div class="stat-value" style="color:#18a058">{{ userStats?.activeBots ?? '-' }}</div>
+              <div class="stat-label">活跃 Bot 数</div>
+            </div>
+          </NGridItem>
+          <NGridItem>
+            <div class="stat-block">
+              <div class="stat-value" style="color:#f0a020">{{ userStats?.winRate != null ? `${(userStats.winRate * 100).toFixed(1)}%` : '-' }}</div>
+              <div class="stat-label">胜率</div>
+            </div>
+          </NGridItem>
+          <NGridItem>
+            <div class="stat-block">
+              <div class="stat-value">{{ userStats?.totalMatches ?? '-' }}</div>
+              <div class="stat-label">总对局</div>
+            </div>
+          </NGridItem>
+          <NGridItem>
+            <div class="stat-block">
+              <div class="stat-value" style="color:#18a058">{{ userStats?.totalWins ?? '-' }}</div>
+              <div class="stat-label">总胜场</div>
+            </div>
+          </NGridItem>
+          <NGridItem>
+            <div class="stat-block">
+              <div class="stat-value" style="color:#2080f0">{{ userStats?.topElo ?? '-' }}</div>
+              <div class="stat-label">最高 ELO</div>
+            </div>
+          </NGridItem>
+        </NGrid>
+        <NDivider v-if="userStats?.topBot || userStats?.favoriteGame" style="margin:12px 0 8px" />
+        <NSpace v-if="userStats?.topBot || userStats?.favoriteGame" wrap size="large">
+          <NText v-if="userStats?.topBot" depth="3">
+            🏆 最高 ELO Bot：
+            <NButton text type="primary" @click="navigateTo(`/compete/gamer/${userStats.topBot.id}`)">
+              {{ userStats.topBot.name }}
+            </NButton>
+            （{{ userStats.topBot.elo }} ELO）
+          </NText>
+          <NText v-if="userStats?.favoriteGame" depth="3">
+            🎮 最喜欢的游戏：
+            <NButton text type="primary" @click="navigateTo(`/compete/games/${userStats.favoriteGame.id}`)">
+              {{ userStats.favoriteGame.name }}
+            </NButton>
+          </NText>
+        </NSpace>
+        <NEmpty v-if="!statsLoading && !userStats" description="暂无 Bot 统计数据" style="padding:16px 0" />
+      </NSpin>
+    </NCard>
+
+    <!-- 最近 Bot 列表 -->
+    <NCard title="🤖 最近 Bot">
+      <NSpin :show="gamersLoading">
+        <NGrid v-if="recentGamers.length" :cols="3" :x-gap="12" :y-gap="12">
+          <NGridItem v-for="g in recentGamers" :key="g.id">
+            <NCard
+              size="small"
+              hoverable
+              style="cursor:pointer"
+              @click="navigateTo(`/compete/gamer/${g.id}`)"
+            >
+              <div style="font-weight:600;font-size:14px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                {{ g.name || g.title || `Bot#${g.id}` }}
+              </div>
+              <NSpace size="small" wrap>
+                <NTag size="small" :bordered="false" type="info">{{ g.game?.name || '-' }}</NTag>
+                <NTag size="small" :bordered="false">⚡ {{ g.elo ?? 1200 }}</NTag>
+                <NTag size="small" :bordered="false" type="success">{{ g.wins ?? 0 }}胜</NTag>
+              </NSpace>
+            </NCard>
+          </NGridItem>
+        </NGrid>
+        <NEmpty v-if="!gamersLoading && recentGamers.length === 0" description="该用户暂无 Bot" style="padding:16px 0" />
+      </NSpin>
+    </NCard>
+
     <NCard title="提交热力图">
       <div class="heatmap-grid">
         <NTooltip v-for="cell in heatmapData" :key="cell.date" trigger="hover">
@@ -98,6 +185,7 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const userId = computed(() => Number(route.params.id))
 const usersApi = useUsersApi()
+const competeApi = useCompeteApi()
 const collegesApi = useCollegesApi()
 const professionsApi = useProfessionsApi()
 const authStore = useAuthStore()
@@ -109,6 +197,10 @@ const user = ref<any>(null)
 const loading = ref(true)
 const acLoading = ref(false)
 const acProblems = ref<Array<{ id: number; title: string; logicId: string; prefix: string }>>([])
+const userStats = ref<any>(null)
+const statsLoading = ref(false)
+const recentGamers = ref<any[]>([])
+const gamersLoading = ref(false)
 
 const passRate = computed(() => {
   const submits = user.value?.submits ?? 0
@@ -226,6 +318,34 @@ async function handleProfileSave() {
   }
 }
 
+async function loadUserStats() {
+  statsLoading.value = true
+  try {
+    const res = await usersApi.getUserStats(userId.value)
+    userStats.value = res.data || null
+  }
+  catch {
+    userStats.value = null
+  }
+  finally {
+    statsLoading.value = false
+  }
+}
+
+async function loadRecentGamers() {
+  gamersLoading.value = true
+  try {
+    const res = await competeApi.listGamers({ userId: userId.value, perPage: 6, page: 1 })
+    recentGamers.value = res.data.items ?? []
+  }
+  catch {
+    recentGamers.value = []
+  }
+  finally {
+    gamersLoading.value = false
+  }
+}
+
 async function loadAcProblems() {
   acLoading.value = true
   try {
@@ -249,7 +369,7 @@ onMounted(async () => {
   try {
     const res = await usersApi.get(userId.value)
     user.value = res.data
-    await loadAcProblems()
+    await Promise.all([loadAcProblems(), loadUserStats(), loadRecentGamers()])
   }
   catch {
     user.value = null

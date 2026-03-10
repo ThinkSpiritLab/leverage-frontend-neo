@@ -40,11 +40,20 @@
               </template>
               <NText depth="3" style="font-size:13px;display:block;min-height:36px">{{ g.description || '暂无描述' }}</NText>
               <NDivider style="margin:10px 0" />
-              <NSpace size="small">
+              <NSpace size="small" style="margin-bottom:10px">
                 <NTag size="small" :bordered="false">⏱ {{ g.timeLimit }}ms</NTag>
                 <NTag size="small" :bordered="false">💾 {{ g.memoryLimit }}MB</NTag>
                 <NTag size="small" :bordered="false">👥 {{ g.gamerQuantity }}人</NTag>
+                <NTag v-if="g.activeBotCount != null" size="small" :bordered="false" type="success">🤖 {{ g.activeBotCount }} 活跃</NTag>
               </NSpace>
+              <NButton
+                type="primary"
+                size="small"
+                block
+                @click.stop="navigateTo(`/compete/games/${g.id}`)"
+              >
+                参与
+              </NButton>
             </NCard>
             <NEmpty v-if="!games.length" description="暂无游戏" style="grid-column:1/-1;padding:48px 0" />
           </div>
@@ -75,6 +84,28 @@
 
       <!-- 历史对局 -->
       <NTabPane name="history" tab="历史对局">
+        <!-- 过滤控件 -->
+        <NSpace align="center" wrap style="margin-bottom:12px">
+          <NSelect
+            v-model:value="filterGameId"
+            :options="[{ label: '全部游戏', value: null }, ...gameFilterOptions]"
+            placeholder="全部游戏"
+            clearable
+            style="min-width:140px"
+            @update:value="onFilterChange"
+          />
+          <NSelect
+            v-model:value="filterStatus"
+            :options="statusFilterOptions"
+            placeholder="全部状态"
+            clearable
+            style="min-width:120px"
+            @update:value="onFilterChange"
+          />
+          <NCheckbox v-model:checked="filterIsTest" @update:checked="onFilterChange">
+            显示测试对局
+          </NCheckbox>
+        </NSpace>
         <NSpin :show="matchesLoading">
           <NEmpty v-if="!matchesLoading && matches.length === 0" description="暂无对局记录" />
           <NDataTable
@@ -131,7 +162,7 @@
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NButton, NTag, useMessage } from 'naive-ui'
+import { NButton, NCheckbox, NTag, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { useAuthStore } from '~/stores/auth'
 
@@ -306,10 +337,39 @@ const matchesPage = ref(1)
 const matchesPageSize = ref(20)
 const matchesTotal = ref(0)
 
+// 过滤状态
+const filterGameId = ref<number | null>(null)
+const filterStatus = ref<number | null>(null)
+const filterIsTest = ref(false)
+
+const gameFilterOptions = computed(() =>
+  games.value.map(g => ({ label: g.title || g.name, value: g.id })),
+)
+
+const statusFilterOptions = [
+  { label: '全部状态', value: null },
+  { label: '等待中', value: 0 },
+  { label: '运行中', value: 1 },
+  { label: '已完成', value: 2 },
+  { label: '失败', value: 3 },
+]
+
+function onFilterChange() {
+  matchesPage.value = 1
+  fetchMatches()
+}
+
 async function fetchMatches() {
   matchesLoading.value = true
   try {
-    const res = await competeApi.listMatches({ page: matchesPage.value, perPage: matchesPageSize.value })
+    const params: { gameId?: number; page?: number; perPage?: number; status?: number; isTest?: boolean } = {
+      page: matchesPage.value,
+      perPage: matchesPageSize.value,
+    }
+    if (filterGameId.value != null) params.gameId = filterGameId.value
+    if (filterStatus.value != null) params.status = filterStatus.value
+    if (filterIsTest.value) params.isTest = true
+    const res = await competeApi.listMatches(params)
     matches.value = res.data.items
     matchesTotal.value = res.data.total
   }
