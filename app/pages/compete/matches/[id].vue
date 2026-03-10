@@ -42,7 +42,7 @@
               <NText code>{{ match.externalJobId }}</NText>
             </NDescriptionsItem>
             <NDescriptionsItem label="完成时间">
-              {{ match.finishedAt ? new Date(match.finishedAt).toLocaleString('zh-CN') : '-' }}
+              {{ (isCompleted || isFailed) && match.updatedAt ? new Date(match.updatedAt).toLocaleString('zh-CN') : '-' }}
             </NDescriptionsItem>
           </NDescriptions>
         </NCard>
