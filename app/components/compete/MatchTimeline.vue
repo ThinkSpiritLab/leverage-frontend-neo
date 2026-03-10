@@ -35,11 +35,11 @@
               <!-- Arrow row -->
               <div class="event-arrow">
                 <span class="event-from" :style="{ color: getColor(event.from) }">
-                  {{ getIcon(event.from) }} {{ event.from }}
+                  {{ getIcon(event.from) }} {{ getName(event.from) }}
                 </span>
                 <span class="event-arrow-sym">→</span>
                 <span class="event-to" :style="{ color: getColor(event.to) }">
-                  {{ getIcon(event.to) }} {{ event.to }}
+                  {{ getIcon(event.to) }} {{ getName(event.to) }}
                 </span>
               </div>
 
@@ -179,6 +179,18 @@ function getColor(id: string) {
 
 function getIcon(id: string) {
   return ICONS[id] || '📦'
+}
+
+function getName(id: string): string {
+  if (id === 'Judge') return props.judgerName || '裁判'
+  // id is like 'Bot0', 'Bot1' → extract index
+  const m = id.match(/^Bot(\d+)$/)
+  if (m) {
+    const idx = m[1]
+    if (props.botNames?.[idx]) return props.botNames[idx]
+    return id
+  }
+  return id
 }
 
 const participants = computed<Participant[]>(() => {
