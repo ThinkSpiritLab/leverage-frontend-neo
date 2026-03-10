@@ -48,11 +48,42 @@
         </NCard>
 
         <!-- 人类玩家输入区 -->
-        <NCard v-if="myHumanGamer && match?.status === 1" title="🎮 你的回合" style="margin-bottom: 16px; border: 2px solid #18a058">
+        <NCard
+          v-if="myHumanGamer && match?.status === 1"
+          style="margin-bottom: 16px; border: 2px solid #18a058"
+        >
+          <template #header>
+            <NSpace align="center">
+              <span>🎮 你的回合</span>
+              <NTag size="small" type="success" :bordered="false">
+                你是 {{ myHumanGamer.index === 0 ? '先手 ✕' : '后手 ○' }}
+              </NTag>
+            </NSpace>
+          </template>
+
           <template v-if="humanTurn">
-            <NText type="success" strong style="display:block;margin-bottom:8px">轮到你了！查看棋盘状态，输入你的移动：</NText>
-            <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-bottom:12px;overflow:auto;max-height:200px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
-            <NSpace>
+            <!-- TicTacToe visual board (if applicable) -->
+            <div v-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
+              <div
+                v-for="(cell, i) in tttBoard"
+                :key="i"
+                class="ttt-cell"
+                :class="{ 'can-click': cell === 0 }"
+                @click="cell === 0 && clickCell(i)"
+              >
+                <span v-if="cell === 1" style="color:#d03050;font-size:22px;font-weight:bold">✕</span>
+                <span v-else-if="cell === 2" style="color:#2080f0;font-size:22px;font-weight:bold">○</span>
+                <span v-else style="color:#ccc;font-size:14px">{{ i }}</span>
+              </div>
+            </div>
+
+            <!-- Raw JSON fallback -->
+            <details v-if="!tttBoard" style="margin-bottom:12px">
+              <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
+              <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:200px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
+            </details>
+
+            <NSpace align="center">
               <NInput
                 v-model:value="humanMove"
                 placeholder='输入移动（如 {"0": 4}）'
@@ -60,11 +91,14 @@
                 @keyup.enter="submitHumanMove"
               />
               <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
+              <NText depth="3" style="font-size:12px">点击棋盘格子可自动填入移动</NText>
             </NSpace>
           </template>
           <template v-else>
-            <NText depth="3">等待对手移动中…</NText>
-            <NSpin size="small" style="margin-left: 8px" />
+            <NSpace align="center">
+              <NSpin size="small" />
+              <NText depth="3">等待对手移动中…</NText>
+            </NSpace>
           </template>
         </NCard>
 
@@ -333,6 +367,7 @@ const gamerList = computed(() => {
         type: link.gamer?.type,
         elo: link.gamer?.elo ?? 1200,
         user: link.gamer?.user,
+        userId: link.gamer?.userId ?? link.gamer?.user?.id,
         index: link.index,
       }))
   }
@@ -396,6 +431,22 @@ const myHumanGamer = computed(() => {
   return gamerList.value.find((g: any) => g.type === 'human' && g.userId === authStore.user?.id) || null
 })
 
+// TicTacToe board helper — returns flat 9-cell array or null if not ttt
+const tttBoard = computed(() => {
+  const gs = humanTurn.value?.gameState as any
+  if (!gs) return null
+  // botzone ttt format: { board: [[0,0,0],[0,0,0],[0,0,0]] } or { display: { board: [...] } }
+  const board = gs?.board ?? gs?.display?.board ?? gs?.requests?.[0] ? null : null
+  if (!board || !Array.isArray(board)) return null
+  if (Array.isArray(board[0])) return (board as number[][]).flat()
+  if (board.length === 9) return board as number[]
+  return null
+})
+
+function clickCell(i: number) {
+  humanMove.value = JSON.stringify({ '0': i })
+}
+
 const humanTurn = ref<{ turnToken: string; gameState: any } | null>(null)
 const humanMove = ref('')
 const submittingMove = ref(false)
@@ -455,5 +506,36 @@ useHead(computed(() => ({ title: `对战记录 #${matchId.value} — Leverage OJ
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.ttt-board {
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  gap: 4px;
+  width: fit-content;
+}
+
+.ttt-cell {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #e0e0e6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: default;
+  user-select: none;
+}
+
+.ttt-cell.can-click {
+  cursor: pointer;
+  background: #f5f5f5;
+  transition: background 0.15s;
+}
+
+.ttt-cell.can-click:hover {
+  background: #e6f4ea;
+  border-color: #18a058;
 }
 </style>
