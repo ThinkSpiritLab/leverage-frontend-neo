@@ -283,6 +283,13 @@ const gamerColumns: DataTableColumns<any> = [
   {
     title: 'Bot 名称',
     key: 'name',
+    render(row) {
+      return h(
+        NButton,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/gamer/${row.id}`) },
+        { default: () => row.name || '-' },
+      )
+    },
   },
   {
     title: '语言',

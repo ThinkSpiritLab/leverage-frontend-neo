@@ -195,7 +195,7 @@ async function fetchLeaderboard() {
   leaderboardLoading.value = true
   try {
     // 用 gamers 列表（含 elo），按 elo 降序展示所有 bot
-    const res = await competeApi.getGamers({ gameId: gameId.value, page: 1, perPage: 100 })
+    const res = await competeApi.listGamers({ gameId: gameId.value, page: 1, perPage: 100 })
     const raw = Array.isArray(res.data?.items) ? res.data.items : []
     leaderboard.value = [...raw].sort((a, b) => (b.elo ?? 1200) - (a.elo ?? 1200))
   }
