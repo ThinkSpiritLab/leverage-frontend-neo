@@ -113,7 +113,7 @@
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NTag } from 'naive-ui'
+import { NTag, NButton } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import type { BotzoneGameLog } from '~/types/botzone'
 
