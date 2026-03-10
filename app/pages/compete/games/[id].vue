@@ -409,11 +409,13 @@ async function handleSubmitBot() {
     submitForm.value = { title: '', type: 'code', language: 'python', code: '', opensource: true, webhookUrl: '', webhookSecret: '' }
     fetchMyBots()
 
-    // Show API key dialog for external/human bots
-    if ((t === 'external' || t === 'human') && created?.botApiKey) {
+    // 仅 external 类型弹 API Key 窗口（human 用浏览器 JWT，不需要 key）
+    if (t === 'external' && created?.botApiKey) {
       createdGamerId.value = created.id
       createdApiKey.value = created.botApiKey
       showApiKeyModal.value = true
+    } else if (t === 'human') {
+      message.success('真人 Bot 创建成功！对局开始后在"对局详情"页面操作。')
     } else {
       message.success('Bot 提交成功！')
     }
