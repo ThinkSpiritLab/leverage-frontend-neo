@@ -2,9 +2,10 @@
   <div class="compete-page">
     <div class="page-header">
       <NH2>Bot 对战</NH2>
-      <NButton type="primary" @click="showCreateRoom = true">
-        创建房间
-      </NButton>
+      <NSpace>
+        <NButton secondary @click="navigateTo('/compete/playground')">🧪 Playground</NButton>
+        <NButton type="primary" @click="showCreateRoom = true">创建房间</NButton>
+      </NSpace>
     </div>
 
     <NTabs v-model:value="activeTab" type="line" animated>
