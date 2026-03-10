@@ -4,7 +4,7 @@
     <NBreadcrumb style="margin-bottom:12px">
       <NBreadcrumbItem @click="navigateTo('/compete')">竞技场</NBreadcrumbItem>
       <NBreadcrumbItem v-if="game" @click="navigateTo(`/compete/games/${game.id}`)">{{ game.name }}</NBreadcrumbItem>
-      <NBreadcrumbItem>{{ isNew ? '新建 Bot' : (gamerForm.name || `Bot#${gamerId}`) }}</NBreadcrumbItem>
+      <NBreadcrumbItem>{{ isNew ? '新建 Bot' : gamerForm.type === 'human' ? '我的参赛席位' : (gamerForm.name || `Bot#${gamerId}`) }}</NBreadcrumbItem>
     </NBreadcrumb>
     <NSpin :show="loading">
       <NGrid v-if="game" :cols="12" :x-gap="16" :y-gap="16">
@@ -26,7 +26,7 @@
             </NCard>
 
             <!-- Bot 状态 + ELO排名条 -->
-            <NCard v-if="!isNew && currentGamer" title="Bot 状态" size="small">
+            <NCard v-if="!isNew && currentGamer" :title="currentGamer.type === 'human' ? '参赛状态' : 'Bot 状态'" size="small">
               <NDescriptions :column="1" size="small" style="margin-bottom:12px">
                 <NDescriptionsItem label="Bot 名称">{{ currentGamer.name }}</NDescriptionsItem>
                 <NDescriptionsItem label="ELO 积分">
@@ -105,9 +105,38 @@
           </NSpace>
         </NGridItem>
 
-        <!-- 右侧：代码编辑器 -->
+        <!-- 右侧：编辑区 / 真人席位信息 -->
         <NGridItem :span="9">
+          <!-- 真人席位：不是 Bot，显示专属信息页 -->
+          <NCard v-if="!isNew && currentGamer?.type === 'human'" title="🎮 我的参赛席位" size="small">
+            <NDescriptions :column="2" bordered size="small" style="margin-bottom:16px">
+              <NDescriptionsItem label="席位名称">{{ currentGamer.name }}</NDescriptionsItem>
+              <NDescriptionsItem label="参赛游戏">
+                <NButton text type="primary" @click="navigateTo(`/compete/games/${game.id}`)">
+                  {{ game.name }}
+                </NButton>
+              </NDescriptionsItem>
+              <NDescriptionsItem label="类型">
+                <NTag type="warning" size="small">🧑 真人</NTag>
+              </NDescriptionsItem>
+              <NDescriptionsItem label="外榜 ELO">
+                <NTag type="info" :bordered="false" size="small">⚡ {{ currentGamer.eloExternal ?? 1200 }}</NTag>
+              </NDescriptionsItem>
+            </NDescriptions>
+            <NAlert type="info" :show-icon="false" style="margin-bottom:16px;font-size:13px">
+              真人席位无需编辑代码。前往游戏页面点击 <strong>🎮 加入对局</strong> 即可参赛，然后在对局详情页手动落子。
+            </NAlert>
+            <template #footer>
+              <NSpace justify="space-between">
+                <NButton type="error" ghost :loading="deleting" @click="confirmDelete">退出参赛</NButton>
+                <NButton type="primary" @click="navigateTo(`/compete/games/${game.id}`)">前往游戏页面 →</NButton>
+              </NSpace>
+            </template>
+          </NCard>
+
+          <!-- 普通 Bot 编辑卡片 -->
           <NCard
+            v-else
             :title="isNew ? '创建新 Bot' : `编辑 Bot：${gamerForm.name}`"
             size="small"
           >
@@ -167,13 +196,6 @@
                   如需刷新 API Key，请联系管理员或重新创建 Bot。
                 </NAlert>
               </template>
-
-              <!-- 真人 Bot -->
-              <template v-else-if="gamerForm.type === 'human'">
-                <NAlert type="info" :show-icon="false" style="font-size:13px">
-                  🧑 真人玩家在对局详情页通过浏览器手动输入移动，每轮限时 5 分钟。
-                </NAlert>
-              </template>
             </NForm>
 
             <template #footer>
@@ -183,7 +205,7 @@
                 </NButton>
                 <div v-else />
                 <NSpace>
-                  <NButton @click="navigateTo(`/compete/${game.id}`)">取消</NButton>
+                  <NButton @click="navigateTo(`/compete/games/${game.id}`)">取消</NButton>
                   <NButton type="primary" :loading="saving" @click="handleSave">
                     {{ isNew ? '创建 Bot' : '保存修改' }}
                   </NButton>
