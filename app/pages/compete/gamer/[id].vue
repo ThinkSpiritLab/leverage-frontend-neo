@@ -19,18 +19,47 @@
               </NDescriptions>
             </NCard>
 
-            <!-- Bot 信息（编辑模式显示） -->
+            <!-- Bot 状态 + ELO排名条 -->
             <NCard v-if="!isNew && currentGamer" title="Bot 状态" size="small">
-              <NDescriptions :column="1" size="small">
-                <NDescriptionsItem label="Bot 名称">
-                  {{ currentGamer.name }}
-                </NDescriptionsItem>
+              <NDescriptions :column="1" size="small" style="margin-bottom:12px">
+                <NDescriptionsItem label="Bot 名称">{{ currentGamer.name }}</NDescriptionsItem>
                 <NDescriptionsItem label="ELO 积分">
-                  <NTag type="info" :bordered="false" size="medium" style="font-size: 15px; font-weight: 700">
+                  <NTag type="info" :bordered="false" size="medium" style="font-size:15px;font-weight:700">
                     ⚡ {{ currentGamer.elo ?? 1200 }}
                   </NTag>
                 </NDescriptionsItem>
+                <NDescriptionsItem v-if="eloRankInfo" label="内榜排名">
+                  <NText type="success" strong>#{{ eloRankInfo.rank }} / {{ eloRankInfo.total }}</NText>
+                </NDescriptionsItem>
               </NDescriptions>
+
+              <!-- ELO 横向分布图 -->
+              <div v-if="eloRankInfo && eloRankInfo.total > 1" class="elo-bar-wrapper">
+                <div class="elo-bar-label">
+                  <span>{{ eloRankInfo.minElo }}</span>
+                  <span style="color:#888;font-size:11px">ELO 分布</span>
+                  <span>{{ eloRankInfo.maxElo }}</span>
+                </div>
+                <div class="elo-bar-track">
+                  <!-- Other bots -->
+                  <div
+                    v-for="dot in eloRankInfo.others"
+                    :key="dot.id"
+                    class="elo-dot other"
+                    :style="{ left: dot.pct + '%' }"
+                    :title="`${dot.name}: ${dot.elo}`"
+                  />
+                  <!-- This bot -->
+                  <div
+                    class="elo-dot self"
+                    :style="{ left: eloRankInfo.selfPct + '%' }"
+                    :title="`${currentGamer.name}: ${currentGamer.elo ?? 1200}`"
+                  />
+                </div>
+                <div style="text-align:center;font-size:11px;color:#888;margin-top:4px">
+                  ● 你的 Bot &nbsp;○ 其他 Bot
+                </div>
+              </div>
             </NCard>
 
             <!-- 我的 Bot 列表 -->
@@ -224,7 +253,10 @@ onMounted(async () => {
       gamerForm.name = gamer.name || ''
       gamerForm.language = gamer.language || 'cpp17'
       gamerForm.code = gamer.code || ''
-      if (game.value) await fetchMyGamers(game.value.id)
+      if (game.value) {
+        await fetchMyGamers(game.value.id)
+        fetchEloRank(game.value.id, gamer.elo ?? 1200, gamerId.value)
+      }
     }
   }
   catch (e) {
@@ -235,6 +267,40 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// ─── ELO Rank Bar ─────────────────────────────────────────────────────────────
+const eloRankInfo = ref<{
+  rank: number; total: number; minElo: number; maxElo: number; selfPct: number
+  others: { id: number; name: string; elo: number; pct: number }[]
+} | null>(null)
+
+async function fetchEloRank(gameId: number, myElo: number, myGamerId: number) {
+  try {
+    const res = await competeApi.getLeaderboard(gameId, 'inner')
+    const board: any[] = Array.isArray(res.data) ? res.data : []
+    if (board.length < 2) return
+
+    const elos = board.map((r: any) => Number(r.elo ?? 1200))
+    const minElo = Math.min(...elos)
+    const maxElo = Math.max(...elos)
+    const range = maxElo - minElo || 1
+
+    const pct = (elo: number) => Math.round(((elo - minElo) / range) * 90)  // 0-90% to leave room
+
+    const sorted = [...board].sort((a: any, b: any) => b.elo - a.elo)
+    const rank = sorted.findIndex((r: any) => r.gamerId === myGamerId) + 1
+
+    eloRankInfo.value = {
+      rank: rank > 0 ? rank : board.length,
+      total: board.length,
+      minElo, maxElo,
+      selfPct: pct(myElo),
+      others: board
+        .filter((r: any) => r.gamerId !== myGamerId)
+        .map((r: any) => ({ id: r.gamerId, name: r.name || `Bot#${r.gamerId}`, elo: Number(r.elo), pct: pct(Number(r.elo)) })),
+    }
+  } catch (e) { console.error('fetchEloRank', e) }
+}
 
 async function fetchMyGamers(gameId: number) {
   try {
@@ -330,5 +396,46 @@ useHead({ title: 'Bot 详情 — Leverage OJ' })
 .gamer-item-active {
   background: var(--n-color-hover);
   border-radius: 4px;
+}
+
+/* ELO Distribution Bar */
+.elo-bar-wrapper {
+  padding: 4px 2px;
+}
+.elo-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+.elo-bar-track {
+  position: relative;
+  height: 16px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  margin: 0 4px;
+}
+.elo-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  cursor: default;
+}
+.elo-dot.other {
+  background: #d0d0d0;
+  border: 1px solid #bbb;
+  z-index: 1;
+}
+.elo-dot.self {
+  background: #18a058;
+  border: 2px solid #fff;
+  width: 14px;
+  height: 14px;
+  box-shadow: 0 0 0 2px #18a058;
+  z-index: 2;
 }
 </style>
