@@ -21,7 +21,7 @@ async function deleteGame(id: number) {
     </div>
 
     <NDataTable
-      :data="games?.items ?? []"
+      :data="games?.data?.items ?? []"
       :columns="[
         { title: 'ID', key: 'id', width: 60 },
         { title: '游戏名称', key: 'name' },
