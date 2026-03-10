@@ -45,7 +45,7 @@
                   <span style="font-weight:600">我的 Bot</span>
                   <NSpace>
                     <NButton
-                      v-if="game?.allowHuman"
+                      v-if="game?.allowHuman && !myHumanGamer"
                       size="small"
                       type="warning"
                       :loading="joiningAsHuman !== null"
@@ -164,7 +164,8 @@
     </NSpin>
 
     <!-- 人类加入对局：选对手弹窗 -->
-    <NModal v-model:show="showJoinModal" preset="card" title="🎮 选择对手 Bot" style="width:480px">
+    <NModal v-model:show="showJoinModal" preset="card" title="🎮 选择对手 Bot" style="width:480px"
+      @update:show="(v) => { if (!v) joiningAsHuman = null }">
       <NText depth="3" style="display:block;margin-bottom:12px">
         选 {{ (game?.gamerQuantity ?? 2) - 1 }} 个代码 Bot 作为对手
       </NText>
@@ -340,6 +341,7 @@ const leaderboardColumns = computed<DataTableColumns<any>>(() => [
 // ── My Bots ──
 const myBots = ref<any[]>([])
 const myBotsLoading = ref(false)
+const myHumanGamer = computed(() => myBots.value.find((b: any) => b.type === 'human') ?? null)
 
 async function fetchMyBots() {
   if (!authStore.user) return
@@ -468,7 +470,9 @@ async function quickJoinAsHuman() {
     }
   } catch (e: any) {
     message.error(e?.response?.data?.message || '操作失败')
+    joiningAsHuman.value = null
   } finally {
+    // Always clear loading unless the join modal is actively open (modal handles its own state)
     if (!showJoinModal.value) joiningAsHuman.value = null
   }
 }
