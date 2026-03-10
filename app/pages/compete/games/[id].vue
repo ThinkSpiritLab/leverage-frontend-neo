@@ -317,12 +317,35 @@ async function fetchMatches() {
 const statusLabel: Record<number, string> = { 0: '等待中', 1: '进行中', 2: '已完成', 3: '错误' }
 const statusType: Record<number, any> = { 0: 'default', 1: 'info', 2: 'success', 3: 'error' }
 
+function getWinner(r: any): string {
+  try {
+    const fr = typeof r.result === 'string' ? JSON.parse(r.result).finalResult : r.result?.finalResult
+    if (!fr) return '-'
+    // Find gamer with max score
+    const maxScore = Math.max(...Object.values(fr) as number[])
+    const winnerIds = Object.entries(fr).filter(([, v]) => v === maxScore).map(([k]) => k)
+    if (winnerIds.length === Object.keys(fr).length) return '平局'
+    const gamerMap = Object.fromEntries((r.links || []).map((l: any) => [String(l.gamerId), l.gamer?.title || `Bot#${l.gamerId}`]))
+    return winnerIds.map(id => gamerMap[id] || `Bot#${id}`).join(', ')
+  } catch { return '-' }
+}
+
 const matchColumns: DataTableColumns<any> = [
-  { title: 'ID', key: 'id', width: 60 },
-  { title: '状态', key: 'status', width: 90, render: r => h(NTag, { size: 'small', type: statusType[r.status] }, () => statusLabel[r.status] ?? r.status) },
-  { title: '参与者', key: 'links', render: r => r.links?.map((l: any) => l.gamer?.title || `Bot#${l.gamerId}`).join(' vs ') || '-' },
-  { title: '时间', key: 'createdAt', width: 150, render: r => r.createdAt ? dayjs(r.createdAt).format('MM-DD HH:mm') : '-' },
-  { title: '', key: 'actions', width: 60, render: r => h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => navigateTo(`/compete/matches/${r.id}`) }, () => '查看') },
+  { title: 'ID', key: 'id', width: 55 },
+  { title: '状态', key: 'status', width: 80, render: r => h(NTag, { size: 'small', type: statusType[r.status] }, () => statusLabel[r.status] ?? r.status) },
+  {
+    title: '参与者', key: 'links',
+    render: r => {
+      const names = r.links?.map((l: any) => l.gamer?.title || `Bot#${l.gamerId}`) || []
+      return h('span', names.join(' vs ') || '-')
+    },
+  },
+  {
+    title: '胜者', key: 'winner', width: 140,
+    render: r => r.status === 2 ? h('span', { style: 'color:#18a058;font-weight:600' }, getWinner(r)) : h('span', { style: 'color:#aaa' }, '-'),
+  },
+  { title: '时间', key: 'createdAt', width: 130, render: r => r.createdAt ? dayjs(r.createdAt).format('MM-DD HH:mm') : '-' },
+  { title: '', key: 'actions', width: 55, render: r => h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => navigateTo(`/compete/matches/${r.id}`) }, () => '查看') },
 ]
 
 // ── Submit Bot modal ──
