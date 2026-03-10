@@ -63,5 +63,8 @@ export function useCompeteApi() {
     submitGamerToRoom: (roomId: number, gamerId: number) =>
       api.post<any>(`/compete/rooms/${roomId}/submit`, { gamerId }),
     startRoom: (id: number) => api.post<any>(`/compete/rooms/${id}/start`),
+    getGlobalLeaderboard: (params: { gameId?: number; limit?: number; board?: string }) =>
+      api.get<any[]>('/compete/leaderboard', { params }),
+    getGamerStats: (gamerId: number) => api.get<any>(`/compete/gamers/${gamerId}/stats`),
   }
 }

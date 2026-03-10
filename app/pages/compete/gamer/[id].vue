@@ -122,6 +122,93 @@
               </svg>
             </NCard>
 
+            <!-- 战绩分析 -->
+            <NCard v-if="!isNew && gamerStats && gamerStats.totalMatches > 0" title="📊 战绩分析" size="small">
+              <!-- 摘要数字 -->
+              <NSpace justify="space-around" style="margin-bottom:12px">
+                <div style="text-align:center">
+                  <div style="font-size:22px;font-weight:700;color:#333">{{ gamerStats.totalMatches }}</div>
+                  <div style="font-size:11px;color:#aaa">总场次</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:22px;font-weight:700;color:#18a058">{{ gamerStats.wins }}</div>
+                  <div style="font-size:11px;color:#aaa">胜</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:22px;font-weight:700;color:#e03030">{{ gamerStats.losses }}</div>
+                  <div style="font-size:11px;color:#aaa">负</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:22px;font-weight:700;color:#888">{{ gamerStats.draws }}</div>
+                  <div style="font-size:11px;color:#aaa">平</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:22px;font-weight:700;color:#f0a020">{{ statWinRatePct }}%</div>
+                  <div style="font-size:11px;color:#aaa">胜率</div>
+                </div>
+              </NSpace>
+
+              <!-- SVG 饼图 -->
+              <div style="display:flex;justify-content:center;margin-bottom:12px">
+                <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                  <g v-for="sector in statPieSectors" :key="sector.color">
+                    <path :d="sector.d" :fill="sector.color" />
+                  </g>
+                  <!-- 中心圆 -->
+                  <circle cx="60" cy="60" r="34" fill="white" />
+                  <text x="60" y="58" text-anchor="middle" font-size="14" font-weight="700" fill="#333">{{ statWinRatePct }}%</text>
+                  <text x="60" y="72" text-anchor="middle" font-size="9" fill="#aaa">胜率</text>
+                </svg>
+              </div>
+
+              <!-- 对手表格 (top 5) -->
+              <div v-if="gamerStats.opponents && gamerStats.opponents.length > 0">
+                <NText depth="3" style="font-size:12px;display:block;margin-bottom:6px">对手分析（按总场次）</NText>
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <thead>
+                    <tr style="color:#aaa;border-bottom:1px solid #eee">
+                      <th style="text-align:left;padding:3px 4px;font-weight:500">对手</th>
+                      <th style="text-align:center;padding:3px 4px;font-weight:500;color:#18a058">胜</th>
+                      <th style="text-align:center;padding:3px 4px;font-weight:500;color:#e03030">负</th>
+                      <th style="text-align:center;padding:3px 4px;font-weight:500;color:#888">平</th>
+                      <th style="text-align:left;padding:3px 4px;font-weight:500">胜率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="opp in statTopOpponents"
+                      :key="opp.gamerId"
+                      style="border-bottom:1px solid #f5f5f5"
+                    >
+                      <td style="padding:4px">
+                        <NButton text type="primary" size="tiny" @click="navigateTo(`/compete/gamer/${opp.gamerId}`)">
+                          {{ opp.name }}
+                        </NButton>
+                      </td>
+                      <td style="text-align:center;padding:4px;color:#18a058">{{ opp.wins }}</td>
+                      <td style="text-align:center;padding:4px;color:#e03030">{{ opp.losses }}</td>
+                      <td style="text-align:center;padding:4px;color:#888">{{ opp.draws }}</td>
+                      <td style="padding:4px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <div style="width:40px;height:6px;background:#eee;border-radius:3px;overflow:hidden">
+                            <div
+                              :style="{
+                                width: oppWinRatePct(opp) + '%',
+                                height: '100%',
+                                background: oppWinRatePct(opp) >= 50 ? '#18a058' : '#e03030',
+                                borderRadius: '3px',
+                              }"
+                            />
+                          </div>
+                          <span style="color:#888;font-size:11px">{{ oppWinRatePct(opp) }}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </NCard>
+
             <!-- 我的 Bot 列表 -->
             <NCard title="我的 Bot" size="small">
               <template #header-extra>
@@ -383,6 +470,7 @@ onMounted(async () => {
         await fetchMyGamers(game.value.id)
         fetchEloRank(game.value.id, gamer.elo ?? 1200, gamerId.value)
         fetchEloHistory(gamerId.value)
+        fetchGamerStats(gamerId.value)
       }
     }
   }
@@ -483,6 +571,77 @@ async function fetchEloHistory(id: number) {
   }
   catch (e) { console.error('fetchEloHistory', e) }
 }
+
+// ─── Gamer Stats ──────────────────────────────────────────────────────────────
+const gamerStats = ref<{
+  gamerId: number
+  totalMatches: number
+  wins: number
+  losses: number
+  draws: number
+  winRate: number
+  opponents: Array<{ gamerId: number; name: string; wins: number; losses: number; draws: number }>
+} | null>(null)
+
+async function fetchGamerStats(id: number) {
+  try {
+    const res = await competeApi.getGamerStats(id)
+    gamerStats.value = res.data || null
+  }
+  catch (e) { console.error('fetchGamerStats', e) }
+}
+
+const statWinRatePct = computed(() => {
+  if (!gamerStats.value) return 0
+  if (gamerStats.value.winRate != null) return Math.round(gamerStats.value.winRate * 100)
+  if (!gamerStats.value.totalMatches) return 0
+  return Math.round((gamerStats.value.wins / gamerStats.value.totalMatches) * 100)
+})
+
+const statTopOpponents = computed(() => {
+  if (!gamerStats.value?.opponents) return []
+  return [...gamerStats.value.opponents]
+    .sort((a, b) => (b.wins + b.losses + b.draws) - (a.wins + a.losses + a.draws))
+    .slice(0, 5)
+})
+
+function oppWinRatePct(opp: { wins: number; losses: number; draws: number }) {
+  const total = opp.wins + opp.losses + opp.draws
+  if (!total) return 0
+  return Math.round((opp.wins / total) * 100)
+}
+
+// SVG Pie chart helpers
+function polarToCartesian(cx: number, cy: number, r: number, angle: number) {
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+}
+
+function arcPath(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
+  const start = polarToCartesian(cx, cy, r, startAngle)
+  const end = polarToCartesian(cx, cy, r, endAngle)
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0
+  return `M ${cx} ${cy} L ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)} Z`
+}
+
+const statPieSectors = computed(() => {
+  const s = gamerStats.value
+  if (!s || !s.totalMatches) return []
+  const total = s.totalMatches
+  const segments = [
+    { value: s.wins, color: '#18a058' },
+    { value: s.losses, color: '#e03030' },
+    { value: s.draws, color: '#d0d0d0' },
+  ]
+  const sectors: Array<{ d: string; color: string }> = []
+  let currentAngle = -Math.PI / 2
+  for (const seg of segments) {
+    if (!seg.value) continue
+    const sweep = (seg.value / total) * Math.PI * 2
+    sectors.push({ d: arcPath(60, 60, 50, currentAngle, currentAngle + sweep), color: seg.color })
+    currentAngle += sweep
+  }
+  return sectors
+})
 
 async function fetchMyGamers(gameId: number) {
   try {

@@ -3,6 +3,8 @@
     <div class="page-header">
       <NH2>Bot 对战</NH2>
       <NSpace>
+        <NButton secondary @click="navigateTo('/compete/leaderboard')">🏆 全局排行榜</NButton>
+        <NButton secondary @click="navigateTo('/compete/leaderboard')">🏆 排行榜</NButton>
         <NButton secondary @click="navigateTo('/compete/playground')">🧪 Playground</NButton>
         <NButton
           v-if="canCreateGame"

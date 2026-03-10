@@ -103,6 +103,20 @@
         </NCollapse>
       </NCard>
 
+      <!-- Debug 信息（来自自定义裁判/Bot 的 debug 字段） -->
+      <NCard v-if="hasDebugInfo" embedded size="small" style="margin-top:8px">
+        <template #header>
+          <NSpace align="center">
+            <span style="font-size:13px;font-weight:600">💬 调试信息</span>
+            <NTag size="small" :bordered="false" type="warning">debug</NTag>
+          </NSpace>
+        </template>
+        <div v-for="(val, key) in currentRound.debug" :key="key" class="debug-line">
+          <span class="debug-key">{{ key }}</span>
+          <span class="debug-val">{{ val }}</span>
+        </div>
+      </NCard>
+
       <!-- 末局时额外高亮显示得分 -->
       <NAlert
         v-if="currentRoundIndex === gameLog.rounds.length - 1"
@@ -144,6 +158,11 @@ const botOutputKeys = computed(() =>
   Object.keys(currentRound.value?.botOutputs ?? {}),
 )
 
+const hasDebugInfo = computed(() => {
+  const d = currentRound.value?.debug
+  return d && Object.keys(d).some(k => d[k] !== null && d[k] !== '')
+})
+
 function botOutputStr(player: string): string {
   try {
     return JSON.stringify(currentRound.value.botOutputs[player], null, 2)
@@ -178,4 +197,8 @@ watch(() => props.gameLog, () => {
 </script>
 
 <style scoped>
+.debug-line { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+.debug-line:last-child { border-bottom: none; }
+.debug-key { color: #722ed1; font-weight: 600; font-family: monospace; min-width: 120px; flex-shrink: 0; }
+.debug-val { color: #555; font-family: monospace; word-break: break-all; }
 </style>
