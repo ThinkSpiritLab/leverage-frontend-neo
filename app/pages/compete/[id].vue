@@ -27,12 +27,12 @@
         <div class="tab-actions">
           <NButton
             type="primary"
-            :disabled="selectedGamerIds.length < 2"
+            :disabled="selectedGamerIds.length !== (game?.gamerQuantity ?? 2)"
             @click="handleLaunchMatch"
           >
             发起对局 (已选 {{ selectedGamerIds.length }})
           </NButton>
-          <NText depth="3" style="margin-left: 8px">选择 2-4 个 Bot 发起对局</NText>
+          <NText depth="3" style="margin-left: 8px">选择 {{ game?.gamerQuantity ?? 2 }} 个 Bot 发起对局</NText>
         </div>
         <NSpin :show="gamersLoading">
           <NDataTable
