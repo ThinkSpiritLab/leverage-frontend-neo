@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { h } from 'vue'
+import { NButton, NTag, NSpace } from 'naive-ui'
+
 definePageMeta({ layout: 'admin' })
 
 const { data: games, refresh } = await useAsyncData('admin-games', () =>
@@ -24,7 +27,7 @@ async function deleteGame(id: number) {
       :data="games?.data?.items ?? []"
       :columns="[
         { title: 'ID', key: 'id', width: 60 },
-        { title: '游戏名称', key: 'name' },
+        { title: '游戏名称', key: 'name', render: (row) => h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/admin/compete/game/${row.id}`) }, () => row.name || row.title) },
         { title: '描述', key: 'description', ellipsis: true },
         { title: '玩家数', key: 'gamerQuantity', width: 80 },
         { title: '状态', key: 'disabled', width: 80, render: (row) => h(NTag, { type: row.disabled ? 'error' : 'success', size: 'small' }, () => row.disabled ? '已禁用' : '启用') },
