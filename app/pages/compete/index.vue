@@ -326,14 +326,15 @@ const matchColumns: DataTableColumns<any> = [
     key: 'status',
     width: 100,
     render(row) {
-      const statusMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
-        pending: 'default',
-        running: 'info',
-        done: 'success',
-        failed: 'error',
+      // status is a number: 0=PENDING, 1=RUNNING, 2=FINISHED, 3=ERROR
+      const statusNumMap: Record<number, { type: 'default' | 'info' | 'success' | 'error'; label: string }> = {
+        0: { type: 'default', label: '待评测' },
+        1: { type: 'info', label: '评测中' },
+        2: { type: 'success', label: '已完成' },
+        3: { type: 'error', label: '失败' },
       }
-      const s = (row.status || '').toLowerCase()
-      return h(NTag, { type: statusMap[s] || 'default', size: 'small', bordered: false }, { default: () => row.status || '-' })
+      const info = statusNumMap[row.status as number] ?? { type: 'default' as const, label: String(row.status ?? '-') }
+      return h(NTag, { type: info.type, size: 'small', bordered: false }, { default: () => info.label })
     },
   },
   {

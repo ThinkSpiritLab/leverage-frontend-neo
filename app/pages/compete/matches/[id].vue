@@ -133,14 +133,17 @@ const match = ref<any>(null)
 const loading = ref(false)
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 
+// status is a number: 0=PENDING, 1=RUNNING, 2=FINISHED, 3=ERROR
+const MATCH_STATUS = { PENDING: 0, RUNNING: 1, FINISHED: 2, ERROR: 3 }
+
 async function fetchMatch() {
   loading.value = true
   try {
     const res = await competeApi.getMatch(matchId.value)
     match.value = res.data
     // 如果对局已结束，停止轮询
-    const status = (res.data?.status || '').toUpperCase()
-    if (status === 'COMPLETED' || status === 'FAILED') {
+    const s = res.data?.status
+    if (s === MATCH_STATUS.FINISHED || s === MATCH_STATUS.ERROR) {
       stopPolling()
     }
   }
@@ -166,9 +169,8 @@ function stopPolling() {
 
 onMounted(async () => {
   await fetchMatch()
-  // 运行中的对局自动轮询
-  const status = (match.value?.status || '').toUpperCase()
-  if (status === 'PENDING' || status === 'RUNNING') {
+  const s = match.value?.status
+  if (s === MATCH_STATUS.PENDING || s === MATCH_STATUS.RUNNING) {
     startPolling()
   }
 })
@@ -178,38 +180,26 @@ onBeforeUnmount(() => {
 })
 
 // ─── 状态相关 ─────────────────────────────────────────────────────────────────
-const isRunning = computed(() => {
-  const s = (match.value?.status || '').toUpperCase()
-  return s === 'PENDING' || s === 'RUNNING'
-})
+const isRunning = computed(() =>
+  match.value?.status === MATCH_STATUS.PENDING || match.value?.status === MATCH_STATUS.RUNNING
+)
 
-const isCompleted = computed(() => {
-  return (match.value?.status || '').toUpperCase() === 'COMPLETED'
-})
+const isCompleted = computed(() => match.value?.status === MATCH_STATUS.FINISHED)
 
-const isFailed = computed(() => {
-  return (match.value?.status || '').toUpperCase() === 'FAILED'
-})
+const isFailed = computed(() => match.value?.status === MATCH_STATUS.ERROR)
 
-const statusType = computed((): 'default' | 'info' | 'success' | 'warning' | 'error' => {
-  const statusMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
-    PENDING: 'default',
-    RUNNING: 'info',
-    COMPLETED: 'success',
-    FAILED: 'error',
+const statusType = computed((): 'default' | 'info' | 'success' | 'error' => {
+  const m: Record<number, 'default' | 'info' | 'success' | 'error'> = {
+    0: 'default', 1: 'info', 2: 'success', 3: 'error',
   }
-  return statusMap[(match.value?.status || '').toUpperCase()] || 'default'
+  return m[match.value?.status as number] ?? 'default'
 })
 
 const statusLabel = computed(() => {
-  const labelMap: Record<string, string> = {
-    PENDING: '等待中',
-    RUNNING: '运行中',
-    COMPLETED: '已完成',
-    FAILED: '失败',
+  const m: Record<number, string> = {
+    0: '等待中', 1: '运行中', 2: '已完成', 3: '失败',
   }
-  const s = (match.value?.status || '').toUpperCase()
-  return labelMap[s] || match.value?.status || '-'
+  return m[match.value?.status as number] ?? '-'
 })
 
 // ─── 结果解析 ─────────────────────────────────────────────────────────────────
