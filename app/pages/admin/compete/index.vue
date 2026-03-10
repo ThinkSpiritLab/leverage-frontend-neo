@@ -8,8 +8,8 @@ const { data: games, refresh } = await useAsyncData('admin-games', () =>
   useCompeteApi().listGames({ page: 1, perPage: 50 })
 )
 
-async function deleteGame(id: number) {
-  await useCompeteApi().deleteGame(id)
+async function toggleDisabled(id: number, currentDisabled: boolean) {
+  await useCompeteApi().updateGame(id, { disabled: !currentDisabled })
   refresh()
 }
 </script>
@@ -32,10 +32,14 @@ async function deleteGame(id: number) {
         { title: '玩家数', key: 'gamerQuantity', width: 80 },
         { title: '状态', key: 'disabled', width: 80, render: (row) => h(NTag, { type: row.disabled ? 'error' : 'success', size: 'small' }, () => row.disabled ? '已禁用' : '启用') },
         {
-          title: '操作', key: 'actions', width: 160,
+          title: '操作', key: 'actions', width: 200,
           render: (row) => h(NSpace, {}, () => [
             h(NButton, { size: 'small', onClick: () => navigateTo(`/admin/compete/game/${row.id}`) }, () => '编辑'),
-            h(NButton, { size: 'small', type: 'error', onClick: () => deleteGame(row.id) }, () => '删除'),
+            h(NButton, {
+              size: 'small',
+              type: row.disabled ? 'primary' : 'warning',
+              onClick: () => toggleDisabled(row.id, row.disabled)
+            }, () => row.disabled ? '启用' : '禁用'),
           ])
         }
       ]"
