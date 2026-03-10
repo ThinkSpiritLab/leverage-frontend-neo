@@ -92,10 +92,16 @@
           <NInput v-model:value="submitForm.title" placeholder="给你的 Bot 起个名字" />
         </NFormItem>
         <NFormItem label="Bot 类型">
-          <NRadioGroup v-model:value="submitForm.type">
-            <NRadio value="code">代码 Bot（在沙箱中运行）</NRadio>
-            <NRadio value="webhook">Webhook Bot（调用外部服务）</NRadio>
-          </NRadioGroup>
+          <NSpace vertical :size="4">
+            <NRadioGroup v-model:value="submitForm.type">
+              <NSpace vertical :size="6">
+                <NRadio value="code">🖥️ 代码 Bot — 上传代码，在服务器沙箱运行</NRadio>
+                <NRadio value="external">🔗 外部 Bot — 你的程序主动轮询服务器（无需公网 IP）</NRadio>
+                <NRadio value="webhook">📡 Webhook Bot — 服务器主动调你的 URL（需公网 IP）</NRadio>
+                <NRadio value="human">🧑 真人 — 在浏览器网页上手动输入移动</NRadio>
+              </NSpace>
+            </NRadioGroup>
+          </NSpace>
         </NFormItem>
         <NFormItem label="是否开源">
           <NSwitch v-model:value="submitForm.opensource" />
@@ -121,19 +127,33 @@
           </NFormItem>
         </template>
 
-        <!-- webhook bot -->
-        <template v-else>
+        <!-- external bot (poll mode) -->
+        <template v-else-if="submitForm.type === 'external'">
+          <NAlert type="success" :show-icon="false" style="margin-bottom:8px;font-size:13px">
+            <div><b>你的程序主动拉取轮到自己的回合，无需公网 IP：</b></div>
+            <pre style="margin:8px 0;font-size:12px">{{ externalBotDoc }}</pre>
+          </NAlert>
+        </template>
+
+        <!-- webhook bot (passive, server calls user) -->
+        <template v-else-if="submitForm.type === 'webhook'">
           <NFormItem label="Webhook URL" required>
             <NInput v-model:value="submitForm.webhookUrl" placeholder="https://your-bot.example.com/move" />
           </NFormItem>
           <NFormItem label="签名密钥">
             <NInput v-model:value="submitForm.webhookSecret" placeholder="可选，用于验证请求来源" />
           </NFormItem>
-          <NAlert type="info" :show-icon="false" style="margin-bottom:8px;font-size:13px">
-            <div><b>请求格式（POST JSON）：</b></div>
+          <NAlert type="warning" :show-icon="false" style="margin-bottom:8px;font-size:13px">
+            <div>⚠️ 需要公网 IP 或域名。服务器 POST 到你的 URL：</div>
             <pre style="margin:4px 0;font-size:12px">{{ webhookRequestDoc }}</pre>
-            <div><b>响应格式（纯文本或 JSON）：</b></div>
-            <pre style="margin:4px 0;font-size:12px">{{ webhookResponseDoc }}</pre>
+          </NAlert>
+        </template>
+
+        <!-- human player -->
+        <template v-else-if="submitForm.type === 'human'">
+          <NAlert type="info" :show-icon="false" style="margin-bottom:8px;font-size:13px">
+            🧑 对局开始后，在<b>对局详情页</b>实时看到棋盘状态，并手动输入你的移动。<br>
+            每轮有 <b>5 分钟</b>输入时间，超时自动弃权。
           </NAlert>
         </template>
       </NForm>
@@ -233,7 +253,19 @@ async function fetchMyBots() {
 const myBotColumns: DataTableColumns<any> = [
   { title: 'ID', key: 'id', width: 60 },
   { title: '名称', key: 'name', render: r => h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/compete/gamer/${r.id}`) }, () => r.title || r.name) },
-  { title: '类型', key: 'type', width: 90, render: r => h(NTag, { size: 'small', type: r.type === 'webhook' ? 'warning' : 'info' }, () => r.type === 'webhook' ? 'Webhook' : '代码') },
+  {
+    title: '类型', key: 'type', width: 90,
+    render: (r: any) => {
+      const map: Record<string, { label: string; type: 'info' | 'warning' | 'success' | 'error' }> = {
+        code: { label: '代码', type: 'info' },
+        webhook: { label: 'Webhook', type: 'warning' },
+        external: { label: '外部轮询', type: 'success' },
+        human: { label: '真人', type: 'error' },
+      }
+      const m = map[r.type] ?? { label: r.type, type: 'info' }
+      return h(NTag, { size: 'small', type: m.type }, () => m.label)
+    },
+  },
   { title: '语言', key: 'language', width: 90 },
   { title: 'ELO', key: 'elo', width: 70 },
   { title: '操作', key: 'actions', width: 80, render: r => h(NButton, { size: 'small', onClick: () => navigateTo(`/compete/gamer/${r.id}`) }, () => '查看/编辑') },
@@ -273,7 +305,7 @@ const showSubmitModal = ref(false)
 const submitting = ref(false)
 const submitForm = ref({
   title: '',
-  type: 'code' as 'code' | 'webhook',
+  type: 'code' as 'code' | 'webhook' | 'external' | 'human',
   language: 'python',
   code: '',
   opensource: true,
@@ -296,17 +328,26 @@ last = json.loads(requests[-1]) if requests else {}
 print(json.dumps({"0": 4}))`
 
 const webhookRequestDoc = `POST https://your-server.com/bot
-Content-Type: application/json
+{ "requests": ["<JSON>", ...], "responses": [...] }
+// 返回: {"0": 4}`
 
-{
-  "requests": ["<JSON>", ...],
-  "responses": [...],
-  "time_limit": 2,
-  "memory_limit": 256
-}`
+const externalBotDoc = `import requests, time
+SERVER = "http://${location?.hostname ?? 'localhost'}:3000"
+GAMER_ID = <你的GamerId>
+TOKEN = "<你的JWT Token>"
 
-const webhookResponseDoc = `// 返回你的决策（纯文本或 JSON）
-{"0": 4}    // 玩家0落子位置4`
+while True:
+    r = requests.get(f"{SERVER}/compete/bot-turn",
+                     params={"gamerId": GAMER_ID},
+                     headers={"Authorization": f"Bearer {TOKEN}"},
+                     timeout=35)
+    if r.status_code == 200 and not r.json().get("waiting"):
+        state = r.json()
+        move = my_logic(state["gameState"])
+        requests.post(f"{SERVER}/compete/bot-respond",
+                      json={"turnToken": state["turnToken"], "response": move},
+                      headers={"Authorization": f"Bearer {TOKEN}"})
+    time.sleep(0.1)`
 
 async function handleSubmitBot() {
   if (!submitForm.value.title.trim()) {
@@ -322,16 +363,18 @@ async function handleSubmitBot() {
     return
   }
   submitting.value = true
+  const t = submitForm.value.type
+  const isExternal = t === 'webhook' || t === 'external' || t === 'human'
   try {
     await competeApi.createGamer({
       gameId,
       title: submitForm.value.title,
-      type: submitForm.value.type,
-      language: submitForm.value.type === 'code' ? submitForm.value.language : 'webhook',
-      code: submitForm.value.type === 'code' ? submitForm.value.code : '',
+      type: t,
+      language: isExternal ? 'webhook' : submitForm.value.language,
+      code: isExternal ? '' : submitForm.value.code,
       opensource: submitForm.value.opensource,
-      webhookUrl: submitForm.value.type === 'webhook' ? submitForm.value.webhookUrl : undefined,
-      webhookSecret: submitForm.value.type === 'webhook' && submitForm.value.webhookSecret ? submitForm.value.webhookSecret : undefined,
+      webhookUrl: t === 'webhook' ? submitForm.value.webhookUrl : undefined,
+      webhookSecret: t === 'webhook' && submitForm.value.webhookSecret ? submitForm.value.webhookSecret : undefined,
     })
     message.success('Bot 提交成功！')
     showSubmitModal.value = false
