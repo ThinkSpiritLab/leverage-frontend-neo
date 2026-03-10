@@ -498,7 +498,9 @@ onUnmounted(() => { window.removeEventListener('message', onIframeMessage) })
 // Watch humanTurn changes to push gameState to iframe
 // Send gameState to iframe; retry until iframe window is ready (handles async load)
 function sendGameStateToRenderer(turn: { turnToken: string; gameState: any }) {
-  const msg = { type: 'gameState', gameState: turn.gameState, playerIndex: myHumanGamer.value?.index ?? 0 }
+  // Deep-clone via JSON to ensure structured-clone compatibility
+  const gameState = JSON.parse(JSON.stringify(turn.gameState ?? null))
+  const msg = { type: 'gameState', gameState, playerIndex: myHumanGamer.value?.index ?? 0 }
   let attempts = 0
   const tryPost = () => {
     const win = humanRendererRef.value?.contentWindow
