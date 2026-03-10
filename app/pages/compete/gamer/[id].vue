@@ -114,26 +114,55 @@
                   style="max-width: 320px"
                 />
               </NFormItem>
-              <NFormItem label="编程语言" path="language">
-                <NSelect
-                  v-model:value="gamerForm.language"
-                  :options="languageOptions"
-                  style="max-width: 200px"
-                  @update:value="onLanguageChange"
-                />
-              </NFormItem>
-              <NFormItem label="Bot 代码" path="code">
-                <div style="width: 100%">
-                  <NText depth="3" style="font-size: 12px; margin-bottom: 4px; display: block">
-                    "开源"选项仅作保留，实际并无作用
-                  </NText>
-                  <CodeEditor
-                    v-model="gamerForm.code"
-                    :language="editorLanguage"
-                    height="500px"
+
+              <!-- 代码 Bot -->
+              <template v-if="gamerForm.type === 'code'">
+                <NFormItem label="编程语言" path="language">
+                  <NSelect
+                    v-model:value="gamerForm.language"
+                    :options="languageOptions"
+                    style="max-width: 200px"
+                    @update:value="onLanguageChange"
                   />
-                </div>
-              </NFormItem>
+                </NFormItem>
+                <NFormItem label="Bot 代码" path="code">
+                  <div style="width: 100%">
+                    <CodeEditor
+                      v-model="gamerForm.code"
+                      :language="editorLanguage"
+                      height="500px"
+                    />
+                  </div>
+                </NFormItem>
+              </template>
+
+              <!-- Webhook Bot（被动，服务器调用） -->
+              <template v-else-if="gamerForm.type === 'webhook'">
+                <NFormItem label="Webhook URL" path="webhookUrl">
+                  <NInput v-model:value="gamerForm.webhookUrl" placeholder="https://your-server.com/bot" />
+                </NFormItem>
+                <NFormItem label="签名密钥">
+                  <NInput v-model:value="gamerForm.webhookSecret" placeholder="可选" />
+                </NFormItem>
+                <NAlert type="warning" :show-icon="false" style="font-size:13px">
+                  📡 服务器会主动 POST 到你的 URL，需要公网 IP 或域名。
+                </NAlert>
+              </template>
+
+              <!-- External Bot（主动轮询） -->
+              <template v-else-if="gamerForm.type === 'external'">
+                <NAlert type="info" :show-icon="false" style="font-size:13px">
+                  🔗 你的程序主动轮询服务器，无需公网 IP。<br>
+                  如需刷新 API Key，请联系管理员或重新创建 Bot。
+                </NAlert>
+              </template>
+
+              <!-- 真人 Bot -->
+              <template v-else-if="gamerForm.type === 'human'">
+                <NAlert type="info" :show-icon="false" style="font-size:13px">
+                  🧑 真人玩家在对局详情页通过浏览器手动输入移动，每轮限时 5 分钟。
+                </NAlert>
+              </template>
             </NForm>
 
             <template #footer>
@@ -196,6 +225,9 @@ const gamerForm = reactive({
   name: '',
   language: 'cpp17',
   code: '',
+  type: 'code' as string,
+  webhookUrl: '',
+  webhookSecret: '',
 })
 
 // ─── Language mapping ─────────────────────────────────────────────────────────
@@ -257,6 +289,9 @@ onMounted(async () => {
       gamerForm.name = gamer.name || ''
       gamerForm.language = gamer.language || 'cpp17'
       gamerForm.code = gamer.code || ''
+      gamerForm.type = gamer.type || 'code'
+      gamerForm.webhookUrl = gamer.webhookUrl || ''
+      gamerForm.webhookSecret = gamer.webhookSecret || ''
       if (game.value) {
         await fetchMyGamers(game.value.id)
         fetchEloRank(game.value.id, gamer.elo ?? 1200, gamerId.value)
@@ -344,8 +379,8 @@ async function handleSave() {
     else {
       const res = await competeApi.updateGamer(gamerId.value, {
         title: gamerForm.name,
-        code: gamerForm.code,
-        language: gamerForm.language,
+        ...(gamerForm.type === 'code' ? { code: gamerForm.code, language: gamerForm.language } : {}),
+        ...(gamerForm.type === 'webhook' ? { webhookUrl: gamerForm.webhookUrl, webhookSecret: gamerForm.webhookSecret || undefined } : {}),
       })
       message.success('Bot 已保存（新版本已创建）！')
       // Fork 返回新 gamer，跳转到新版本页面
