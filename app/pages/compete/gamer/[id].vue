@@ -19,6 +19,20 @@
               </NDescriptions>
             </NCard>
 
+            <!-- Bot 信息（编辑模式显示） -->
+            <NCard v-if="!isNew && currentGamer" title="Bot 状态" size="small">
+              <NDescriptions :column="1" size="small">
+                <NDescriptionsItem label="Bot 名称">
+                  {{ currentGamer.name }}
+                </NDescriptionsItem>
+                <NDescriptionsItem label="ELO 积分">
+                  <NTag type="info" :bordered="false" size="medium" style="font-size: 15px; font-weight: 700">
+                    ⚡ {{ currentGamer.elo ?? 1200 }}
+                  </NTag>
+                </NDescriptionsItem>
+              </NDescriptions>
+            </NCard>
+
             <!-- 我的 Bot 列表 -->
             <NCard title="我的 Bot" size="small">
               <template #header-extra>
@@ -142,6 +156,7 @@ const saving = ref(false)
 const game = ref<any>(null)
 const myGamers = ref<any[]>([])
 const currentGamerId = computed(() => gamerId.value)
+const currentGamer = ref<any>(null)
 
 const formRef = ref<FormInst | null>(null)
 const gamerForm = reactive({
@@ -204,6 +219,7 @@ onMounted(async () => {
       // 编辑模式：获取 gamer 详情
       const res = await competeApi.getGamer(gamerId.value)
       const gamer = res.data
+      currentGamer.value = gamer
       game.value = gamer.game || null
       gamerForm.name = gamer.name || ''
       gamerForm.language = gamer.language || 'cpp17'

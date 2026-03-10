@@ -195,7 +195,9 @@ async function fetchLeaderboard() {
   leaderboardLoading.value = true
   try {
     const res = await competeApi.getLeaderboard(gameId.value)
-    leaderboard.value = Array.isArray(res.data) ? res.data : []
+    const raw = Array.isArray(res.data) ? res.data : []
+    // 按 ELO 降序排列
+    leaderboard.value = [...raw].sort((a, b) => (b.elo ?? b.score ?? 0) - (a.elo ?? a.score ?? 0))
   }
   catch (e) {
     console.error(e)
@@ -209,12 +211,32 @@ const leaderboardColumns: DataTableColumns<any> = [
   {
     title: '排名',
     key: 'rank',
-    width: 80,
+    width: 60,
     render(_row, index) {
-      return h('span', `#${index + 1}`)
+      const medals: Record<number, string> = { 0: '🥇', 1: '🥈', 2: '🥉' }
+      return h('span', medals[index] ?? `#${index + 1}`)
     },
   },
-  { title: 'Bot 名称', key: 'name' },
+  {
+    title: 'Bot 名称',
+    key: 'name',
+    render(row) {
+      return h(
+        NButton,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/gamer/${row.id ?? row.gamerId}`) },
+        { default: () => row.name || '-' },
+      )
+    },
+  },
+  {
+    title: 'ELO',
+    key: 'elo',
+    width: 100,
+    render(row) {
+      const elo = row.elo ?? 1200
+      return h(NTag, { type: 'info', size: 'small', bordered: false }, { default: () => String(elo) })
+    },
+  },
   {
     title: '胜率',
     key: 'winRate',
@@ -466,12 +488,12 @@ const matchColumns: DataTableColumns<any> = [
     width: 100,
     render(row) {
       const statusMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
-        pending: 'default',
-        running: 'info',
-        done: 'success',
-        failed: 'error',
+        PENDING: 'default',
+        RUNNING: 'info',
+        COMPLETED: 'success',
+        FAILED: 'error',
       }
-      const s = (row.status || '').toLowerCase()
+      const s = (row.status || '').toUpperCase()
       return h(NTag, { type: statusMap[s] || 'default', size: 'small', bordered: false }, { default: () => row.status || '-' })
     },
   },

@@ -11,6 +11,16 @@
           <NBreadcrumbItem>对局 #{{ match.id }}</NBreadcrumbItem>
         </NBreadcrumb>
 
+        <!-- 运行中提示 -->
+        <NAlert
+          v-if="isRunning"
+          type="info"
+          :show-icon="true"
+          style="margin-bottom: 16px"
+        >
+          对局运行中，每 3 秒自动刷新...
+        </NAlert>
+
         <!-- 对局基本信息 -->
         <NCard title="对局详情" style="margin-bottom: 16px">
           <NDescriptions :columns="2" bordered>
@@ -22,17 +32,14 @@
             </NDescriptionsItem>
             <NDescriptionsItem label="状态">
               <NTag :type="statusType" size="small" :bordered="false">
-                {{ match.status || '-' }}
+                {{ statusLabel }}
               </NTag>
-            </NDescriptionsItem>
-            <NDescriptionsItem label="胜者">
-              <span v-if="winnerName" style="font-weight: 600; color: #18a058">
-                🏆 {{ winnerName }}
-              </span>
-              <span v-else>-</span>
             </NDescriptionsItem>
             <NDescriptionsItem label="创建时间">
               {{ match.createdAt ? new Date(match.createdAt).toLocaleString('zh-CN') : '-' }}
+            </NDescriptionsItem>
+            <NDescriptionsItem v-if="match.externalJobId" label="外部任务 ID">
+              <NText code>{{ match.externalJobId }}</NText>
             </NDescriptionsItem>
             <NDescriptionsItem label="完成时间">
               {{ match.finishedAt ? new Date(match.finishedAt).toLocaleString('zh-CN') : '-' }}
@@ -49,25 +56,42 @@
           />
         </NCard>
 
-        <!-- 回放数据 -->
-        <NCard v-if="hasPlayback" title="对局回放">
-          <NCode :code="playbackText" language="json" word-wrap />
-        </NCard>
+        <!-- 对局结果（COMPLETED 时展示） -->
+        <template v-if="isCompleted && parsedResult">
+          <!-- 得分汇总 -->
+          <NCard title="对局结果" style="margin-bottom: 16px">
+            <NDescriptions :columns="2" bordered style="margin-bottom: 12px">
+              <NDescriptionsItem v-if="parsedResult.verdict" label="裁决">
+                <NTag type="info" size="small" :bordered="false">
+                  {{ parsedResult.verdict }}
+                </NTag>
+              </NDescriptionsItem>
+              <NDescriptionsItem v-if="parsedResult.roundCount !== undefined" label="总回合数">
+                {{ parsedResult.roundCount }}
+              </NDescriptionsItem>
+            </NDescriptions>
 
-        <!-- 运行中提示 -->
-        <NAlert
-          v-if="isRunning"
-          type="info"
-          :show-icon="true"
-          style="margin-bottom: 16px"
-        >
-          对局运行中，每 3 秒自动刷新...
-        </NAlert>
+            <template v-if="parsedResult.finalResult">
+              <NDivider title-placement="left" style="margin: 12px 0">最终得分</NDivider>
+              <NDataTable
+                :columns="scoreColumns"
+                :data="scoreRows"
+                :bordered="false"
+                size="small"
+              />
+            </template>
+          </NCard>
+
+          <!-- 游戏回放 -->
+          <template v-if="gameLog">
+            <BotzoneBotzoneReplaySection :game-log="gameLog" />
+          </template>
+        </template>
 
         <!-- 错误信息 -->
-        <NCard v-if="match.error" title="错误信息">
+        <NCard v-if="match.error || (isFailed && match.result)" title="错误信息" style="margin-bottom: 16px">
           <NAlert type="error">
-            <pre style="white-space: pre-wrap; margin: 0">{{ match.error }}</pre>
+            <pre style="white-space: pre-wrap; margin: 0">{{ match.error || match.result }}</pre>
           </NAlert>
         </NCard>
       </template>
@@ -85,6 +109,7 @@
 import { h } from 'vue'
 import { NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
+import type { BotzoneGameLog } from '~/types/botzone'
 
 definePageMeta({
   layout: 'default',
@@ -105,8 +130,8 @@ async function fetchMatch() {
     const res = await competeApi.getMatch(matchId.value)
     match.value = res.data
     // 如果对局已结束，停止轮询
-    const status = (res.data?.status || '').toLowerCase()
-    if (status === 'done' || status === 'failed') {
+    const status = (res.data?.status || '').toUpperCase()
+    if (status === 'COMPLETED' || status === 'FAILED') {
       stopPolling()
     }
   }
@@ -119,6 +144,7 @@ async function fetchMatch() {
 }
 
 function startPolling() {
+  if (pollingTimer) return
   pollingTimer = setInterval(fetchMatch, 3000)
 }
 
@@ -132,8 +158,8 @@ function stopPolling() {
 onMounted(async () => {
   await fetchMatch()
   // 运行中的对局自动轮询
-  const status = (match.value?.status || '').toLowerCase()
-  if (status === 'pending' || status === 'running') {
+  const status = (match.value?.status || '').toUpperCase()
+  if (status === 'PENDING' || status === 'RUNNING') {
     startPolling()
   }
 })
@@ -142,26 +168,96 @@ onBeforeUnmount(() => {
   stopPolling()
 })
 
+// ─── 状态相关 ─────────────────────────────────────────────────────────────────
 const isRunning = computed(() => {
-  const s = (match.value?.status || '').toLowerCase()
-  return s === 'pending' || s === 'running'
+  const s = (match.value?.status || '').toUpperCase()
+  return s === 'PENDING' || s === 'RUNNING'
+})
+
+const isCompleted = computed(() => {
+  return (match.value?.status || '').toUpperCase() === 'COMPLETED'
+})
+
+const isFailed = computed(() => {
+  return (match.value?.status || '').toUpperCase() === 'FAILED'
 })
 
 const statusType = computed((): 'default' | 'info' | 'success' | 'warning' | 'error' => {
   const statusMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
-    pending: 'default',
-    running: 'info',
-    done: 'success',
-    failed: 'error',
+    PENDING: 'default',
+    RUNNING: 'info',
+    COMPLETED: 'success',
+    FAILED: 'error',
   }
-  return statusMap[(match.value?.status || '').toLowerCase()] || 'default'
+  return statusMap[(match.value?.status || '').toUpperCase()] || 'default'
 })
 
-const winnerName = computed(() => {
-  if (!match.value) return null
-  return match.value.winner?.name || (match.value.winnerId ? `Bot#${match.value.winnerId}` : null)
+const statusLabel = computed(() => {
+  const labelMap: Record<string, string> = {
+    PENDING: '等待中',
+    RUNNING: '运行中',
+    COMPLETED: '已完成',
+    FAILED: '失败',
+  }
+  const s = (match.value?.status || '').toUpperCase()
+  return labelMap[s] || match.value?.status || '-'
 })
 
+// ─── 结果解析 ─────────────────────────────────────────────────────────────────
+const parsedResult = computed<{ verdict?: string, finalResult?: Record<string, number>, roundCount?: number } | null>(() => {
+  if (!match.value?.result) return null
+  try {
+    if (typeof match.value.result === 'string') {
+      return JSON.parse(match.value.result)
+    }
+    return match.value.result
+  }
+  catch {
+    return null
+  }
+})
+
+// 构建 BotzoneGameLog（如果 result 包含 rounds 数据）
+const gameLog = computed<BotzoneGameLog | null>(() => {
+  if (!parsedResult.value) return null
+  const r = parsedResult.value as any
+  if (!r.rounds || !Array.isArray(r.rounds) || r.rounds.length === 0) return null
+  return {
+    gameId: String(match.value?.gameId || ''),
+    rounds: r.rounds,
+    finalResult: r.finalResult || {},
+    verdict: r.verdict || '',
+  }
+})
+
+// 得分表格行数据：将 finalResult map 转为数组
+const scoreRows = computed(() => {
+  const fr = parsedResult.value?.finalResult
+  if (!fr) return []
+  // 尝试用 gamerList 名称匹配 Bot ID
+  const gamerMap = Object.fromEntries(gamerList.value.map((g: any) => [String(g.id), g]))
+  return Object.entries(fr).map(([key, score]) => {
+    const gamer = gamerMap[key]
+    return {
+      key,
+      name: gamer?.name || `Bot#${key}`,
+      score,
+    }
+  })
+})
+
+const scoreColumns: DataTableColumns<any> = [
+  { title: 'Bot 名称', key: 'name' },
+  {
+    title: '得分',
+    key: 'score',
+    render(row) {
+      return h('span', { style: 'font-weight: 600' }, String(row.score))
+    },
+  },
+]
+
+// ─── 参与 Bot 表格 ────────────────────────────────────────────────────────────
 const gamerList = computed(() => {
   if (!match.value) return []
   const gamers = match.value.gamers || match.value.gamerIds || []
@@ -174,10 +270,6 @@ const gamerColumns: DataTableColumns<any> = [
   {
     title: 'Bot 名称',
     key: 'name',
-    render(row) {
-      const isWinner = match.value?.winner?.id === row.id || match.value?.winnerId === row.id
-      return h('span', { style: isWinner ? 'font-weight:600;color:#18a058' : '' }, isWinner ? `🏆 ${row.name}` : row.name)
-    },
   },
   {
     title: '语言',
@@ -188,10 +280,10 @@ const gamerColumns: DataTableColumns<any> = [
     },
   },
   {
-    title: '得分',
-    key: 'score',
+    title: 'ELO',
+    key: 'elo',
     render(row) {
-      return h('span', row.score !== undefined ? String(row.score) : '-')
+      return h('span', row.elo !== undefined ? String(row.elo) : '-')
     },
   },
   {
@@ -202,24 +294,6 @@ const gamerColumns: DataTableColumns<any> = [
     },
   },
 ]
-
-// 回放数据处理
-const hasPlayback = computed(() => {
-  return !!(match.value?.playback || match.value?.replay || match.value?.log)
-})
-
-const playbackText = computed(() => {
-  if (!match.value) return ''
-  const raw = match.value.playback || match.value.replay || match.value.log
-  if (!raw) return ''
-  if (typeof raw === 'string') return raw
-  try {
-    return JSON.stringify(raw, null, 2)
-  }
-  catch {
-    return String(raw)
-  }
-})
 
 useHead(computed(() => ({ title: `对战记录 #${matchId.value} — Leverage OJ` })))
 </script>
