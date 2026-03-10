@@ -22,22 +22,16 @@
     background: #f0f0f0; border-radius: 10px;
     font-size: 40px; font-weight: 700;
     transition: background 0.15s;
-    position: relative;
   }
   .cell.x { color: #2080f0; background: #e8f0ff; }
   .cell.o { color: #d03050; background: #ffe8ec; }
   .cell.win-x { background: #c0d8ff; box-shadow: 0 0 0 3px #2080f0; }
   .cell.win-o { background: #ffc0cc; box-shadow: 0 0 0 3px #d03050; }
-  .info {
-    font-size: 14px; color: #666;
-    margin-bottom: 8px; text-align: center;
-  }
-  .round-info { font-size: 13px; color: #999; margin-top: 8px; }
+  .cell.new-move { outline: 3px solid #f0a020; border-radius: 10px; }
+  .info { font-size: 14px; color: #666; margin-bottom: 8px; text-align: center; }
+  .move-info { font-size: 13px; color: #888; margin-top: 6px; }
   .score-row { display: flex; gap: 16px; margin-top: 10px; }
-  .score-tag {
-    padding: 3px 12px; border-radius: 12px;
-    font-size: 13px; font-weight: 600;
-  }
+  .score-tag { padding: 3px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; }
   .score-x { background: #e8f0ff; color: #2080f0; }
   .score-o { background: #ffe8ec; color: #d03050; }
 </style>
@@ -49,10 +43,10 @@
   <div class="cell" id="c3"></div><div class="cell" id="c4"></div><div class="cell" id="c5"></div>
   <div class="cell" id="c6"></div><div class="cell" id="c7"></div><div class="cell" id="c8"></div>
 </div>
-<div class="round-info" id="roundInfo"></div>
+<div class="move-info" id="moveInfo"></div>
 <div class="score-row" id="scoreRow" style="display:none">
-  <span class="score-tag score-x" id="scoreX">玩家 0: -</span>
-  <span class="score-tag score-o" id="scoreO">玩家 1: -</span>
+  <span class="score-tag score-x" id="scoreX"></span>
+  <span class="score-tag score-o" id="scoreO"></span>
 </div>
 
 <script>
@@ -77,36 +71,57 @@ function render(data) {
 
   const idx = Math.max(0, Math.min(round, gameLog.rounds.length - 1));
   const r = gameLog.rounds[idx];
-  const display = r?.judgerDisplay;
-  const board = display?.board || Array(9).fill(0);
 
-  // Update info
+  // The board in display is BEFORE this round's moves.
+  // The actual board after this round's moves is shown in the NEXT round's display.board.
+  // So: use next round's board if available, otherwise apply moves manually.
+  let board;
+  let newMoveCells = new Set();
+
+  const nextRound = gameLog.rounds[idx + 1];
+  if (nextRound?.judgerDisplay?.board) {
+    // Use next round's board (already includes this round's moves)
+    board = nextRound.judgerDisplay.board;
+    // Find which cells changed (the new moves)
+    const prevBoard = r?.judgerDisplay?.board || Array(9).fill(0);
+    for (let i = 0; i < 9; i++) {
+      if (board[i] !== prevBoard[i]) newMoveCells.add(i);
+    }
+  } else {
+    // Last round or finish: apply this round's botResponses to current board
+    board = [...(r?.judgerDisplay?.board || Array(9).fill(0))];
+    const bots = r?.botOutputs || {};
+    for (const [pid, moveStr] of Object.entries(bots)) {
+      const move = parseInt(String(moveStr));
+      if (move >= 0 && move <= 8 && board[move] === 0) {
+        board[move] = parseInt(pid) === 0 ? 1 : 2;
+        newMoveCells.add(move);
+      }
+    }
+  }
+
   document.getElementById('info').textContent =
     `第 ${r?.round ?? idx+1} 回合 / 共 ${gameLog.rounds.length} 回合`;
 
-  // Find win
   const win = checkWin(board);
   const winCells = win ? new Set(win.line) : new Set();
 
-  // Render cells
   for (let i = 0; i < 9; i++) {
     const el = document.getElementById('c'+i);
     const v = board[i];
     el.textContent = v === 1 ? '✕' : v === 2 ? '○' : '';
-    el.className = 'cell' + (v===1?' x':v===2?' o':'');
-    if (winCells.has(i)) el.className += (v===1?' win-x':' win-o');
+    let cls = 'cell' + (v===1?' x':v===2?' o':'');
+    if (winCells.has(i)) cls += (v===1?' win-x':' win-o');
+    if (newMoveCells.has(i)) cls += ' new-move';
+    el.className = cls;
   }
 
-  // Bot outputs
   const bots = r?.botOutputs || {};
-  const p0 = bots['0'];
-  const p1 = bots['1'];
-  const parts = [];
-  if (p0 !== undefined) parts.push(`玩家0 落子: ${p0}`);
-  if (p1 !== undefined) parts.push(`玩家1 落子: ${p1}`);
-  document.getElementById('roundInfo').textContent = parts.join('  |  ');
+  const moveParts = Object.entries(bots).map(([pid, mv]) =>
+    `玩家${pid} 落子: ${mv}`
+  );
+  document.getElementById('moveInfo').textContent = moveParts.join('  |  ');
 
-  // Scores on last round
   const isLast = idx === gameLog.rounds.length - 1;
   const scoreRow = document.getElementById('scoreRow');
   if (isLast && gameLog.finalResult) {
@@ -114,7 +129,8 @@ function render(data) {
     const fr = gameLog.finalResult;
     const keys = Object.keys(fr);
     document.getElementById('scoreX').textContent = `玩家 ${keys[0]}: ${fr[keys[0]]} 分`;
-    document.getElementById('scoreO').textContent = `玩家 ${keys[1]}: ${fr[keys[1]]} 分`;
+    document.getElementById('scoreO').textContent = keys[1] !== undefined
+      ? `玩家 ${keys[1]}: ${fr[keys[1]]} 分` : '';
   } else {
     scoreRow.style.display = 'none';
   }
