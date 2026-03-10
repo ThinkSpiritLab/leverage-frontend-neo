@@ -539,10 +539,13 @@ function connectHumanSSE() {
   console.log('[SSE] connecting to', url)
   sseSource = new EventSource(url)
 
-  sseSource.onopen = () => { console.log('[SSE] connection opened') }
+  sseSource.onopen = () => { console.log('[SSE] connection opened, readyState:', sseSource?.readyState) }
+
+  // Also listen for named events in case backend sends event: type
+  sseSource.addEventListener('message', (e) => { console.log('[SSE] named message event:', e.data) })
 
   sseSource.onmessage = (e) => {
-    console.log('[SSE] message:', e.data)
+    console.log('[SSE] onmessage:', e.data, 'lastEventId:', e.lastEventId)
     try {
       const data = JSON.parse(e.data)
       if (data.type === 'your-turn') {
