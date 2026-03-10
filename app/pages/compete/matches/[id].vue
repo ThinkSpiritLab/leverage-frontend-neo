@@ -77,10 +77,28 @@
               </div>
             </div>
 
-            <!-- Raw JSON fallback -->
-            <details v-if="!tttBoard" style="margin-bottom:12px">
+            <!-- Game renderer for human turn (if rendererHtml available) -->
+            <div v-if="!tttBoard && match.game?.rendererHtml" style="margin-bottom:12px">
+              <iframe
+                ref="humanRendererRef"
+                :srcdoc="humanRendererSrcdoc"
+                sandbox="allow-scripts"
+                style="width:100%;height:400px;border:1px solid #e0e0e6;border-radius:8px"
+                @load="onHumanRendererLoad"
+              />
+              <NText depth="3" style="font-size:12px;display:block;margin-top:4px">
+                如果渲染器支持，可以在上方直接操作；或使用下方文本框输入
+              </NText>
+            </div>
+
+            <!-- Raw JSON fallback (collapsed if renderer available) -->
+            <details v-if="!tttBoard && !match.game?.rendererHtml" style="margin-bottom:12px">
               <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
               <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:200px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
+            </details>
+            <details v-else-if="!tttBoard" style="margin-bottom:12px">
+              <summary style="cursor:pointer;font-size:13px;color:#888">查看棋盘原始数据</summary>
+              <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:160px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
             </details>
 
             <NSpace align="center">
@@ -91,7 +109,7 @@
                 @keyup.enter="submitHumanMove"
               />
               <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
-              <NText depth="3" style="font-size:12px">点击棋盘格子可自动填入移动</NText>
+              <NText v-if="tttBoard" depth="3" style="font-size:12px">点击棋盘格子可自动填入移动</NText>
             </NSpace>
           </template>
           <template v-else>
@@ -429,6 +447,56 @@ const authStore = useAuthStore()
 const myHumanGamer = computed(() => {
   if (!authStore.user) return null
   return gamerList.value.find((g: any) => g.type === 'human' && g.userId === authStore.user?.id) || null
+})
+
+// ── Human turn renderer (iframe postMessage protocol) ────────────────────────
+const humanRendererRef = ref<HTMLIFrameElement | null>(null)
+
+// srcdoc injects a postMessage listener into the renderer HTML for human turns
+const humanRendererSrcdoc = computed(() => {
+  const html = match.value?.game?.rendererHtml || ''
+  // Inject a listener that auto-submits move when renderer sends { type: 'humanMove', move }
+  const injected = `<script>
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'gameState') {
+    // Forward to renderer as humanTurn signal
+    window.postMessage(e.data, '*');
+  }
+});
+<\/script>`
+  // Insert before </body> or at end
+  return html.includes('</body>') ? html.replace('</body>', injected + '</body>') : html + injected
+})
+
+function onHumanRendererLoad() {
+  // Send current game state to renderer
+  if (humanTurn.value && humanRendererRef.value?.contentWindow) {
+    humanRendererRef.value.contentWindow.postMessage(
+      { type: 'gameState', gameState: humanTurn.value.gameState },
+      '*',
+    )
+  }
+}
+
+// Listen for humanMove from iframe
+function onIframeMessage(e: MessageEvent) {
+  if (e.data?.type === 'humanMove' && e.data.move && !submittingMove.value) {
+    humanMove.value = e.data.move
+    submitHumanMove()
+  }
+}
+
+onMounted(() => { window.addEventListener('message', onIframeMessage) })
+onUnmounted(() => { window.removeEventListener('message', onIframeMessage) })
+
+// Watch humanTurn changes to push gameState to iframe
+watch(() => humanTurn.value, (turn) => {
+  if (turn && humanRendererRef.value?.contentWindow) {
+    humanRendererRef.value.contentWindow.postMessage(
+      { type: 'gameState', gameState: turn.gameState },
+      '*',
+    )
+  }
 })
 
 // TicTacToe board helper — returns flat 9-cell array or null if not ttt

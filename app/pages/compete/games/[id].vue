@@ -45,6 +45,7 @@
                   <span style="font-weight:600">我的 Bot</span>
                   <NSpace>
                     <NButton
+                      v-if="game?.allowHuman"
                       size="small"
                       type="warning"
                       :loading="joiningAsHuman !== null"
@@ -197,6 +198,7 @@
               <NRadio value="code">🖥️ 代码 Bot — 上传代码，在服务器沙箱运行</NRadio>
               <NRadio value="external">🔗 外部 Bot — 你的程序主动轮询服务器（无需公网 IP）</NRadio>
               <NRadio value="webhook">📡 Webhook Bot — 服务器主动调你的 URL（需公网 IP）</NRadio>
+              <NRadio v-if="game?.allowHuman" value="human">🧑 真人 — 在浏览器网页上手动输入移动</NRadio>
             </NSpace>
           </NRadioGroup>
         </NFormItem>

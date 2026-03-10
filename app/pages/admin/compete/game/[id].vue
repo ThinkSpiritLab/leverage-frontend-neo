@@ -92,6 +92,12 @@
         <NFormItem label="启用">
           <NSwitch v-model:value="editFormEnabled" />
         </NFormItem>
+        <NFormItem label="允许真人参与">
+          <NSpace align="center">
+            <NSwitch v-model:value="editForm.allowHuman" />
+            <NText depth="3" style="font-size:12px">开启后用户可以以真人身份参与对局</NText>
+          </NSpace>
+        </NFormItem>
 
         <!-- 自定义渲染器 HTML -->
         <NFormItem label="自定义渲染器 HTML">
@@ -193,6 +199,7 @@ const editForm = ref({
   description: '',
   disabled: true,
   rendererHtml: '',
+  allowHuman: false,
 })
 
 // 内存以 MB 为单位进行交互
@@ -262,6 +269,7 @@ function openEditModal() {
     description: game.value.description || '',
     disabled: !!game.value.disabled,
     rendererHtml: game.value.rendererHtml || '',
+    allowHuman: !!game.value.allowHuman,
   }
   showEditModal.value = true
 }
