@@ -449,6 +449,11 @@ const myHumanGamer = computed(() => {
   return gamerList.value.find((g: any) => g.type === 'human' && g.userId === authStore.user?.id) || null
 })
 
+// ── Human turn state (must be declared before iframe refs that use it) ───────
+const humanTurn = ref<{ turnToken: string; gameState: any } | null>(null)
+const humanMove = ref('')
+const submittingMove = ref(false)
+
 // ── Human turn renderer (iframe postMessage protocol) ────────────────────────
 const humanRendererRef = ref<HTMLIFrameElement | null>(null)
 
@@ -514,11 +519,6 @@ const tttBoard = computed(() => {
 function clickCell(i: number) {
   humanMove.value = JSON.stringify({ '0': i })
 }
-
-const humanTurn = ref<{ turnToken: string; gameState: any } | null>(null)
-const humanMove = ref('')
-const submittingMove = ref(false)
-// message composable not needed here
 
 // SSE connection
 let sseSource: EventSource | null = null
