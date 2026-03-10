@@ -38,12 +38,18 @@
         <!-- ===== 排行榜 Tab ===== -->
         <NTabPane name="leaderboard" tab="排行榜">
           <div style="margin-top: 16px">
-            <NButton style="margin-bottom: 12px" @click="fetchLeaderboard">刷新</NButton>
+            <NSpace align="center" style="margin-bottom:12px">
+              <NButton @click="fetchLeaderboard">刷新</NButton>
+              <NRadioGroup v-model:value="leaderboardBoard" size="small">
+                <NRadioButton value="inner">内榜（仅代码）</NRadioButton>
+                <NRadioButton value="outer">外榜（全部）</NRadioButton>
+              </NRadioGroup>
+            </NSpace>
             <NDataTable
               :columns="leaderboardColumns"
               :data="leaderboard"
               :loading="leaderboardLoading"
-              :row-key="(row: any) => row.userId ?? row.id"
+              :row-key="(row: any) => row.gamerId ?? row.id"
               size="small"
             />
           </div>
@@ -183,8 +189,8 @@
 </template>
 
 <script setup lang="ts">
-import { h } from 'vue'
-import { NTag, NButton, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
+import { h, computed } from 'vue'
+import { NTag, NButton, NSpace, NCollapse, NCollapseItem, NRadioGroup, NRadioButton, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
 
@@ -405,25 +411,33 @@ async function handleSaveEdit() {
 // ── 排行榜 ──
 const leaderboard = ref<any[]>([])
 const leaderboardLoading = ref(false)
+const leaderboardBoard = ref<'inner' | 'outer'>('inner')
 
 async function fetchLeaderboard() {
   leaderboardLoading.value = true
   try {
-    const res = await competeApi.getLeaderboard(gameId)
+    const res = await competeApi.getLeaderboard(isNew ? 0 : gameId, leaderboardBoard.value)
     leaderboard.value = Array.isArray(res.data) ? res.data : []
   }
   catch (e) { console.error(e) }
   finally { leaderboardLoading.value = false }
 }
 
-const leaderboardColumns: DataTableColumns<any> = [
-  { title: '排名', key: '_rank', width: 60, render: (_r, idx) => idx + 1 },
-  { title: '玩家', key: 'name', render: r => r.name || r.username || `Bot#${r.gamerId}` },
-  { title: 'ELO', key: 'elo', width: 80 },
-  { title: '胜场', key: 'wins', width: 70, render: r => r.wins ?? '-' },
-  { title: '总场', key: 'total', width: 70, render: r => r.total ?? '-' },
+watch(leaderboardBoard, fetchLeaderboard)
+
+const leaderboardColumns = computed((): DataTableColumns<any> => [
+  { title: '排名', key: '_rank', width: 55, render: (_r, idx) => h('span', { style: 'font-weight:600;color:#888' }, `#${idx + 1}`) },
+  {
+    title: 'Bot',
+    key: 'name',
+    render: r => h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${r.gamerId}`) },
+      () => r.name || `Bot#${r.gamerId}`),
+  },
+  { title: leaderboardBoard.value === 'inner' ? 'ELO (内榜)' : 'ELO (外榜)', key: 'elo', width: 100 },
+  { title: '胜场', key: 'wins', width: 65 },
+  { title: '总场', key: 'total', width: 65 },
   { title: '胜率', key: 'winRate', width: 70, render: r => r.winRate != null ? `${(r.winRate * 100).toFixed(1)}%` : '-' },
-]
+])
 
 // ── 对局列表 ──
 const matches = ref<any[]>([])
@@ -464,23 +478,63 @@ const matchStatusColor: Record<string, any> = {
   error: 'error',
 }
 
+const statusNumMap: Record<number, { type: any; label: string }> = {
+  0: { type: 'default', label: '等待中' },
+  1: { type: 'info', label: '进行中' },
+  2: { type: 'success', label: '已完成' },
+  3: { type: 'error', label: '失败' },
+}
+
+function getWinnerNodes(r: any) {
+  try {
+    const fr = typeof r.result === 'string' ? JSON.parse(r.result).finalResult : r.result?.finalResult
+    if (!fr) return [h('span', { style: 'color:#aaa' }, '-')]
+    const maxScore = Math.max(...Object.values(fr) as number[])
+    const winnerEntries = Object.entries(fr).filter(([, v]) => v === maxScore)
+    if (winnerEntries.length === Object.keys(fr).length) return [h('span', { style: 'color:#f0a020' }, '平局')]
+    const gMap = Object.fromEntries((r.links || []).map((l: any) => [String(l.gamerId), { name: l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`, id: l.gamerId }]))
+    return winnerEntries.map(([id]) => {
+      const g = gMap[id]
+      return g
+        ? h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${g.id}`) }, () => g.name)
+        : h('span', `Bot#${id}`)
+    })
+  }
+  catch { return [h('span', { style: 'color:#aaa' }, '-')] }
+}
+
 const matchColumns: DataTableColumns<any> = [
-  { title: 'ID', key: 'id', width: 70 },
   {
-    title: '状态',
-    key: 'status',
-    width: 100,
-    render: r => h(NTag, {
-      type: matchStatusColor[r.status] || 'default',
-      size: 'small',
-    }, { default: () => matchStatusLabel[r.status] || r.status || '-' }),
+    title: 'ID', key: 'id', width: 65,
+    render: r => h(NButton, { text: true, type: 'default', size: 'small', onClick: () => navigateTo(`/compete/matches/${r.id}`) }, () => `#${r.id}`),
   },
-  { title: '参与者', key: 'links', render: r => r.links?.map((l: any) => l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`).join(', ') || '-' },
   {
-    title: '创建时间',
-    key: 'createdAt',
-    width: 160,
-    render: r => r.createdAt ? dayjs(r.createdAt).format('YYYY-MM-DD HH:mm') : '-',
+    title: '状态', key: 'status', width: 90,
+    render: r => {
+      const s = statusNumMap[r.status] || { type: 'default', label: String(r.status) }
+      return h(NTag, { type: s.type, size: 'small' }, () => s.label)
+    },
+  },
+  {
+    title: '参与者', key: 'links',
+    render: r => {
+      const links = r.links?.slice().sort((a: any, b: any) => a.index - b.index) || []
+      if (!links.length) return h('span', { style: 'color:#aaa' }, '-')
+      const parts: any[] = []
+      links.forEach((l: any, i: number) => {
+        if (i > 0) parts.push(h('span', { style: 'color:#bbb;margin:0 4px' }, 'vs'))
+        parts.push(h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${l.gamerId}`) }, () => l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`))
+      })
+      return h('span', parts)
+    },
+  },
+  {
+    title: '胜者', key: 'winner', width: 140,
+    render: r => r.status === 2 ? h('span', { style: 'color:#18a058;font-weight:600' }, getWinnerNodes(r)) : h('span', { style: 'color:#aaa' }, '-'),
+  },
+  {
+    title: '时间', key: 'createdAt', width: 140,
+    render: r => h(NButton, { text: true, type: 'default', size: 'small', onClick: () => navigateTo(`/compete/matches/${r.id}`) }, () => r.createdAt ? dayjs(r.createdAt).format('MM-DD HH:mm') : '-'),
   },
 ]
 
