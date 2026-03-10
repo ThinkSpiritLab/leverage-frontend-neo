@@ -72,7 +72,7 @@
         @try-it="$emit('go-playground', { tab: 'bot', code: $event, lang: 'python' })"
       />
 
-      <NDivider style="margin:16px 0">用其他语言？</NCollapse>
+      <NDivider style="margin:16px 0">用其他语言？</NDivider>
 
       <NCollapse>
         <NCollapseItem title="C++ 版本" name="cpp">

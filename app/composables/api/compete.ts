@@ -18,7 +18,7 @@ export function useCompeteApi() {
     createGame: (dto: Record<string, any>) => api.post<any>('/compete/games', dto),
     getLeaderboard: (gameId: number, board: 'inner' | 'outer' = 'inner') =>
       api.get<any[]>(`/compete/games/${gameId}/leaderboard`, { params: { board } }),
-    listGamers: (params: { gameId?: number; page?: number; perPage?: number }) =>
+    listGamers: (params: { gameId?: number; userId?: number; page?: number; perPage?: number }) =>
       api.get<{ items: any[]; total: number }>('/compete/gamers', { params }),
     createGamer: (dto: {
       gameId: number
@@ -49,7 +49,7 @@ export function useCompeteApi() {
     getEloHistory: (gamerId: number) => api.get<any[]>(`/compete/gamers/${gamerId}/elo-history`),
     getGameJudger: (id: number) => api.get<any>(`/compete/games/${id}/judger`),
     deleteGamer: (id: number) => api.delete<any>(`/compete/gamers/${id}`),
-    listMatches: (params: { gameId?: number; page?: number; perPage?: number }) =>
+    listMatches: (params: { gameId?: number; gamerId?: number; page?: number; perPage?: number; status?: number; isTest?: boolean }) =>
       api.get<{ items: any[]; total: number }>('/compete/matches', { params }),
     getMatch: (id: number) => api.get<any>(`/compete/matches/${id}`),
     launchMatch: (gameId: number, gamerIds: number[]) =>

@@ -24,6 +24,8 @@ export function useUsersApi() {
       api.get(`/users/${id}/submissions`, { params }),
     getAcceptedProblems: (id: number) =>
       api.get<{ items: Array<{ id: number; logicId: string; prefix: string; title: string }> }>(`/users/${id}/accept`),
+    getUserStats: (id: number) =>
+      api.get<any>(`/users/${id}/stats`),
     banUser: (id: number, banned: boolean, reason?: string) =>
       api.post(`/users/${id}/ban`, { banned, reason }),
     changeUserPassword: (id: number, password: string) =>
