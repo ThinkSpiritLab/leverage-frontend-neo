@@ -83,17 +83,22 @@
                         </NSpace>
                       </div>
                     </NSpace>
-                    <NSpace>
-                      <NButton
-                        v-if="bot.type === 'human' && !bot.disabled"
-                        size="small"
-                        type="primary"
-                        :loading="joiningAsHuman === bot.id"
-                        @click="joinAsHuman(bot)"
-                      >
-                        🎮 加入对局
-                      </NButton>
-                      <NButton size="small" text :disabled="bot.disabled" @click="navigateTo(`/compete/gamer/${bot.id}`)">编辑</NButton>
+                    <NSpace align="center">
+                      <!-- Human bot: show join button + creator info, no edit -->
+                      <template v-if="bot.type === 'human'">
+                        <NText depth="3" style="font-size:12px">真人席位</NText>
+                        <NButton
+                          v-if="!bot.disabled"
+                          size="small"
+                          type="primary"
+                          :loading="joiningAsHuman === bot.id"
+                          @click="joinAsHuman(bot)"
+                        >
+                          🎮 加入对局
+                        </NButton>
+                      </template>
+                      <!-- Code/webhook/external: show edit button -->
+                      <NButton v-else size="small" text :disabled="bot.disabled" @click="navigateTo(`/compete/gamer/${bot.id}`)">编辑</NButton>
                     </NSpace>
                   </div>
                 </NSpace>
