@@ -28,7 +28,12 @@
               #{{ match.id }}
             </NDescriptionsItem>
             <NDescriptionsItem label="游戏">
-              {{ match.game?.name || match.gameId || '-' }}
+              <NButton
+                v-if="match.game"
+                text type="primary"
+                @click="navigateTo(`/compete/games/${match.game.id}`)"
+              >{{ match.game.name }}</NButton>
+              <span v-else>{{ match.gameId || '-' }}</span>
             </NDescriptionsItem>
             <NDescriptionsItem label="状态">
               <NTag :type="statusType" size="small" :bordered="false">
@@ -370,7 +375,17 @@ const winnerInfo = computed(() => {
 })
 
 const scoreColumns: DataTableColumns<any> = [
-  { title: 'Bot 名称', key: 'name' },
+  {
+    title: 'Bot 名称',
+    key: 'name',
+    render(row) {
+      return h(
+        NButton,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/gamer/${row.id}`) },
+        { default: () => row.name || '-' },
+      )
+    },
+  },
   {
     title: '得分',
     key: 'score',
@@ -445,7 +460,13 @@ const gamerColumns: DataTableColumns<any> = [
     title: '创建者',
     key: 'user',
     render(row) {
-      return h('span', row.user?.username || '-')
+      if (!row.userId && !row.user?.id) return h('span', row.user?.username || '-')
+      const uid = row.userId ?? row.user?.id
+      return h(
+        NButton,
+        { text: true, type: 'primary', onClick: () => navigateTo(`/admin/users/${uid}`) },
+        { default: () => row.user?.username || `User#${uid}` },
+      )
     },
   },
 ]

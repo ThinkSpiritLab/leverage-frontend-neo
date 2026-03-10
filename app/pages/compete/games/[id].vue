@@ -517,16 +517,47 @@ function getWinner(r: any): string {
   } catch { return '-' }
 }
 
+function gamerLink(gamerId: number | string, name: string) {
+  return h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${gamerId}`) }, () => name)
+}
+
+function matchLink(matchId: number, content: any) {
+  return h(NButton, { text: true, type: 'default', size: 'small', onClick: () => navigateTo(`/compete/matches/${matchId}`) }, () => content)
+}
+
 const matchColumns: DataTableColumns<any> = [
-  { title: 'ID', key: 'id', width: 55 },
+  { title: 'ID', key: 'id', width: 55, render: r => matchLink(r.id, `#${r.id}`) },
   { title: '状态', key: 'status', width: 80, render: r => h(NTag, { size:'small', type:statusType[r.status] }, () => statusLabel[r.status]??r.status) },
   { title: '参与者', key: 'links', render: r => {
-    const names = r.links?.map((l:any) => l.gamer?.title||`Bot#${l.gamerId}`) || []
-    return h('span', names.join(' vs ')||'-')
+    const links = r.links?.slice().sort((a:any,b:any) => a.index - b.index) || []
+    if (!links.length) return h('span', { style: 'color:#aaa' }, '-')
+    const parts: any[] = []
+    links.forEach((l: any, i: number) => {
+      if (i > 0) parts.push(h('span', { style: 'color:#999;margin:0 4px' }, 'vs'))
+      parts.push(gamerLink(l.gamerId, l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`))
+    })
+    return h('span', parts)
   }},
-  { title: '胜者', key: 'winner', width: 130, render: r => r.status===2 ? h('span',{style:'color:#18a058;font-weight:600'},getWinner(r)) : h('span',{style:'color:#aaa'},'-') },
-  { title: '时间', key: 'createdAt', width: 120, render: r => r.createdAt ? dayjs(r.createdAt).format('MM-DD HH:mm') : '-' },
-  { title: '', key: 'actions', width: 55, render: r => h(NButton,{size:'small',text:true,type:'primary',onClick:()=>navigateTo(`/compete/matches/${r.id}`)},()=>'查看') },
+  { title: '胜者', key: 'winner', width: 150, render: r => {
+    if (r.status !== 2) return h('span', { style: 'color:#aaa' }, '-')
+    try {
+      const fr = typeof r.result === 'string' ? JSON.parse(r.result).finalResult : r.result?.finalResult
+      if (!fr) return h('span', { style: 'color:#aaa' }, '-')
+      const maxScore = Math.max(...Object.values(fr) as number[])
+      const winnerEntries = Object.entries(fr).filter(([,v]) => v === maxScore)
+      if (winnerEntries.length === Object.keys(fr).length) return h('span', { style: 'color:#f0a020' }, '平局')
+      const gamerMap = Object.fromEntries((r.links||[]).map((l:any) => [String(l.gamerId), { name: l.gamer?.title||l.gamer?.name||`Bot#${l.gamerId}`, id: l.gamerId }]))
+      const parts: any[] = []
+      winnerEntries.forEach(([id], i) => {
+        if (i > 0) parts.push(h('span', ', '))
+        const g = gamerMap[id]
+        if (g) parts.push(gamerLink(g.id, g.name))
+        else parts.push(h('span', `Bot#${id}`))
+      })
+      return h('span', { style: 'color:#18a058;font-weight:600' }, parts)
+    } catch { return h('span', { style: 'color:#aaa' }, '-') }
+  }},
+  { title: '时间', key: 'createdAt', width: 120, render: r => matchLink(r.id, r.createdAt ? dayjs(r.createdAt).format('MM-DD HH:mm') : '-') },
 ]
 
 // ── Submit Bot ──

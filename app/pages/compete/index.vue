@@ -321,16 +321,24 @@ const matchColumns: DataTableColumns<any> = [
     title: '游戏',
     key: 'game',
     render(row) {
-      return h('span', row.game?.name || '-')
+      if (!row.game) return h('span', '-')
+      return h(NButton, { text: true, type: 'primary', onClick: () => navigateTo(`/compete/games/${row.game.id}`) }, () => row.game.name)
     },
   },
   {
     title: '参与 Bot',
     key: 'gamers',
     render(row) {
-      const names = (row.gamers || []).map((g: any) =>
-        typeof g === 'object' ? g.name : `Bot#${g}`,
-      ).join(', ')
+      const links = row.links?.slice().sort((a:any,b:any) => a.index - b.index)
+      if (links?.length) {
+        const parts: any[] = []
+        links.forEach((l: any, i: number) => {
+          if (i > 0) parts.push(h('span', { style: 'color:#999;margin:0 3px' }, 'vs'))
+          parts.push(h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${l.gamerId}`) }, () => l.gamer?.title || l.gamer?.name || `Bot#${l.gamerId}`))
+        })
+        return h('span', parts)
+      }
+      const names = (row.gamers || []).map((g: any) => typeof g === 'object' ? g.name : `Bot#${g}`).join(' vs ')
       return h('span', names || '-')
     },
   },
@@ -338,7 +346,22 @@ const matchColumns: DataTableColumns<any> = [
     title: '胜者',
     key: 'winner',
     render(row) {
-      return h('span', row.winner?.name || '-')
+      if (row.status !== 2) return h('span', { style: 'color:#aaa' }, '-')
+      try {
+        const fr = typeof row.result === 'string' ? JSON.parse(row.result).finalResult : row.result?.finalResult
+        if (!fr) return h('span', { style: 'color:#aaa' }, '-')
+        const maxScore = Math.max(...Object.values(fr) as number[])
+        const winnerEntries = Object.entries(fr).filter(([,v]) => v === maxScore)
+        if (winnerEntries.length === Object.keys(fr).length) return h('span', { style: 'color:#f0a020' }, '平局')
+        const gMap = Object.fromEntries((row.links||[]).map((l:any) => [String(l.gamerId), { name: l.gamer?.title||l.gamer?.name||`Bot#${l.gamerId}`, id: l.gamerId }]))
+        const parts: any[] = []
+        winnerEntries.forEach(([id], i) => {
+          if (i > 0) parts.push(h('span', ', '))
+          const g = gMap[id]
+          parts.push(g ? h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${g.id}`) }, () => g.name) : h('span', `Bot#${id}`))
+        })
+        return h('span', { style: 'color:#18a058;font-weight:600' }, parts)
+      } catch { return h('span', { style: 'color:#aaa' }, '-') }
     },
   },
   {
