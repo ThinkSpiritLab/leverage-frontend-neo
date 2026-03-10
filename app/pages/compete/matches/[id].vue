@@ -62,20 +62,32 @@
           </template>
 
           <template v-if="humanTurn">
-            <!-- TicTacToe visual board (if applicable) -->
+            <!-- Countdown -->
+            <NSpace align="center" style="margin-bottom:12px">
+              <NText type="success" strong>轮到你了！</NText>
+              <NTag
+                :type="countdownSec > 30 ? 'success' : countdownSec > 10 ? 'warning' : 'error'"
+                size="small"
+              >
+                ⏱ {{ countdownSec }}s
+              </NTag>
+            </NSpace>
+
+            <!-- TicTacToe visual board (if applicable) — click to auto-submit -->
             <div v-if="tttBoard" class="ttt-board" style="margin-bottom:16px">
               <div
                 v-for="(cell, i) in tttBoard"
                 :key="i"
                 class="ttt-cell"
                 :class="{ 'can-click': cell === 0 }"
-                @click="cell === 0 && clickCell(i)"
+                @click="cell === 0 && !submittingMove && clickCell(i)"
               >
                 <span v-if="cell === 1" style="color:#d03050;font-size:22px;font-weight:bold">✕</span>
                 <span v-else-if="cell === 2" style="color:#2080f0;font-size:22px;font-weight:bold">○</span>
-                <span v-else style="color:#ccc;font-size:14px">{{ i }}</span>
+                <span v-else style="color:#aaa;font-size:12px">{{ i }}</span>
               </div>
             </div>
+            <NText v-if="tttBoard" depth="3" style="font-size:12px;display:block;margin-bottom:12px">点击空格直接落子</NText>
 
             <!-- Game renderer for human turn (if rendererHtml available) -->
             <div v-if="!tttBoard && match.game?.rendererHtml" style="margin-bottom:12px">
@@ -101,7 +113,8 @@
               <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;margin-top:4px;overflow:auto;max-height:160px">{{ JSON.stringify(humanTurn.gameState, null, 2) }}</pre>
             </details>
 
-            <NSpace align="center">
+            <!-- Text input: shown as fallback when no visual board -->
+            <NSpace v-if="!tttBoard" align="center">
               <NInput
                 v-model:value="humanMove"
                 placeholder='输入移动（如 {"0": 4}）'
@@ -109,7 +122,6 @@
                 @keyup.enter="submitHumanMove"
               />
               <NButton type="primary" :loading="submittingMove" @click="submitHumanMove">提交</NButton>
-              <NText v-if="tttBoard" depth="3" style="font-size:12px">点击棋盘格子可自动填入移动</NText>
             </NSpace>
           </template>
           <template v-else>
@@ -505,20 +517,61 @@ watch(() => humanTurn.value, (turn) => {
 })
 
 // TicTacToe board helper — returns flat 9-cell array or null if not ttt
-const tttBoard = computed(() => {
-  const gs = humanTurn.value?.gameState as any
+// Parse 9-cell board from any known format
+function extractBoard(gs: any): number[] | null {
   if (!gs) return null
-  // botzone ttt format: { board: [[0,0,0],[0,0,0],[0,0,0]] } or { display: { board: [...] } }
-  const board = gs?.board ?? gs?.display?.board ?? gs?.requests?.[0] ? null : null
+  // BotInput format: requests[last] = '{"board": [...], "turn": N}'
+  if (gs?.requests && Array.isArray(gs.requests) && gs.requests.length > 0) {
+    try {
+      const req = JSON.parse(gs.requests[gs.requests.length - 1])
+      if (req?.board && Array.isArray(req.board)) {
+        const b = Array.isArray(req.board[0]) ? (req.board as number[][]).flat() : req.board as number[]
+        if (b.length === 9) return b
+      }
+    } catch { /* ignore */ }
+  }
+  // Direct formats
+  const board = gs?.board ?? gs?.display?.board
   if (!board || !Array.isArray(board)) return null
   if (Array.isArray(board[0])) return (board as number[][]).flat()
   if (board.length === 9) return board as number[]
   return null
-})
+}
+
+const tttBoard = computed(() => extractBoard(humanTurn.value?.gameState))
 
 function clickCell(i: number) {
-  humanMove.value = JSON.stringify({ '0': i })
+  // The move key is the player's position index (0 or 1)
+  const idx = myHumanGamer.value?.index ?? 0
+  humanMove.value = JSON.stringify({ [String(idx)]: i })
+  // Auto-submit on click
+  nextTick(() => submitHumanMove())
 }
+
+// ── Countdown timer ──────────────────────────────────────────────────────────
+const countdownSec = ref(0)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+const HUMAN_TURN_TIMEOUT_SEC = 180
+
+function startCountdown() {
+  countdownSec.value = HUMAN_TURN_TIMEOUT_SEC
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    if (countdownSec.value > 0) countdownSec.value--
+    else { if (countdownTimer) clearInterval(countdownTimer) }
+  }, 1000)
+}
+
+function stopCountdown() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+  countdownSec.value = 0
+}
+
+// Start/stop countdown when humanTurn changes
+watch(() => humanTurn.value, (turn) => {
+  if (turn) startCountdown()
+  else stopCountdown()
+})
 
 // SSE connection
 let sseSource: EventSource | null = null
@@ -587,7 +640,7 @@ const stopWatchSSE = watch(myHumanGamer, (gamer) => {
   }
 }, { immediate: true })
 
-onUnmounted(() => { sseSource?.close() })
+onUnmounted(() => { sseSource?.close(); stopCountdown() })
 
 useHead(computed(() => ({ title: `对战记录 #${matchId.value} — Leverage OJ` })))
 </script>
