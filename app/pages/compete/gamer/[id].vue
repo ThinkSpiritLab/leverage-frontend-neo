@@ -42,9 +42,9 @@
               <!-- ELO 横向分布图 -->
               <div v-if="eloRankInfo && eloRankInfo.total > 1" class="elo-bar-wrapper">
                 <div class="elo-bar-label">
-                  <span>{{ eloRankInfo.maxElo }}</span>
-                  <span style="color:#888;font-size:11px">ELO 分布</span>
                   <span>{{ eloRankInfo.minElo }}</span>
+                  <span style="color:#888;font-size:11px">ELO 分布</span>
+                  <span>{{ eloRankInfo.maxElo }}</span>
                 </div>
                 <div class="elo-bar-track">
                   <!-- Other bots -->
@@ -52,13 +52,13 @@
                     v-for="dot in eloRankInfo.others"
                     :key="dot.id"
                     class="elo-dot other"
-                    :style="{ left: (100 - dot.pct) + '%' }"
+                    :style="{ left: dot.pct + '%' }"
                     :title="`${dot.name}: ${dot.elo}`"
                   />
                   <!-- This bot -->
                   <div
                     class="elo-dot self"
-                    :style="{ left: (100 - eloRankInfo.selfPct) + '%' }"
+                    :style="{ left: eloRankInfo.selfPct + '%' }"
                     :title="`${currentGamer.name}: ${currentGamer.elo ?? 1200}`"
                   />
                 </div>
