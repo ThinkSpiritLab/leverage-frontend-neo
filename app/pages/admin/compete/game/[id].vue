@@ -72,7 +72,7 @@
     </NSpin>
 
     <!-- 编辑弹窗 -->
-    <NModal v-model:show="showEditModal" title="编辑游戏" preset="card" style="width: 680px; max-height: 90vh; overflow-y: auto">
+    <NModal v-model:show="showEditModal" :title="isNew ? '创建游戏' : '编辑游戏'" preset="card" style="width: 680px; max-height: 90vh; overflow-y: auto">
       <NForm :model="editForm" label-placement="left" label-width="120px">
         <NFormItem label="游戏名称" required>
           <NInput v-model:value="editForm.title" placeholder="输入游戏名称" />
@@ -153,7 +153,7 @@
       <template #footer>
         <NSpace justify="end">
           <NButton @click="showEditModal = false">取消</NButton>
-          <NButton type="primary" :loading="saving" :disabled="rendererHtmlOverLimit" @click="handleSaveEdit">保存</NButton>
+          <NButton type="primary" :loading="saving" :disabled="rendererHtmlOverLimit" @click="handleSaveEdit">{{ isNew ? '创建' : '保存' }}</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -194,7 +194,9 @@ definePageMeta({
 })
 
 const route = useRoute()
-const gameId = Number(route.params.id)
+const rawId = route.params.id as string
+const isNew = rawId === 'new' || rawId === '0' || !rawId
+const gameId = isNew ? 0 : Number(rawId)
 const competeApi = useCompeteApi()
 const message = useMessage()
 
@@ -204,6 +206,11 @@ const loading = ref(false)
 const activeTab = ref('info')
 
 async function fetchGame() {
+  if (isNew) {
+    // 新建模式：直接展示编辑弹窗
+    showEditModal.value = true
+    return
+  }
   loading.value = true
   try {
     const res = await competeApi.getGame(gameId)
@@ -377,14 +384,21 @@ async function handleSaveEdit() {
   saving.value = true
   try {
     const payload: Record<string, any> = { ...editForm.value }
-    // 空字符串转 null，避免保存空字段
     if (!payload.rendererHtml) payload.rendererHtml = null
-    await competeApi.updateGame(gameId, payload)
-    message.success('游戏信息已更新')
-    showEditModal.value = false
-    fetchGame()
+    if (isNew) {
+      const res = await competeApi.createGame(payload)
+      message.success('游戏创建成功')
+      showEditModal.value = false
+      // 跳转到新游戏的管理页
+      navigateTo(`/admin/compete/game/${res.data?.id ?? res.data}`)
+    } else {
+      await competeApi.updateGame(gameId, payload)
+      message.success('游戏信息已更新')
+      showEditModal.value = false
+      fetchGame()
+    }
   }
-  catch (e: any) { message.error(e?.message || '更新失败') }
+  catch (e: any) { message.error(e?.message || '操作失败') }
   finally { saving.value = false }
 }
 
