@@ -523,19 +523,6 @@ function clickCell(i: number) {
 // SSE connection
 let sseSource: EventSource | null = null
 
-async function pollPendingTurn() {
-  // If there's already a turn waiting for this gamer (e.g. page loaded mid-game),
-  // fetch it via the bot-turn long-poll (short timeout so it doesn't block).
-  const gamer = myHumanGamer.value
-  if (!gamer || humanTurn.value) return
-  try {
-    const res = await useCompeteApi().botTurnPoll(gamer.id)
-    if (res?.data?.turnToken) {
-      humanTurn.value = { turnToken: res.data.turnToken, gameState: res.data.gameState }
-    }
-  } catch { /* not our turn yet */ }
-}
-
 function connectHumanSSE() {
   if (!myHumanGamer.value) return
   const token = authStore.token
@@ -559,8 +546,7 @@ function connectHumanSSE() {
     // Auto-reconnect handled by browser
   }
 
-  // Also poll once immediately in case there's already a pending turn
-  pollPendingTurn()
+  // Backend will replay any pending turn immediately on SSE connect
 }
 
 async function submitHumanMove() {
