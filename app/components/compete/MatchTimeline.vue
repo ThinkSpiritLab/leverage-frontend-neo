@@ -37,9 +37,7 @@
                 <span class="event-from" :style="{ color: getColor(event.from) }">
                   {{ getIcon(event.from) }} {{ event.from }}
                 </span>
-                <span class="event-arrow-sym">
-                  {{ event.type === 'cmd' ? '→' : event.type === 'resp' ? '←' : '⊕' }}
-                </span>
+                <span class="event-arrow-sym">→</span>
                 <span class="event-to" :style="{ color: getColor(event.to) }">
                   {{ getIcon(event.to) }} {{ event.to }}
                 </span>
