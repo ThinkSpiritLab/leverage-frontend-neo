@@ -175,7 +175,7 @@ const visibleRounds = computed(() => {
   if (hiddenParticipants.value.size === 0) return sliced
   return sliced.map(r => ({
     ...r,
-    events: r.events.filter(e => !hiddenParticipants.value.has(e.from) && !hiddenParticipants.value.has(e.to)),
+    events: r.events.filter(e => !hiddenParticipants.value.has(e.from)),
   }))
 })
 

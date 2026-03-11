@@ -600,13 +600,27 @@ async function runBotTest() {
     const data = res.data as any
     bot.value.matchId = data.matchId
     bot.value.status = 0
-    const opp = botOpponents.value.find(g => g.id === bot.value.opponentGamerId)
+    const testGamerId = data.testGamerId
+    const oppGamerId = bot.value.opponentGamerId
+    const opp = botOpponents.value.find(g => g.id === oppGamerId)
     bot.value.botNames = { '0': '我的 Bot', '1': opp?.title || opp?.name || 'Opponent' }
     startPoll(data.matchId, (m) => { bot.value.status = m.status },
       (m) => {
         bot.value.status = m.status
         const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
-        bot.value.finalResult = r?.finalResult
+        // finalResult keys are gamer IDs; map to position keys so botNames lookup works
+        const rawResult = r?.finalResult as Record<string, number> | undefined
+        if (rawResult) {
+          const normalized: Record<string, number> = {}
+          for (const [k, v] of Object.entries(rawResult)) {
+            if (String(k) === String(testGamerId)) normalized['0'] = v
+            else if (String(k) === String(oppGamerId)) normalized['1'] = v
+            else normalized[k] = v
+          }
+          bot.value.finalResult = normalized
+        } else {
+          bot.value.finalResult = rawResult ?? null
+        }
         bot.value.timeline = buildTimeline(r)
       })
   } catch (e: any) {
@@ -752,11 +766,24 @@ async function runJudgeTest() {
     const b0 = judgeOpponents.value.find(g => g.id === judge.value.bot0Id)
     const b1 = judgeOpponents.value.find(g => g.id === judge.value.bot1Id)
     judge.value.botNames = { '0': b0?.title || b0?.name || 'Bot0', '1': b1?.title || b1?.name || 'Bot1' }
+    const bot0Id = judge.value.bot0Id
+    const bot1Id = judge.value.bot1Id
     startPoll(matchId, (m) => { judge.value.status = m.status },
       (m) => {
         judge.value.status = m.status
         const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
-        judge.value.finalResult = r?.finalResult
+        const rawResult = r?.finalResult as Record<string, number> | undefined
+        if (rawResult) {
+          const normalized: Record<string, number> = {}
+          for (const [k, v] of Object.entries(rawResult)) {
+            if (String(k) === String(bot0Id)) normalized['0'] = v
+            else if (String(k) === String(bot1Id)) normalized['1'] = v
+            else normalized[k] = v
+          }
+          judge.value.finalResult = normalized
+        } else {
+          judge.value.finalResult = rawResult ?? null
+        }
         judge.value.timeline = buildTimeline(r)
       })
   } catch (e: any) {

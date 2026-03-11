@@ -50,9 +50,6 @@
         <WikiCodeBlock :code="'50'" lang="text" explanation="直接输出数字即可，不需要 JSON" />
       </div>
 
-      <div class="next-hint">
-        <NButton type="primary" @click="$emit('next')">了解了，开始写 Bot →</NButton>
-      </div>
     </div>
 
     <!-- Step 1: 第一个 Bot -->
