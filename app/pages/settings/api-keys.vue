@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { h } from 'vue'
 import { NAlert, NButton, NDataTable, NInput, NModal, NTag, NText, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import type { ApiKey } from '~/composables/api/apiKeys'
@@ -102,9 +103,19 @@ function formatDate(dateStr: string | null) {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
+function maskKeyPrefix(keyPrefix: string) {
+  if (!keyPrefix) return '-'
+  if (keyPrefix.length <= 8) return keyPrefix
+  return `${keyPrefix.slice(0, 8)}...${keyPrefix.slice(-4)}`
+}
+
 const columns: DataTableColumns<ApiKey> = [
   { title: '名称', key: 'name' },
-  { title: '密钥前缀', key: 'keyPrefix', render: row => `${row.keyPrefix}••••••••` },
+  {
+    title: '密钥标识',
+    key: 'keyPrefix',
+    render: row => h(NText, { depth: 3 }, { default: () => maskKeyPrefix(row.keyPrefix) }),
+  },
   { title: '创建时间', key: 'createdAt', render: row => formatDate(row.createdAt) },
   { title: '最后使用', key: 'lastUsedAt', render: row => formatDate(row.lastUsedAt) },
   {
@@ -180,9 +191,14 @@ async function handleRevoke() {
   }
 }
 
-function copyKey() {
-  navigator.clipboard.writeText(createdKey.value)
-  message.success('已复制到剪贴板')
+async function copyKey() {
+  try {
+    await navigator.clipboard.writeText(createdKey.value)
+    message.success('已复制到剪贴板')
+  }
+  catch {
+    message.error('复制失败，请手动复制')
+  }
 }
 
 onMounted(fetchKeys)

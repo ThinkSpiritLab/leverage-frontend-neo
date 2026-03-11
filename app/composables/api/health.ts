@@ -35,7 +35,9 @@ export interface SystemInfo {
 export function useHealthApi() {
   const api = useApi()
   return {
-    get: () => api.get<HealthStatus>('/health'),
+    get: () => api.get<HealthStatus>('/health', {
+      validateStatus: status => status >= 200 && status < 600,
+    }),
     getQueues: () => api.get<QueueHealth>('/health/queues'),
     getSystem: () => api.get<SystemInfo>('/health/system'),
   }

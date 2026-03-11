@@ -152,8 +152,15 @@
               <!-- SVG 饼图 -->
               <div style="display:flex;justify-content:center;margin-bottom:12px">
                 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-                  <g v-for="sector in statPieSectors" :key="sector.color">
-                    <path :d="sector.d" :fill="sector.color" />
+                  <g v-for="sector in statPieSectors" :key="sector.key">
+                    <circle
+                      v-if="sector.full"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      :fill="sector.color"
+                    />
+                    <path v-else :d="sector.d" :fill="sector.color" />
                   </g>
                   <!-- 中心圆 -->
                   <circle cx="60" cy="60" r="34" fill="white" />
@@ -656,16 +663,26 @@ const statPieSectors = computed(() => {
   if (!s || !s.totalMatches) return []
   const total = s.totalMatches
   const segments = [
-    { value: s.wins, color: '#18a058' },
-    { value: s.losses, color: '#e03030' },
-    { value: s.draws, color: '#d0d0d0' },
+    { key: 'wins', value: s.wins, color: '#18a058' },
+    { key: 'losses', value: s.losses, color: '#e03030' },
+    { key: 'draws', value: s.draws, color: '#d0d0d0' },
   ]
-  const sectors: Array<{ d: string; color: string }> = []
+  const nonZeroSegments = segments.filter(seg => seg.value > 0)
+  if (nonZeroSegments.length === 1 && nonZeroSegments[0].value === total) {
+    return [{ key: nonZeroSegments[0].key, color: nonZeroSegments[0].color, full: true, d: '' }]
+  }
+
+  const sectors: Array<{ key: string; d: string; color: string; full: boolean }> = []
   let currentAngle = -Math.PI / 2
   for (const seg of segments) {
     if (!seg.value) continue
     const sweep = (seg.value / total) * Math.PI * 2
-    sectors.push({ d: arcPath(60, 60, 50, currentAngle, currentAngle + sweep), color: seg.color })
+    sectors.push({
+      key: seg.key,
+      d: arcPath(60, 60, 50, currentAngle, currentAngle + sweep),
+      color: seg.color,
+      full: false,
+    })
     currentAngle += sweep
   }
   return sectors

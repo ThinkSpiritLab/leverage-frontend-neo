@@ -1,7 +1,10 @@
 <template>
   <div class="status-page">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px">
-      <NH2 style="margin: 0">系统状态</NH2>
+      <div>
+        <NH2 style="margin: 0">系统状态</NH2>
+        <NText depth="3">每 30 秒自动刷新一次</NText>
+      </div>
       <NText depth="3">最后更新: {{ lastUpdatedText }}</NText>
     </div>
 
@@ -33,14 +36,33 @@
       </NText>
       <NText v-else depth="3">加载中...</NText>
     </NCard>
+
+    <NCard size="small" style="margin-top: 16px" title="Judge 队列">
+      <NText v-if="judgeSummary" depth="3">{{ judgeSummary }}</NText>
+      <NText v-else depth="3">加载中...</NText>
+    </NCard>
   </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
-const api = useApi()
+const healthApi = useHealthApi()
 const competeApi = useCompeteApi()
+
+interface HealthPayload {
+  status: string
+  info?: Record<string, { status: string; message?: string }>
+  timestamp?: string
+}
+
+interface QueuePayload {
+  waiting?: number
+  active?: number
+  completed?: number
+  failed?: number
+  delayed?: number
+}
 
 interface ServiceInfo {
   key: string
@@ -56,12 +78,13 @@ interface ServiceInfo {
 
 const lastUpdated = ref<Date | null>(null)
 const recentMatchCount = ref<number | null>(null)
+const judgeSummary = ref('')
 
 const services = ref<ServiceInfo[]>([
-  { key: 'api', label: 'API Server', status: 'down', message: '', pings: [], latestPing: 0, minPing: 0, maxPing: 0, avgPing: 0 },
+  { key: 'backend', label: 'Backend', status: 'down', message: '', pings: [], latestPing: 0, minPing: 0, maxPing: 0, avgPing: 0 },
+  { key: 'judge', label: 'Judge Engine', status: 'down', message: '', pings: [], latestPing: 0, minPing: 0, maxPing: 0, avgPing: 0 },
   { key: 'database', label: 'Database', status: 'down', message: '', pings: [], latestPing: 0, minPing: 0, maxPing: 0, avgPing: 0 },
   { key: 'redis', label: 'Redis', status: 'down', message: '', pings: [], latestPing: 0, minPing: 0, maxPing: 0, avgPing: 0 },
-  { key: 'memory', label: 'Memory', status: 'down', message: '', pings: [], latestPing: 0, minPing: 0, maxPing: 0, avgPing: 0 },
 ])
 
 const lastUpdatedText = computed(() => {
@@ -95,25 +118,41 @@ function findService(key: string) {
 }
 
 async function pollHealth() {
-  const start = performance.now()
+  const backendStartedAt = performance.now()
   try {
-    const res = await api.get<{
-      status: string
-      info: Record<string, { status: string; message?: string }>
-    }>('/health')
-    const elapsed = Math.round(performance.now() - start)
-    const data = res.data
+    const [healthRes, queueRes] = await Promise.all([
+      healthApi.get(),
+      healthApi.getQueues().catch(() => null),
+    ])
+    const elapsed = Math.round(performance.now() - backendStartedAt)
+    const data = (healthRes.data ?? {}) as HealthPayload
 
-    // API server is up if we got a response
-    const apiSvc = findService('api')
-    apiSvc.status = data.status === 'ok' ? 'up' : 'degraded'
-    pushPing(apiSvc, elapsed)
+    const backendSvc = findService('backend')
+    backendSvc.status = healthRes.status >= 500 ? 'degraded' : 'up'
+    backendSvc.message = data.status === 'ok' ? '服务在线' : '部分依赖异常'
+    pushPing(backendSvc, elapsed)
 
-    // Individual services
+    const judgeSvc = findService('judge')
+    if (queueRes?.data) {
+      const queueData = queueRes.data as QueuePayload
+      const failed = queueData.failed ?? 0
+      const active = queueData.active ?? 0
+      const waiting = queueData.waiting ?? 0
+      const delayed = queueData.delayed ?? 0
+      judgeSvc.status = failed > 0 ? 'degraded' : 'up'
+      judgeSvc.message = `active ${active} / waiting ${waiting} / failed ${failed}`
+      judgeSummary.value = `active ${active}，waiting ${waiting}，failed ${failed}，delayed ${delayed}，completed ${queueData.completed ?? 0}`
+      pushPing(judgeSvc, elapsed)
+    }
+    else {
+      judgeSvc.status = 'down'
+      judgeSvc.message = '无法获取 Judge 队列状态'
+      judgeSummary.value = '无法获取 Judge 队列状态'
+    }
+
     const infoMap: Record<string, string> = {
       database: 'database',
       redis: 'redis',
-      memory_heap: 'memory',
     }
     for (const [infoKey, svcKey] of Object.entries(infoMap)) {
       const svc = findService(svcKey)
@@ -125,14 +164,16 @@ async function pollHealth() {
       }
       else {
         svc.status = 'down'
+        svc.message = '无状态数据'
       }
     }
   }
   catch {
-    // All services down
     for (const svc of services.value) {
       svc.status = 'down'
+      svc.message = '状态接口不可用'
     }
+    judgeSummary.value = '状态接口不可用'
   }
   lastUpdated.value = new Date()
 }
@@ -155,7 +196,7 @@ onMounted(() => {
   timer = setInterval(() => {
     pollHealth()
     fetchMatchCount()
-  }, 10000)
+  }, 30000)
 })
 
 onUnmounted(() => {
