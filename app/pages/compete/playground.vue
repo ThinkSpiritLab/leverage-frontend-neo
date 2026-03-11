@@ -400,6 +400,8 @@ function buildTimeline(result: any): TimelineRound[] {
     }
     if (r.botResponses) {
       for (const [pid, resp] of Object.entries(r.botResponses)) {
+        // Skip non-numeric keys — these are artifacts from old buggy game logs (e.g. "move", "debug")
+        if (!/^\d+$/.test(pid)) continue
         const debugInfo = r.debug?.[`bot_${pid}`]
         const stderrInfo = r.debug?.[`bot_${pid}_stderr`]
         events.push({ from: `Bot${pid}`, to: 'Judge', type: 'resp', data: resp, debug: debugInfo, stderr: stderrInfo })
