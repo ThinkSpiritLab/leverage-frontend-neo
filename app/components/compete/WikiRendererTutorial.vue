@@ -293,9 +293,9 @@ window.parent.postMessage({
 .rend-node { padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
 .parent { background: #e6f4ff; color: #2080f0; }
 .iframe { background: #fff7e6; color: #d46b08; }
-.rend-arrows { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
-.rarrow { font-size: 11px; color: #555; padding: 3px 0; }
-.rarrow.reverse { color: #d46b08; }
+.rend-arrows { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 280px; align-items: center; }
+.rarrow { font-size: 12px; color: #555; padding: 4px 12px; background: #f5f5f5; border-radius: 4px; width: 100%; text-align: center; }
+.rarrow.reverse { color: #d46b08; background: #fff7e6; }
 .msg-table { border: 1px solid #e0e0e6; border-radius: 8px; overflow: hidden; margin-top: 10px; }
 .msg-row { display: grid; grid-template-columns: 1.5fr 1fr 3fr; gap: 0; }
 .msg-row span, .msg-row code { padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #e0e0e6; }

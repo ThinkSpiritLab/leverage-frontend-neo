@@ -11,7 +11,7 @@
         </NButton>
       </div>
     </div>
-    <NCode :code="code" :language="lang || 'python'" show-line-numbers style="font-size:12.5px;padding:14px 0" />
+    <NCode :code="code" :language="lang || 'python'" :highlight-js="hljs" show-line-numbers style="font-size:12.5px;padding:14px 0" />
     <div v-if="explanation" class="code-annotation">
       <span class="annotation-icon">💡</span>
       <span>{{ explanation }}</span>
@@ -22,6 +22,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { NButton, NCode } from 'naive-ui'
+import hljs from 'highlight.js/lib/core'
 
 const props = defineProps<{
   code: string

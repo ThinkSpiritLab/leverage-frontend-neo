@@ -98,8 +98,7 @@
       />
 
       <NAlert type="warning" :show-icon="false" style="margin:12px 0;font-size:13px">
-        <strong>裁判崩溃 = 对局异常</strong>。如果裁判因为 Bot 的非法输入而崩溃，这个对局会被标记为错误，
-        影响排行榜。请务必加 try-except/try-catch！
+        <strong>裁判崩溃 ≠ 影响排行榜</strong>。对局标记为错误时不会更新 ELO——但会浪费一次对局机会。更好的做法是：当 Bot 提交非法移动时，直接判该 Bot 负（输出 <code>verdict='finish'</code> 并给 0 分），而不是让裁判崩溃。建议加 try-except/try-catch 来捕获异常并给出惩罚分！
       </NAlert>
 
       <div class="checklist">
