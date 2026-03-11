@@ -389,11 +389,14 @@ const gameLog = computed<BotzoneGameLog | null>(() => {
     rounds: r.rounds.map((rd: any) => ({
       round: rd.round,
       // Normalised fields (BotzoneGameLog interface)
-      judgerDisplay: rd.judgeCmd?.display ?? rd.judgerDisplay,
+      // rd.display is the judge display data (top-level); rd.judgeCmd is per-bot commands dict
+      judgerDisplay: rd.display ?? rd.judgeCmd?.display ?? rd.judgerDisplay,
       botOutputs: rd.botResponses ?? rd.botOutputs ?? {},
-      // Keep raw botzone-neo fields so renderer HTML can also use judgeCmd/botResponses
-      judgeCmd: rd.judgeCmd,
+      // Keep raw fields so renderer HTML can access them directly
+      display: rd.display,         // ← renderer reads gameLog.rounds[n].display
+      judgeCmd: rd.judgeCmd,       // ← per-bot commands { "0": cmd, "1": null, ... }
       botResponses: rd.botResponses ?? rd.botOutputs ?? {},
+      debug: rd.debug,
     })),
     finalResult: r.finalResult || {},
     verdict: r.verdict || '',
