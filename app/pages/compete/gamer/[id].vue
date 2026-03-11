@@ -1,5 +1,6 @@
 <template>
   <div class="gamer-page">
+    <CompeteAdminViewBanner v-if="!isNew" :admin-path="`/admin/compete/gamer/${gamerId}`" />
     <!-- 面包屑 -->
     <NBreadcrumb style="margin-bottom:12px">
       <NBreadcrumbItem @click="navigateTo('/compete')">竞技场</NBreadcrumbItem>

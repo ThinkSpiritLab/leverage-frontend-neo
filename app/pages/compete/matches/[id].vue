@@ -1,5 +1,6 @@
 <template>
   <div class="match-detail-page">
+    <CompeteAdminViewBanner :admin-path="`/admin/compete/match/${matchId}`" />
     <NSpin :show="loading">
       <template v-if="match">
         <!-- 面包屑 -->

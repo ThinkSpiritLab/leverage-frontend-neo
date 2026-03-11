@@ -1,5 +1,6 @@
 <template>
   <div class="compete-game-page">
+    <CompeteAdminViewBanner :admin-path="`/admin/compete/game/${gameId}`" />
     <NSpin :show="loading">
       <!-- Header -->
       <div v-if="game" class="game-header">
