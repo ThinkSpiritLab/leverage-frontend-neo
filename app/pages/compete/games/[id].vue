@@ -105,33 +105,6 @@
               </NSpin>
             </NCard>
 
-            <!-- 发起对局 banner（选好后出现） -->
-            <NAlert
-              v-if="selectedGamerIds.length > 0"
-              type="success"
-              style="margin-bottom:16px"
-              :show-icon="false"
-            >
-              <NSpace justify="space-between" align="center">
-                <NText>
-                  已选 <NText strong>{{ selectedGamerIds.length }}</NText> / {{ game?.gamerQuantity ?? 2 }} 个参赛者
-                  <NText depth="3" style="margin-left:8px">({{ selectedGamerNames.join(' vs ') }})</NText>
-                </NText>
-                <NSpace>
-                  <NButton size="small" @click="selectedGamerIds = []">清空</NButton>
-                  <NButton
-                    type="primary"
-                    size="small"
-                    :disabled="selectedGamerIds.length !== (game?.gamerQuantity ?? 2)"
-                    :loading="launching"
-                    @click="handleLaunchMatch"
-                  >
-                    ⚔️ 发起对局
-                  </NButton>
-                </NSpace>
-              </NSpace>
-            </NAlert>
-
             <!-- 全部 Bot（选对手） -->
             <NCard size="small">
               <template #header>
@@ -145,10 +118,38 @@
                 :data="otherGamers"
                 :loading="allGamersLoading"
                 :row-key="(r:any) => r.id"
+                :checked-row-keys="otherGamerCheckedKeys"
                 size="small"
                 style="margin-top:4px"
+                @update:checked-row-keys="onOtherGamerCheck"
               />
             </NCard>
+
+            <!-- 发起对局 banner（移到最下面） -->
+            <NAlert
+              type="success"
+              style="margin-top:12px"
+              :show-icon="false"
+            >
+              <NSpace justify="space-between" align="center">
+                <NText>
+                  已选 <NText strong>{{ selectedGamerIds.length }}</NText> / {{ game?.gamerQuantity ?? 2 }} 个参赛者
+                  <NText v-if="selectedGamerIds.length > 0" depth="3" style="margin-left:8px">({{ selectedGamerNames.join(' vs ') }})</NText>
+                </NText>
+                <NSpace>
+                  <NButton size="small" :disabled="selectedGamerIds.length === 0" @click="selectedGamerIds = []">清空</NButton>
+                  <NButton
+                    type="primary"
+                    size="small"
+                    :disabled="selectedGamerIds.length !== (game?.gamerQuantity ?? 2)"
+                    :loading="launching"
+                    @click="handleLaunchMatch"
+                  >
+                    ⚔️ 发起对局
+                  </NButton>
+                </NSpace>
+              </NSpace>
+            </NAlert>
           </div>
         </NTabPane>
 
@@ -358,6 +359,18 @@ async function fetchMyBots() {
 const allGamers = ref<any[]>([])
 const allGamersLoading = ref(false)
 const otherGamers = computed(() => allGamers.value.filter((g:any) => !myBots.value.some((mb:any) => mb.id === g.id) && g.type === 'code' && !g.disabled))
+
+// IDs of other-gamers currently selected (subset of selectedGamerIds)
+const otherGamerCheckedKeys = computed(() =>
+  selectedGamerIds.value.filter(id => otherGamers.value.some((g:any) => g.id === id))
+)
+
+function onOtherGamerCheck(keys: (string | number)[]) {
+  // Remove all other-gamer IDs from selection, then add newly checked ones
+  const myIds = selectedGamerIds.value.filter(id => myBots.value.some((b:any) => b.id === id))
+  const newOtherIds = (keys as number[]).slice(0, Math.max(0, (game.value?.gamerQuantity ?? 2) - myIds.length))
+  selectedGamerIds.value = [...myIds, ...newOtherIds]
+}
 
 async function fetchAllGamers() {
   allGamersLoading.value = true
