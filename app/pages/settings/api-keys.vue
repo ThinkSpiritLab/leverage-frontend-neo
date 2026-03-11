@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMessage } from 'naive-ui'
+import { NAlert, NButton, NDataTable, NInput, NModal, NTag, NText, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import type { ApiKey } from '~/composables/api/apiKeys'
 
