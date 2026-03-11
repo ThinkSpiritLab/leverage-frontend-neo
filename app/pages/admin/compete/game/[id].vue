@@ -1,5 +1,8 @@
 <template>
   <div class="admin-game-detail">
+    <NAlert v-if="isSystemGame" type="warning" :show-icon="false" style="margin-bottom:12px">
+      🔒 <strong>系统内置游戏</strong> — 此游戏作为教程示例游戏受到保护，不可禁用。裁判程序和渲染器可以更新。
+    </NAlert>
     <div class="page-header">
       <NSpace align="center">
         <NButton text @click="navigateTo('/admin/compete')">
@@ -96,7 +99,10 @@
           <NInput v-model:value="editForm.description" type="textarea" :rows="4" placeholder="游戏描述" />
         </NFormItem>
         <NFormItem label="启用">
-          <NSwitch v-model:value="editFormEnabled" />
+          <NSpace align="center">
+            <NSwitch v-model:value="editFormEnabled" :disabled="isSystemGame" />
+            <NTag v-if="isSystemGame" size="small" type="warning" :bordered="false">系统内置游戏，不可禁用</NTag>
+          </NSpace>
         </NFormItem>
         <NFormItem label="允许真人参与">
           <NSpace align="center">
@@ -228,6 +234,9 @@ const route = useRoute()
 const rawId = route.params.id as string
 const isNew = rawId === 'new' || rawId === '0' || !rawId
 const gameId = isNew ? 0 : Number(rawId)
+// 系统内置游戏，不允许删除/禁用
+const SYSTEM_GAME_IDS = [2, 3, 4]
+const isSystemGame = SYSTEM_GAME_IDS.includes(gameId)
 const competeApi = useCompeteApi()
 const message = useMessage()
 

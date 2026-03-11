@@ -11,6 +11,14 @@
            Tab 1: Bot 测试
       ══════════════════════════════════════ -->
       <NTabPane name="bot" tab="🤖 Bot 测试">
+        <!-- 教程模式 Banner -->
+        <NAlert v-if="tutorialMode" type="info" :show-icon="false" style="margin-bottom:12px;border-radius:8px">
+          <NSpace align="center" justify="space-between">
+            <span>📖 <strong>教程模式</strong> — 正在使用「猜数字」游戏进行练习，不影响 ELO</span>
+            <NButton size="tiny" text @click="tutorialMode = false">退出教程模式</NButton>
+          </NSpace>
+        </NAlert>
+
         <NGrid :cols="12" :x-gap="16" :y-gap="12" style="margin-top:12px">
 
           <!-- 配置面板 -->
@@ -18,7 +26,7 @@
             <NSpace vertical :size="12">
               <NCard title="游戏 & 对手" size="small">
                 <NSpace vertical :size="8">
-                  <NSelect v-model:value="bot.gameId" :options="gameOptions" placeholder="选择游戏..." filterable @update:value="onBotGameChange" />
+                  <NSelect v-model:value="bot.gameId" :options="gameOptions" placeholder="选择游戏..." filterable :disabled="tutorialMode" @update:value="onBotGameChange" />
                   <NSelect v-model:value="bot.opponentGamerId" :options="opponentOptions" placeholder="选择对手..." filterable :disabled="!bot.gameId" :loading="opponentsLoading" />
                 </NSpace>
               </NCard>
@@ -365,6 +373,8 @@ const competeApi = useCompeteApi()
 const authStore = useAuthStore()
 
 const activeTab = ref('bot')
+const tutorialMode = ref(false)
+const TUTORIAL_GAME_ID = 3  // 猜数字 — 系统内置游戏
 
 // ── Games ──
 const games = ref<any[]>([])
@@ -910,10 +920,20 @@ for line in sys.stdin:
 // ══════════════════════════════════════
 // WIKI → Playground navigation
 // ══════════════════════════════════════
-function handleWikiGoPlayground(opts: { tab?: string; code?: string; lang?: string; gameId?: number }) {
+async function handleWikiGoPlayground(opts: { tab?: string; code?: string; lang?: string; gameId?: number }) {
   if (opts.code) botCode.value = opts.code
   if (opts.lang) bot.value.language = opts.lang
-  if (opts.gameId) { bot.value.gameId = opts.gameId; onBotGameChange(opts.gameId) }
+  // From wiki: always activate tutorial mode with 猜数字 game
+  tutorialMode.value = true
+  const targetGame = opts.gameId || TUTORIAL_GAME_ID
+  if (bot.value.gameId !== targetGame) {
+    bot.value.gameId = targetGame
+    await onBotGameChange(targetGame)
+    // Auto-pick first available opponent
+    if (!bot.value.opponentGamerId && botOpponents.value.length) {
+      bot.value.opponentGamerId = botOpponents.value[0].id
+    }
+  }
   activeTab.value = opts.tab || 'bot'
 }
 
