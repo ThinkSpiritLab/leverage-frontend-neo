@@ -9,11 +9,11 @@
     <NAlert v-if="tutorialMode" type="info" :show-icon="false" style="margin-bottom:12px;border-radius:8px">
       <NSpace align="center" justify="space-between">
         <span>📖 <strong>教程模式</strong> — 正在使用「猜数字」游戏进行练习，不影响 ELO；发布功能已禁用</span>
-        <NButton size="tiny" text @click="tutorialMode = false">退出教程模式</NButton>
+        <NButton size="tiny" text @click="exitTutorialMode">退出教程模式</NButton>
       </NSpace>
     </NAlert>
 
-    <NTabs v-model:value="activeTab" type="card" animated>
+    <NTabs :value="activeTab" type="card" animated @update:value="handleTabChange">
 
       <!-- ══════════════════════════════════════
            Tab 1: Bot 测试
@@ -98,7 +98,7 @@
             <NSpace vertical :size="12">
               <NCard title="游戏 & Bots" size="small">
                 <NSpace vertical :size="8">
-                  <NSelect v-model:value="judge.gameId" :options="gameOptions" placeholder="使用哪个游戏的Bots..." filterable @update:value="onJudgeGameChange" />
+                  <NSelect v-model:value="judge.gameId" :options="gameOptions" placeholder="使用哪个游戏的Bots..." filterable :disabled="tutorialMode && tutorialActiveTab === 'judge'" @update:value="onJudgeGameChange" />
                   <NSelect v-model:value="judge.bot0Id" :options="judgeOpponentOptions" placeholder="Bot 0 (先手)..." :loading="judgeOpponentsLoading" />
                   <NSelect v-model:value="judge.bot1Id" :options="judgeOpponentOptions" placeholder="Bot 1 (后手)..." :loading="judgeOpponentsLoading" />
                 </NSpace>
@@ -373,9 +373,19 @@ const message = useMessage()
 const competeApi = useCompeteApi()
 const authStore = useAuthStore()
 
-const activeTab = ref('bot')
+const activeTab = ref('wiki')
 const tutorialMode = ref(false)
+const tutorialActiveTab = ref('bot') // which test tab the tutorial is on
 const TUTORIAL_GAME_ID = 3  // 猜数字 — 系统内置游戏
+
+// In tutorial mode, only tutorialActiveTab and 'wiki' are accessible
+function handleTabChange(tab: string) {
+  if (tutorialMode.value && tab !== 'wiki' && tab !== tutorialActiveTab.value) {
+    message.warning('教程模式中请使用教程指定的标签页，或退出教程模式后自由切换')
+    return
+  }
+  activeTab.value = tab
+}
 
 // ── Games ──
 const games = ref<any[]>([])
@@ -956,21 +966,43 @@ function fireConfetti() {
   confetti({ particleCount: 80, spread: 70, origin: { y: 0.5 }, colors: ['#18a058', '#2080f0', '#f0a020', '#d03050', '#7fe7c4'] })
 }
 
+function exitTutorialMode() {
+  tutorialMode.value = false
+  activeTab.value = 'wiki'
+}
+
 async function handleWikiGoPlayground(opts: { tab?: string; code?: string; lang?: string; gameId?: number }) {
-  if (opts.code) { botCode.value = opts.code; nextTick(fireConfetti) }
-  if (opts.lang) bot.value.language = opts.lang
-  // From wiki: always activate tutorial mode with 猜数字 game
+  const targetTab = opts.tab || 'bot'
   tutorialMode.value = true
+  tutorialActiveTab.value = targetTab
+
   const targetGame = opts.gameId || TUTORIAL_GAME_ID
-  if (bot.value.gameId !== targetGame) {
-    bot.value.gameId = targetGame
-    await onBotGameChange(targetGame)
-    // Auto-pick first available opponent
-    if (!bot.value.opponentGamerId && botOpponents.value.length) {
-      bot.value.opponentGamerId = botOpponents.value[0].id
+
+  if (targetTab === 'judge') {
+    // Pre-fill judge code
+    if (opts.code) { judgeCode.value = opts.code; nextTick(fireConfetti) }
+    if (opts.lang) judge.value.language = opts.lang || 'python'
+    // Auto-select game for judge tab
+    if (judge.value.gameId !== targetGame) {
+      judge.value.gameId = targetGame
+      await onJudgeGameChange(targetGame)
+      if (!judge.value.bot0Id && judgeOpponents.value.length) judge.value.bot0Id = judgeOpponents.value[0]?.id
+      if (!judge.value.bot1Id && judgeOpponents.value.length > 1) judge.value.bot1Id = judgeOpponents.value[1]?.id
+    }
+  } else {
+    // Bot tab (default)
+    if (opts.code) { botCode.value = opts.code; nextTick(fireConfetti) }
+    if (opts.lang) bot.value.language = opts.lang || 'python'
+    if (bot.value.gameId !== targetGame) {
+      bot.value.gameId = targetGame
+      await onBotGameChange(targetGame)
+      if (!bot.value.opponentGamerId && botOpponents.value.length) {
+        bot.value.opponentGamerId = botOpponents.value[0].id
+      }
     }
   }
-  activeTab.value = opts.tab || 'bot'
+
+  activeTab.value = targetTab
 }
 
 function handleWikiGoRenderer(opts: { html?: string }) {
