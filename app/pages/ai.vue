@@ -16,7 +16,7 @@
         <NSpace align="center" justify="space-between" :wrap="false">
           <div>
             <NText strong>AI 上下文链接：</NText>
-            <NText code style="margin-left:8px">{{ apiUrl }}/ai</NText>
+            <NText code style="margin-left:8px">{{ window?.location?.origin ?? '' }}/api/ai</NText>
           </div>
           <NButton size="small" @click="copyUrl">
             {{ copied ? '✅ 已复制' : '📋 复制链接' }}
@@ -65,8 +65,8 @@
 
       <NDivider />
       <NText depth="3" style="font-size:12px">
-        机器可读版本：<NText tag="a" :href="`${apiUrl}/ai`" target="_blank" type="primary">{{ apiUrl }}/ai</NText>
-        （纯文本，适合直接粘贴给 AI）
+        机器可读纯文本端点（适合直接粘贴给 AI）：
+        <NText tag="a" href="/api/ai" target="_blank" type="primary">/api/ai</NText>
       </NText>
     </NCard>
   </div>
@@ -82,7 +82,7 @@ const apiUrl = (config.public?.apiBase as string || 'http://localhost:3000').rep
 
 const copied = ref(false)
 function copyUrl() {
-  navigator.clipboard.writeText(`${apiUrl}/ai`)
+  navigator.clipboard.writeText(`${window.location.origin}/api/ai`)
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
 }

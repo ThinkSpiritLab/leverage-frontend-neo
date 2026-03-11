@@ -5,6 +5,13 @@
       Leverage OJ
     </NButton>
 
+    <!-- 中间：快捷导航 -->
+    <div v-if="!isMobile" style="display: flex; align-items: center; gap: 4px">
+      <NButton text size="small" tag="a" href="/compete" style="color: #666">竞技场</NButton>
+      <NButton text size="small" tag="a" href="/compete/playground" style="color: #666">Playground</NButton>
+      <NButton text size="small" tag="a" href="/ai" style="color: #666">🤖 AI 指南</NButton>
+    </div>
+
     <!-- 桌面端：右侧用户区域 -->
     <div v-if="!isMobile" style="display: flex; align-items: center; gap: 12px">
       <template v-if="authStore.isLoggedIn">
