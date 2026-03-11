@@ -6,7 +6,7 @@
         <NButton v-if="tryable" size="tiny" type="primary" secondary @click="$emit('try-it', code)">
           ▶ 在 Playground 测试
         </NButton>
-        <NButton size="tiny" text @click="copyCode">
+        <NButton size="tiny" :text="!copied" :type="copied ? 'success' : 'default'" @click="copyCode">
           {{ copied ? '✓ 已复制' : '📋 复制' }}
         </NButton>
       </div>
