@@ -410,12 +410,28 @@ function buildTimeline(result: any): TimelineRound[] {
       }
     }
     if (r.botResponses) {
-      for (const [pid, resp] of Object.entries(r.botResponses)) {
-        // Skip non-numeric keys — these are artifacts from old buggy game logs (e.g. "move", "debug")
-        if (!/^\d+$/.test(pid)) continue
+      const responses = r.botResponses as Record<string, unknown>
+
+      // Legacy buggy format: botzone-neo pre-fix incorrectly merged {"move":x,"debug":"..."} into botResponses
+      // Recover by finding which numeric player ID is missing and assigning "move" to it
+      const legacyMove = 'move' in responses ? responses['move'] : undefined
+      const legacyDebug = 'debug' in responses ? String(responses['debug'] ?? '') : undefined
+
+      const numericPids = Object.keys(responses).filter(k => /^\d+$/.test(k))
+
+      for (const pid of numericPids) {
+        const resp = responses[pid]
         const debugInfo = r.debug?.[`bot_${pid}`]
         const stderrInfo = r.debug?.[`bot_${pid}_stderr`]
         events.push({ from: `Bot${pid}`, to: 'Judge', type: 'resp', data: resp, debug: debugInfo, stderr: stderrInfo })
+      }
+
+      // Recover missing player's data from legacy "move" key
+      if (legacyMove !== undefined) {
+        // Find missing player index (e.g. if only "1" present, missing is "0")
+        const allPids = Array.from({ length: numericPids.length + 1 }, (_, i) => String(i))
+        const missingPid = allPids.find(p => !numericPids.includes(p)) ?? String(numericPids.length)
+        events.push({ from: `Bot${missingPid}`, to: 'Judge', type: 'resp', data: legacyMove, debug: legacyDebug || undefined, stderr: undefined })
       }
     }
     return { round: r.round, events, display: cmd?.display }
