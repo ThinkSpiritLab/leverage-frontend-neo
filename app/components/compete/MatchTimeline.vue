@@ -184,6 +184,7 @@ const COLORS: Record<string, string> = {
   Bot0: '#2080f0',
   Bot1: '#d03050',
   Bot2: '#f0a020',
+  Bot3: '#18a058',
 }
 
 const ICONS: Record<string, string> = {
@@ -191,6 +192,7 @@ const ICONS: Record<string, string> = {
   Bot0: '🤖',
   Bot1: '🤖',
   Bot2: '🤖',
+  Bot3: '🤖',
 }
 
 function getColor(id: string) {
@@ -223,8 +225,8 @@ const participants = computed<Participant[]>(() => {
     ps.push({
       id: `Bot${i}`,
       name: bots[String(i)] || `Bot ${i}`,
-      icon: '🤖',
-      color: i === 0 ? '#2080f0' : '#d03050',
+      icon: ICONS[`Bot${i}`] || '🤖',
+      color: COLORS[`Bot${i}`] || '#888',
     })
   }
   return ps
