@@ -49,7 +49,7 @@
       <template v-else>
         <NInput
           v-model:value="searchText"
-          placeholder="搜索名称..."
+          :placeholder="slotType === 'judge' ? '搜索游戏名称，引入其裁判代码...' : '搜索 Bot 名称...'"
           size="small"
           clearable
           style="margin-bottom:8px"
@@ -66,11 +66,12 @@
               :class="{ selected: importedItem?.id === item.id }"
               @click="selectImport(item)"
             >
-              <div class="result-name">{{ item.name || item.title }}</div>
+              <div class="result-name">{{ item.title || item.name }}</div>
               <div class="result-meta">
-                <NTag size="small" :bordered="false">{{ item.language || '—' }}</NTag>
+                <NTag v-if="item._isGame" size="small" :bordered="false" type="warning">游戏裁判</NTag>
+                <NTag v-else size="small" :bordered="false">{{ item.language || '—' }}</NTag>
                 <span v-if="item.elo" style="color:#888;font-size:11px">⚡ {{ item.elo }}</span>
-                <span v-if="item.type" style="color:#888;font-size:11px">{{ item.type }}</span>
+                <span v-if="item.gamerQuantity" style="color:#888;font-size:11px">👥 {{ item.gamerQuantity }}人</span>
               </div>
             </div>
           </div>
@@ -155,19 +156,58 @@ async function doSearch() {
   searching.value = true
   try {
     if (props.slotType === 'bot') {
-      const res = await competeApi.listGamers({ gameId: props.gameId ?? undefined, page: 1, perPage: 20 })
-      const all = (res.data as any)?.items || res.data || []
-      searchResults.value = all.filter((g: any) =>
+      // 按名称搜索，后端支持 keyword 参数；若没有则 client-side 过滤
+      const res = await competeApi.listGamers({
+        gameId: props.gameId ?? undefined,
+        page: 1,
+        perPage: 50,
+      })
+      const all = (res.data as any)?.items ?? (res.data as any) ?? []
+      searchResults.value = (Array.isArray(all) ? all : []).filter((g: any) =>
         !g.disabled && g.type === 'code' &&
         (g.title || g.name || '').toLowerCase().includes(searchText.value.toLowerCase())
-      ).slice(0, 8)
+      ).slice(0, 10)
+    } else if (props.slotType === 'judge') {
+      // 裁判 = 搜索游戏名称，选中后引入该游戏的裁判代码
+      const res = await competeApi.listGames({ page: 1, perPage: 50 })
+      const all = (res.data as any)?.items ?? (res.data as any) ?? []
+      searchResults.value = (Array.isArray(all) ? all : []).filter((g: any) =>
+        (g.title || g.name || '').toLowerCase().includes(searchText.value.toLowerCase())
+      ).map((g: any) => ({ ...g, _isGame: true })).slice(0, 10)
     }
-    // for judge: search by game (TBD when user-created games exist)
   } catch (e) { console.error(e) }
   finally { searching.value = false }
 }
 
+async function selectImportGame(game: any) {
+  // Load judger code from the game
+  searching.value = true
+  try {
+    const res = await competeApi.getGameJudger(game.id)
+    const judger = res.data as any
+    const item = {
+      id: game.id,
+      name: `${game.title || game.name} 的裁判`,
+      language: judger.judgerLanguage || 'python',
+      code: judger.judgerCode || '',
+    }
+    importedItem.value = item
+    emit('update:importedId', game.id)
+    if (item.code) emit('update:modelValue', item.code)
+    if (item.language) emit('update:lang', item.language)
+  } catch (e) {
+    console.error(e)
+  } finally {
+    searching.value = false
+  }
+}
+
 function selectImport(item: any) {
+  if (item._isGame) {
+    // Judge slot: fetch judger code from game
+    selectImportGame(item)
+    return
+  }
   importedItem.value = item
   emit('update:importedId', item.id)
   // Pre-fill code with item's code for editing
