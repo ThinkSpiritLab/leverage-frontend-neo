@@ -75,7 +75,7 @@
 
 <script setup lang="ts">
 import { h, ref, computed } from 'vue'
-import { NButton, NSpace, useMessage, useDialog } from 'naive-ui'
+import { NAutoComplete, NButton, NSpace, useMessage, useDialog } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 definePageMeta({
