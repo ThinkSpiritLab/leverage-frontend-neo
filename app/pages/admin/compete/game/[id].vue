@@ -425,8 +425,8 @@ async function openEditModal() {
       const jRes = await competeApi.getGameJudger(gameId)
       const judger = jRes.data
       if (judger) {
-        editForm.value.judgerCode = judger.code || ''
-        editForm.value.judgerLanguage = judger.language ?? 9
+        editForm.value.judgerCode = judger.judgerCode || ''
+        editForm.value.judgerLanguage = judger.judgerLanguage ?? 9
       }
     }
     catch { /* 无裁判程序，忽略 */ }
@@ -455,10 +455,11 @@ async function handleSaveEdit() {
     if (judgerCode) {
       payload.judgerCode = judgerCode
       payload.judgerLanguage = judgerLanguage
+    } else if (isNew) {
+      // 新建游戏时 judgerCode 必填（前面已校验），这里不会走到
+      payload.judgerCode = ''
     }
-    else {
-      payload.judgerCode = null
-    }
+    // 编辑现有游戏时 judgerCode 为空则不发送，保持原值不变
     if (isNew) {
       const res = await competeApi.createGame(payload)
       message.success('游戏创建成功')
