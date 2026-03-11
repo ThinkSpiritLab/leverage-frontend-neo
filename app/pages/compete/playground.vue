@@ -5,20 +5,20 @@
       <NBreadcrumbItem>🧪 Playground</NBreadcrumbItem>
     </NBreadcrumb>
 
+    <!-- 教程模式 Banner（全局，所有 Tab 可见） -->
+    <NAlert v-if="tutorialMode" type="info" :show-icon="false" style="margin-bottom:12px;border-radius:8px">
+      <NSpace align="center" justify="space-between">
+        <span>📖 <strong>教程模式</strong> — 正在使用「猜数字」游戏进行练习，不影响 ELO；发布功能已禁用</span>
+        <NButton size="tiny" text @click="tutorialMode = false">退出教程模式</NButton>
+      </NSpace>
+    </NAlert>
+
     <NTabs v-model:value="activeTab" type="card" animated>
 
       <!-- ══════════════════════════════════════
            Tab 1: Bot 测试
       ══════════════════════════════════════ -->
       <NTabPane name="bot" tab="🤖 Bot 测试">
-        <!-- 教程模式 Banner -->
-        <NAlert v-if="tutorialMode" type="info" :show-icon="false" style="margin-bottom:12px;border-radius:8px">
-          <NSpace align="center" justify="space-between">
-            <span>📖 <strong>教程模式</strong> — 正在使用「猜数字」游戏进行练习，不影响 ELO</span>
-            <NButton size="tiny" text @click="tutorialMode = false">退出教程模式</NButton>
-          </NSpace>
-        </NAlert>
-
         <NGrid :cols="12" :x-gap="16" :y-gap="12" style="margin-top:12px">
 
           <!-- 配置面板 -->
@@ -42,7 +42,7 @@
                 查看完整对局 →
               </NButton>
 
-              <NButton v-if="bot.matchId && bot.status === 2" block type="success" secondary
+              <NButton v-if="bot.matchId && bot.status === 2 && !tutorialMode" block type="success" secondary
                 @click="publishBotModal = true">
                 🚀 发布为 Bot
               </NButton>
@@ -310,7 +310,7 @@
             <NCard title="发布渲染器到游戏" size="small">
               <NSpace align="center">
                 <NSelect v-model:value="rendererTargetGame" :options="gameOptions" placeholder="目标游戏..." style="width:260px" />
-                <NButton type="success" :loading="publishingRenderer" :disabled="!rendererTargetGame || !rendererHtml" @click="publishRenderer">
+                <NButton type="success" :loading="publishingRenderer" :disabled="!rendererTargetGame || !rendererHtml || tutorialMode" @click="publishRenderer">
                   🚀 发布
                 </NButton>
               </NSpace>
@@ -355,7 +355,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   NTabs, NTabPane, NGrid, NGridItem, NCard, NSpace, NButton, NSelect, NInput,
   NTag, NText, NAlert, NDescriptions, NDescriptionsItem, NEmpty, NSpin,
@@ -365,6 +365,7 @@ import {
 import { LANGUAGE_OPTIONS } from '~/types'
 import type { TimelineRound } from '~/components/compete/MatchTimeline.vue'
 import ProgramSlot from '~/components/compete/ProgramSlot.vue'
+import confetti from 'canvas-confetti'
 import MatchTimeline from '~/components/compete/MatchTimeline.vue'
 import WikiContent from '~/components/compete/WikiContent.vue'
 
@@ -951,8 +952,12 @@ for line in sys.stdin:
 // ══════════════════════════════════════
 // WIKI → Playground navigation
 // ══════════════════════════════════════
+function fireConfetti() {
+  confetti({ particleCount: 80, spread: 70, origin: { y: 0.5 }, colors: ['#18a058', '#2080f0', '#f0a020', '#d03050', '#7fe7c4'] })
+}
+
 async function handleWikiGoPlayground(opts: { tab?: string; code?: string; lang?: string; gameId?: number }) {
-  if (opts.code) botCode.value = opts.code
+  if (opts.code) { botCode.value = opts.code; nextTick(fireConfetti) }
   if (opts.lang) bot.value.language = opts.lang
   // From wiki: always activate tutorial mode with 猜数字 game
   tutorialMode.value = true
