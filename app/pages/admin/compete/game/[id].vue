@@ -443,7 +443,7 @@ async function handleSaveEdit() {
     message.error('自定义渲染器 HTML 超出 512KB 限制')
     return
   }
-  if (isNew.value && !editForm.value.judgerCode?.trim()) {
+  if (isNew && !editForm.value.judgerCode?.trim()) {
     message.error('新建游戏必须填写裁判程序代码（裁判程序定义游戏规则）')
     return
   }
