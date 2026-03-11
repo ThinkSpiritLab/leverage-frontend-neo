@@ -94,6 +94,8 @@ import {
   ChatbubbleOutline,
   NotificationsOutline,
   GameControllerOutline,
+  PulseOutline,
+  KeyOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -164,6 +166,12 @@ const baseMenuOptions = [
     icon: renderIcon(HelpCircleOutline),
     onClick: () => navigateTo('/help'),
   },
+  {
+    label: '系统状态',
+    key: 'status',
+    icon: renderIcon(PulseOutline),
+    onClick: () => navigateTo('/status'),
+  },
 ]
 
 const adminMenuOptions = [
@@ -197,6 +205,8 @@ const routeLabelMap: Record<string, string> = {
   '/compete': 'Bot 对战',
   '/profile': '个人中心',
   '/settings': '设置',
+  '/status': '系统状态',
+  '/settings/api-keys': 'API 密钥',
 }
 
 const currentRouteLabel = computed(() => {
@@ -259,6 +269,11 @@ const userMenuOptions: DropdownOption[] = [
     icon: renderIcon(PersonOutline),
   },
   {
+    label: 'API 密钥',
+    key: 'api-keys',
+    icon: renderIcon(KeyOutline),
+  },
+  {
     type: 'divider',
     key: 'd1',
   },
@@ -276,6 +291,9 @@ function handleUserMenuSelect(key: string) {
   }
   else if (key === 'profile') {
     navigateTo(`/users/${authStore.user?.id}`)
+  }
+  else if (key === 'api-keys') {
+    navigateTo('/settings/api-keys')
   }
 }
 </script>
