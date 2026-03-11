@@ -1,15 +1,20 @@
 <template>
   <div class="timeline-container">
-    <!-- Participants header -->
+    <!-- Participants header (clickable to toggle) -->
     <div class="timeline-header">
       <div
         v-for="p in participants"
         :key="p.id"
         class="participant-badge"
-        :style="{ borderColor: p.color, background: p.color + '15' }"
+        :class="{ 'participant-hidden': hiddenParticipants.has(p.id) }"
+        :style="hiddenParticipants.has(p.id) ? {} : { borderColor: p.color, background: p.color + '15' }"
+        style="cursor:pointer;user-select:none"
+        :title="hiddenParticipants.has(p.id) ? '点击显示' : '点击隐藏'"
+        @click="toggleParticipant(p.id)"
       >
         <span class="participant-icon">{{ p.icon }}</span>
         <span class="participant-name">{{ p.name }}</span>
+        <span v-if="hiddenParticipants.has(p.id)" style="font-size:10px;margin-left:4px;opacity:.6">隐藏</span>
       </div>
     </div>
 
@@ -156,8 +161,23 @@ const showDisplay = ref(false)
 const animStep = ref(0)
 let animTimer: ReturnType<typeof setTimeout> | null = null
 
+const hiddenParticipants = ref<Set<string>>(new Set())
+function toggleParticipant(id: string) {
+  const s = new Set(hiddenParticipants.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  hiddenParticipants.value = s
+}
+
 const allRounds = computed(() => props.rounds)
-const visibleRounds = computed(() => allRounds.value.slice(0, animStep.value))
+const visibleRounds = computed(() => {
+  const sliced = allRounds.value.slice(0, animStep.value)
+  if (hiddenParticipants.value.size === 0) return sliced
+  return sliced.map(r => ({
+    ...r,
+    events: r.events.filter(e => !hiddenParticipants.value.has(e.from) && !hiddenParticipants.value.has(e.to)),
+  }))
+})
 
 const COLORS: Record<string, string> = {
   Judge: '#722ed1',
@@ -277,6 +297,9 @@ watch(() => props.rounds.length, (len) => {
 .timeline-container { display: flex; flex-direction: column; gap: 8px; }
 .timeline-header {
   display: flex; gap: 12px; padding: 8px 0; border-bottom: 2px solid #f0f0f0;
+}
+.participant-badge.participant-hidden {
+  background: #f0f0f0 !important; border-color: #ccc !important; opacity: .5;
 }
 .participant-badge {
   display: flex; align-items: center; gap: 6px;

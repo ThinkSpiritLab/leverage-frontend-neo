@@ -72,6 +72,7 @@
                 <NSpace align="center">
                   <span>📋 测试日志</span>
                   <NTag :type="matchStatusType(bot.status)" size="small">{{ matchStatusLabel(bot.status) }}</NTag>
+                  <NTag v-if="bot.status === 2 && botCodeAtTest && botCode !== botCodeAtTest" type="warning" size="small">⚠️ 过时的</NTag>
                   <NSpin v-if="bot.status === 1" size="small" />
                 </NSpace>
               </template>
@@ -137,6 +138,7 @@
                 <NSpace align="center">
                   <span>⚖️ 裁判测试日志</span>
                   <NTag :type="matchStatusType(judge.status)" size="small">{{ matchStatusLabel(judge.status) }}</NTag>
+                  <NTag v-if="judge.status === 2 && judgeCodeAtTest && judgeCode !== judgeCodeAtTest" type="warning" size="small">⚠️ 过时的</NTag>
                   <NSpin v-if="judge.status === 1" size="small" />
                 </NSpace>
               </template>
@@ -477,6 +479,7 @@ const bot = ref({
   botNames: {} as Record<string, string>,
 })
 const botCode = ref('')
+const botCodeAtTest = ref('')   // code snapshot at time of last test run
 const botOpponents = ref<any[]>([])
 const opponentsLoading = ref(false)
 const publishBotModal = ref(false)
@@ -584,6 +587,7 @@ function insertBotTemplate() {
 
 async function runBotTest() {
   if (!bot.value.gameId || !bot.value.opponentGamerId) return
+  botCodeAtTest.value = botCode.value   // snapshot for staleness check
   bot.value.running = true
   bot.value.timeline = []
   bot.value.finalResult = null
@@ -650,6 +654,7 @@ const judge = ref({
   botNames: {} as Record<string, string>,
 })
 const judgeCode = ref('')
+const judgeCodeAtTest = ref('')
 const judgeOpponents = ref<any[]>([])
 const judgeOpponentsLoading = ref(false)
 
@@ -728,6 +733,7 @@ function insertJudgeTemplate() {
 
 async function runJudgeTest() {
   if (!judgeCode.value.trim() || !judge.value.bot0Id || !judge.value.bot1Id) return
+  judgeCodeAtTest.value = judgeCode.value   // snapshot for staleness check
   judge.value.running = true
   judge.value.timeline = []
   judge.value.finalResult = null
