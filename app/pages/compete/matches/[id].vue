@@ -12,46 +12,14 @@
           <NBreadcrumbItem>对局 #{{ match.id }}</NBreadcrumbItem>
         </NBreadcrumb>
 
-        <!-- 运行中提示 -->
-        <NAlert
-          v-if="isRunning"
-          type="info"
-          :show-icon="true"
-          style="margin-bottom: 16px"
-        >
-          对局运行中，每 3 秒自动刷新...
-        </NAlert>
-
-        <!-- 对局基本信息 -->
-        <NCard title="对局详情" style="margin-bottom: 16px">
-          <NDescriptions :columns="2" bordered>
-            <NDescriptionsItem label="对局 ID">
-              #{{ match.id }}
-            </NDescriptionsItem>
-            <NDescriptionsItem label="游戏">
-              <NButton
-                v-if="match.game"
-                text type="primary"
-                @click="navigateTo(`/compete/games/${match.game.id}`)"
-              >{{ match.game.name }}</NButton>
-              <span v-else>{{ match.gameId || '-' }}</span>
-            </NDescriptionsItem>
-            <NDescriptionsItem label="状态">
-              <NTag :type="statusType" size="small" :bordered="false">
-                {{ statusLabel }}
-              </NTag>
-            </NDescriptionsItem>
-            <NDescriptionsItem label="创建时间">
-              {{ match.createdAt ? new Date(match.createdAt).toLocaleString('zh-CN') : '-' }}
-            </NDescriptionsItem>
-            <NDescriptionsItem v-if="match.externalJobId" label="外部任务 ID">
-              <NText code>{{ match.externalJobId }}</NText>
-            </NDescriptionsItem>
-            <NDescriptionsItem label="完成时间">
-              {{ (isCompleted || isFailed) && match.updatedAt ? new Date(match.updatedAt).toLocaleString('zh-CN') : '-' }}
-            </NDescriptionsItem>
-          </NDescriptions>
-        </NCard>
+        <!-- 状态行：状态 tag + 时间（替代整张详情卡片） -->
+        <NSpace align="center" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <NTag :type="statusType" size="small" :bordered="false">{{ statusLabel }}</NTag>
+          <NText depth="3" style="font-size:12px">
+            {{ match.createdAt ? new Date(match.createdAt).toLocaleString('zh-CN') : '' }}
+          </NText>
+          <NText v-if="isRunning" depth="3" style="font-size:12px">• 每 3 秒刷新</NText>
+        </NSpace>
 
         <!-- 人类玩家输入区 -->
         <NCard
@@ -135,63 +103,24 @@
           v-if="isCompleted && winnerInfo"
           :type="winnerInfo.isDraw ? 'warning' : 'success'"
           :show-icon="false"
-          style="margin-bottom:16px;font-size:15px"
+          style="margin-bottom:12px;font-size:15px"
         >
           <NSpace align="center">
             <span style="font-size:20px">{{ winnerInfo.isDraw ? '🤝' : '🏆' }}</span>
             <NText strong style="font-size:15px">{{ winnerInfo.isDraw ? '平局！' : `胜者：${winnerInfo.names.join('、')}` }}</NText>
+            <template v-if="parsedResult?.finalResult">
+              <NDivider vertical />
+              <NSpace>
+                <span v-for="row in scoreRows" :key="row.id" style="font-size:13px">
+                  <NText strong>{{ row.name }}</NText>：{{ row.score }}
+                </span>
+              </NSpace>
+            </template>
           </NSpace>
         </NAlert>
 
-        <!-- 参与 Bot -->
-        <NCard title="参与 Bot" style="margin-bottom: 16px">
-          <NDataTable
-            :columns="gamerColumns"
-            :data="gamerList"
-            :bordered="false"
-          />
-        </NCard>
-
-        <!-- 对局结果（COMPLETED 时展示） -->
-        <template v-if="isCompleted && parsedResult">
-          <!-- 得分汇总 -->
-          <NCard title="对局结果" style="margin-bottom: 16px">
-            <NDescriptions :columns="2" bordered style="margin-bottom: 12px">
-              <NDescriptionsItem v-if="parsedResult.verdict" label="裁决">
-                <NTag type="info" size="small" :bordered="false">
-                  {{ parsedResult.verdict }}
-                </NTag>
-              </NDescriptionsItem>
-              <NDescriptionsItem v-if="parsedResult.roundCount !== undefined" label="总回合数">
-                {{ parsedResult.roundCount }}
-              </NDescriptionsItem>
-            </NDescriptions>
-
-            <template v-if="parsedResult.finalResult">
-              <NDivider title-placement="left" style="margin: 12px 0">最终得分</NDivider>
-              <NDataTable
-                :columns="scoreColumns"
-                :data="scoreRows"
-                :bordered="false"
-                size="small"
-              />
-            </template>
-          </NCard>
-
-          <!-- 游戏回放 -->
-          <template v-if="gameLog">
-            <NCard title="游戏回放" style="margin-bottom: 16px">
-              <BotzoneGameRenderer
-                :game-log="gameLog"
-                :renderer-html="match.game?.rendererHtml"
-                :current-round="replayRound"
-              />
-            </NCard>
-          </template>
-        </template>
-
         <!-- 错误信息 -->
-        <NCard v-if="isFailed && match.result" title="对局失败详情" style="margin-bottom: 16px">
+        <NCard v-if="isFailed && match.result" title="对局失败详情" style="margin-bottom: 12px">
           <NAlert type="error" :title="failedSummary.title">
             <NDescriptions :column="1" size="small" label-placement="left" style="margin-top:8px">
               <NDescriptionsItem label="失败原因">{{ failedSummary.reason }}</NDescriptionsItem>
@@ -200,6 +129,49 @@
             </NDescriptions>
           </NAlert>
         </NCard>
+
+        <!-- 游戏回放（优先展示，最重要的内容） -->
+        <template v-if="isCompleted && gameLog">
+          <NCard style="margin-bottom: 12px" :content-style="{ padding: '12px' }">
+            <BotzoneGameRenderer
+              :game-log="gameLog"
+              :renderer-html="match.game?.rendererHtml"
+              :current-round="replayRound"
+            />
+          </NCard>
+        </template>
+
+        <!-- 折叠的次要信息 -->
+        <NCollapse style="margin-bottom: 12px">
+          <NCollapseItem title="参与 Bot & 对局详情" name="details">
+            <!-- 参与 Bot -->
+            <NDataTable
+              :columns="gamerColumns"
+              :data="gamerList"
+              :bordered="false"
+              style="margin-bottom: 12px"
+            />
+            <!-- 对局结果 -->
+            <template v-if="isCompleted && parsedResult">
+              <NDescriptions :columns="2" bordered size="small">
+                <NDescriptionsItem v-if="parsedResult.verdict" label="裁决">
+                  <NTag type="info" size="small" :bordered="false">{{ parsedResult.verdict }}</NTag>
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="parsedResult.roundCount !== undefined" label="总回合数">
+                  {{ parsedResult.roundCount }}
+                </NDescriptionsItem>
+                <NDescriptionsItem label="对局 ID">#{{ match.id }}</NDescriptionsItem>
+                <NDescriptionsItem v-if="match.externalJobId" label="任务 ID">
+                  <NText code>{{ match.externalJobId }}</NText>
+                </NDescriptionsItem>
+              </NDescriptions>
+              <template v-if="parsedResult.finalResult && scoreRows.length">
+                <NDivider title-placement="left" style="margin: 12px 0">最终得分</NDivider>
+                <NDataTable :columns="scoreColumns" :data="scoreRows" :bordered="false" size="small" />
+              </template>
+            </template>
+          </NCollapseItem>
+        </NCollapse>
       </template>
 
       <NResult v-else-if="!loading" status="404" title="对局不存在">
@@ -213,7 +185,7 @@
 
 <script setup lang="ts">
 import { h } from 'vue'
-import { NTag, NButton } from 'naive-ui'
+import { NTag, NButton, NCollapse, NCollapseItem, NDivider } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import type { BotzoneGameLog } from '~/types/botzone'
 
