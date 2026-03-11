@@ -327,8 +327,12 @@ const gameLog = computed<BotzoneGameLog | null>(() => {
     // frontend type expects: { round, judgerDisplay, botOutputs }
     rounds: r.rounds.map((rd: any) => ({
       round: rd.round,
+      // Normalised fields (BotzoneGameLog interface)
       judgerDisplay: rd.judgeCmd?.display ?? rd.judgerDisplay,
       botOutputs: rd.botResponses ?? rd.botOutputs ?? {},
+      // Keep raw botzone-neo fields so renderer HTML can also use judgeCmd/botResponses
+      judgeCmd: rd.judgeCmd,
+      botResponses: rd.botResponses ?? rd.botOutputs ?? {},
     })),
     finalResult: r.finalResult || {},
     verdict: r.verdict || '',
