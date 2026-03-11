@@ -794,8 +794,37 @@ async function runCombo() {
 const rendererHtml = ref('')
 const rendererPreview = ref('')
 const rendererRef = ref<HTMLIFrameElement | null>(null)
-const testGameLog = ref('{\n  "rounds": [],\n  "finalResult": {"0": 1, "1": 0}\n}')
-const testGameState = ref('{\n  "requests": ["{\\"round\\": 1, \\"rounds\\": 5}"],\n  "responses": []\n}')
+const testGameLog = ref(JSON.stringify({
+  rounds: [
+    {
+      round: 1,
+      judgeCmd: { content: { "0": { round: 1, rounds: 5 }, "1": { round: 1, rounds: 5 } }, display: { round: 1, secret: 42 } },
+      botResponses: { "0": 50, "1": 70 },
+    },
+    {
+      round: 2,
+      judgeCmd: { content: { "0": { round: 2, rounds: 5, hint: "smaller" }, "1": { round: 2, rounds: 5, hint: "smaller" } }, display: { round: 2, scores: [0, 0] } },
+      botResponses: { "0": 30, "1": 55 },
+    },
+    {
+      round: 3,
+      judgeCmd: { content: { "0": { round: 3, rounds: 5, hint: "bigger" }, "1": { round: 3, rounds: 5, hint: "smaller" } }, display: { round: 3, scores: [0, 0] } },
+      botResponses: { "0": 42, "1": 48 },
+    },
+  ],
+  finalResult: { "0": 1, "1": 0 },
+}, null, 2))
+const testGameState = ref(JSON.stringify({
+  requests: [
+    JSON.stringify({ round: 1, rounds: 5 }),
+    JSON.stringify({ round: 2, rounds: 5, hint: 'smaller' }),
+  ],
+  responses: ['50', '30'],
+  data: null,
+  globaldata: null,
+  time_limit: 2,
+  memory_limit: 256,
+}, null, 2))
 const lastIframeMsg = ref('')
 const rendererTargetGame = ref<number | null>(null)
 const publishingRenderer = ref(false)
