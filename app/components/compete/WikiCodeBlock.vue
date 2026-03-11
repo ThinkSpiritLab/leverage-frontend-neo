@@ -11,8 +11,7 @@
         </NButton>
       </div>
     </div>
-    <!-- Highlight.js-style syntax coloring via pre/code -->
-    <pre class="code-body"><code>{{ code }}</code></pre>
+    <NCode :code="code" :language="lang || 'python'" show-line-numbers style="font-size:12.5px;padding:14px 0" />
     <div v-if="explanation" class="code-annotation">
       <span class="annotation-icon">💡</span>
       <span>{{ explanation }}</span>
@@ -22,7 +21,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NButton } from 'naive-ui'
+import { NButton, NCode } from 'naive-ui'
 
 const props = defineProps<{
   code: string
@@ -58,12 +57,7 @@ function copyCode() {
 }
 .code-lang { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
 .code-actions { display: flex; gap: 8px; align-items: center; }
-.code-body {
-  margin: 0; padding: 14px 16px; background: #fafafa;
-  font-family: 'Fira Code', 'Consolas', monospace; font-size: 12.5px;
-  line-height: 1.7; white-space: pre; overflow-x: auto;
-  max-height: 320px; overflow-y: auto;
-}
+/* NCode handles its own styling */
 .code-annotation {
   padding: 8px 12px; background: #fffbe6; border-top: 1px solid #ffe58f;
   font-size: 12px; display: flex; gap: 6px; align-items: flex-start;
