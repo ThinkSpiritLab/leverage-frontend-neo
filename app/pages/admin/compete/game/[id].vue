@@ -4,16 +4,24 @@
       🔒 <strong>系统内置游戏</strong> — 此游戏作为教程示例游戏受到保护，不可禁用。裁判程序和渲染器可以更新。
     </NAlert>
     <div class="page-header">
-      <NSpace align="center">
-        <NButton text @click="navigateTo('/admin/compete')">
-          ← 返回游戏列表
-        </NButton>
-        <NH2 style="margin: 0">
-          {{ game?.title || '游戏详情' }}
-        </NH2>
-        <NTag v-if="game" :type="game.disabled ? 'error' : 'success'" size="small">
-          {{ game.disabled ? '已禁用' : '已启用' }}
-        </NTag>
+      <NSpace align="center" justify="space-between" style="width:100%">
+        <NSpace align="center">
+          <NButton text @click="navigateTo('/admin/compete')">
+            ← 返回游戏列表
+          </NButton>
+          <NH2 style="margin: 0">
+            {{ game?.title || '游戏详情' }}
+          </NH2>
+          <NTag v-if="game" :type="game.disabled ? 'error' : 'success'" size="small">
+            {{ game.disabled ? '已禁用' : '已启用' }}
+          </NTag>
+        </NSpace>
+        <NSpace v-if="game">
+          <NButton type="warning" secondary @click="triggerAutoMatch">
+            ⚡ 触发自动对战
+          </NButton>
+          <NText depth="3" style="font-size:12px">TopN=8，code类型bot参与</NText>
+        </NSpace>
       </NSpace>
     </div>
 
@@ -108,6 +116,14 @@
           <NSpace align="center">
             <NSwitch v-model:value="editForm.allowHuman" />
             <NText depth="3" style="font-size:12px">开启后用户可以以真人身份参与对局</NText>
+          </NSpace>
+        </NFormItem>
+        <NFormItem label="自动对战调度">
+          <NSpace align="center">
+            <NSwitch v-model:value="editForm.autoMatchEnabled" />
+            <NText depth="3" style="font-size:12px;margin-left:8px">
+              开启后系统自动触发bot对战，自适应退避
+            </NText>
           </NSpace>
         </NFormItem>
 
@@ -274,6 +290,7 @@ const editForm = ref({
   disabled: true,
   rendererHtml: '',
   allowHuman: false,
+  autoMatchEnabled: false,
   judgerCode: '',
   judgerLanguage: 9,
 })
@@ -416,6 +433,7 @@ async function openEditModal() {
     disabled: !!game.value.disabled,
     rendererHtml: game.value.rendererHtml || '',
     allowHuman: !!game.value.allowHuman,
+    autoMatchEnabled: !!game.value.autoMatchEnabled,
     judgerCode: '',
     judgerLanguage: 9,
   }
@@ -475,6 +493,17 @@ async function handleSaveEdit() {
   }
   catch (e: any) { message.error(e?.message || '操作失败') }
   finally { saving.value = false }
+}
+
+async function triggerAutoMatch() {
+  try {
+    const res = await competeApi.triggerAutoMatch(gameId)
+    const { created, matchIds } = res.data as any
+    message.success(`已触发 ${created} 场对战`)
+  }
+  catch (e: any) {
+    message.error(e?.message || '触发失败')
+  }
 }
 
 // ── 排行榜 ──

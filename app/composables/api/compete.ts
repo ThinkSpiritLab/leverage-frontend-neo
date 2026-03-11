@@ -39,8 +39,8 @@ export function useCompeteApi() {
       webhookUrl?: string
       webhookSecret?: string
     }) => api.patch<any>(`/compete/gamers/${id}`, dto),
-    triggerAutoMatch: (gameId: number) =>
-      api.post<any>(`/compete/games/${gameId}/trigger-auto-match`),
+    triggerAutoMatch: (gameId: number, topN = 8) =>
+      api.post<any>(`/compete/games/${gameId}/trigger-auto-match?topN=${topN}`),
     botTurnPoll: (gamerId: number) =>
       api.get<any>('/compete/bot-turn', { params: { gamerId } }),
     botRespond: (turnToken: string, response: string) =>
