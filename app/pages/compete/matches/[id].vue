@@ -191,9 +191,13 @@
         </template>
 
         <!-- 错误信息 -->
-        <NCard v-if="match.error || (isFailed && match.result)" title="错误信息" style="margin-bottom: 16px">
-          <NAlert type="error">
-            <pre style="white-space: pre-wrap; margin: 0">{{ match.error || match.result }}</pre>
+        <NCard v-if="isFailed && match.result" title="对局失败详情" style="margin-bottom: 16px">
+          <NAlert type="error" :title="failedSummary.title">
+            <NDescriptions :column="1" size="small" label-placement="left" style="margin-top:8px">
+              <NDescriptionsItem label="失败原因">{{ failedSummary.reason }}</NDescriptionsItem>
+              <NDescriptionsItem v-if="failedSummary.botName" label="问题 Bot">{{ failedSummary.botName }}</NDescriptionsItem>
+              <NDescriptionsItem v-if="failedSummary.suggestion" label="建议">{{ failedSummary.suggestion }}</NDescriptionsItem>
+            </NDescriptions>
           </NAlert>
         </NCard>
       </template>
@@ -288,6 +292,62 @@ const isRunning = computed(() =>
 const isCompleted = computed(() => match.value?.status === MATCH_STATUS.FINISHED)
 
 const isFailed = computed(() => match.value?.status === MATCH_STATUS.ERROR)
+
+const failedSummary = computed(() => {
+  if (!match.value?.result) return { title: '对局失败', reason: '未知错误', botName: '', suggestion: '' }
+  try {
+    const r = JSON.parse(match.value.result) as any
+    const verdict = r.verdict || ''
+
+    if (verdict === 'forfeit') {
+      const forfeitedId = r.forfeitedBot
+      const forfeitedLink = match.value?.links?.find((l: any) => String(l.index) === String(forfeitedId))
+      const botName = forfeitedLink?.gamer?.title || `Bot 位置 #${forfeitedId}`
+      return {
+        title: 'Bot 无响应（弃权）',
+        reason: `${botName} 在运行时崩溃或超时，未返回有效输出`,
+        botName,
+        suggestion: '检查 Bot 代码能否正确解析 JSON 输入；确认 stdin 读写逻辑；查看是否有运行时异常（如 KeyError、AttributeError 等）',
+      }
+    }
+
+    if (verdict === 'CE' || String(verdict).includes('CE')) {
+      return {
+        title: '编译失败 (CE)',
+        reason: r.message || '代码无法通过编译 / 语法检查',
+        botName: r.botId ? `Bot #${r.botId}` : '',
+        suggestion: '检查代码语法是否正确；确认使用了平台支持的语言特性和版本',
+      }
+    }
+
+    if (verdict === 'error' || r.judgeError) {
+      return {
+        title: '裁判程序异常',
+        reason: r.judgeError || r.message || '裁判输出了错误信号',
+        botName: '',
+        suggestion: '检查裁判代码逻辑；确认 verdict 字段只输出 "continue" 或 "finish"',
+      }
+    }
+
+    if (verdict === 'TLE') {
+      return {
+        title: '超时 (TLE)',
+        reason: '对局超过最大时间限制',
+        botName: '',
+        suggestion: '减少 Bot 计算量；检查是否有死循环',
+      }
+    }
+
+    return {
+      title: `对局失败 (${verdict || '未知'})`,
+      reason: r.message || JSON.stringify(r).slice(0, 300),
+      botName: '',
+      suggestion: '',
+    }
+  } catch {
+    return { title: '对局失败', reason: (match.value?.result || '').slice(0, 200), botName: '', suggestion: '' }
+  }
+})
 
 const statusType = computed((): 'default' | 'info' | 'success' | 'error' => {
   const m: Record<number, 'default' | 'info' | 'success' | 'error'> = {
