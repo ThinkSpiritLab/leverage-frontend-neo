@@ -40,6 +40,8 @@ Use pnpm, preserve `pnpm-lock.yaml`, and install explicitly with
 - `pnpm build`: current production build command, also used by Dockerfile.
 - `pnpm generate`: static generation command, available separately.
 - `pnpm lint`: ESLint check.
+- `pnpm test:regression`: executable refresh/polling regressions and SSE/iframe
+  source contracts; does not start a browser or the backend.
 - `pnpm test:e2e:fe`: Playwright tests; configuration starts/reuses a server at
   `http://localhost:3001`. Requires an installed Chromium browser.
 - `pnpm test:e2e:fe -- <spec>`: narrow browser checks to the changed feature.

@@ -542,14 +542,16 @@ const iframeInteractive = ref(false)
 
 // Listen for messages from iframe renderer
 function onIframeMessage(e: MessageEvent) {
-  if (!e.data) return
+  if (e.source !== humanRendererRef.value?.contentWindow || !e.data || typeof e.data !== 'object') return
   // Renderer declares interactive capability → hide text input
   if (e.data.type === 'capabilities') {
-    iframeInteractive.value = !!e.data.interactive
+    if (typeof e.data.interactive === 'boolean') {
+      iframeInteractive.value = e.data.interactive
+    }
     return
   }
   // Renderer sends back a move → auto-submit
-  if (e.data.type === 'humanMove' && e.data.move && !submittingMove.value) {
+  if (e.data.type === 'humanMove' && typeof e.data.move === 'string' && e.data.move.trim() && !submittingMove.value) {
     humanMove.value = e.data.move
     submitHumanMove()
   }
@@ -653,42 +655,26 @@ watch(() => humanTurn.value, (turn) => {
 let sseSource: EventSource | null = null
 
 function connectHumanSSE() {
-  console.log('[SSE] connectHumanSSE called, myHumanGamer=', myHumanGamer.value)
-  if (!myHumanGamer.value) { console.warn('[SSE] no humanGamer, abort'); return }
+  if (!myHumanGamer.value) return
   const token = authStore.accessToken
-  console.log('[SSE] token present:', !!token)
   if (!token) return
 
-  // SSE must bypass the Vite proxy (which buffers SSE responses).
-  // Connect directly to the backend on port 3000, same hostname as the browser.
-  const backendBase = process.client
-    ? `${window.location.protocol}//${window.location.hostname}:3000`
-    : 'http://localhost:3000'
-  const url = `${backendBase}/compete/matches/${matchId.value}/human-sse?token=${encodeURIComponent(token)}`
-  console.log('[SSE] connecting to', url)
-  sseSource = new EventSource(url)
-
-  sseSource.onopen = () => { console.log('[SSE] connection opened, readyState:', sseSource?.readyState) }
-
-  // Also listen for named events in case backend sends event: type
-  sseSource.addEventListener('message', (e) => { console.log('[SSE] named message event:', e.data) })
+  const apiBase = useRuntimeConfig().public.apiBase
+  const apiUrl = new URL(apiBase, window.location.origin)
+  const url = new URL(`compete/matches/${matchId.value}/human-sse`, `${apiUrl.href.replace(/\/?$/, '/')}`)
+  url.searchParams.set('token', token)
+  // Nginx proxies this same-origin endpoint with streaming enabled.
+  sseSource = new EventSource(url.toString())
 
   sseSource.onmessage = (e) => {
-    console.log('[SSE] onmessage:', e.data, 'lastEventId:', e.lastEventId)
     try {
       const data = JSON.parse(e.data)
       if (data.type === 'your-turn') {
         humanTurn.value = { turnToken: data.turnToken, gameState: data.gameState }
       } else if (data.type === 'game-over') {
         handleGameOverSSE(data.finalResult ?? {})
-      } else if (data.type === 'connected') {
-        console.log('[SSE] server confirmed connection')
       }
     } catch { /* ignore */ }
-  }
-
-  sseSource.onerror = (e) => {
-    console.error('[SSE] error:', e, 'readyState:', sseSource?.readyState)
   }
 
   // Backend will replay any pending turn immediately on SSE connect
@@ -701,8 +687,8 @@ async function submitHumanMove() {
     await useCompeteApi().botRespond(humanTurn.value.turnToken, humanMove.value.trim())
     humanTurn.value = null
     humanMove.value = ''
-  } catch (e: any) {
-    console.error('submitHumanMove error', e)
+  } catch {
+    // Avoid logging request details that may contain credentials or turn data.
   } finally {
     submittingMove.value = false
   }
@@ -711,7 +697,6 @@ async function submitHumanMove() {
 // Connect SSE as soon as we know the user is a human player in this match.
 // myHumanGamer depends on match.value, so we watch until it's non-null.
 const stopWatchSSE = watch(myHumanGamer, (gamer) => {
-  console.log('[SSE] myHumanGamer watch fired, gamer=', gamer, 'sseSource=', !!sseSource)
   if (gamer && !sseSource) {
     connectHumanSSE()
     stopWatchSSE()

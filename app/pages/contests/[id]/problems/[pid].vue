@@ -124,7 +124,11 @@ const code = ref('')
 const submitting = ref(false)
 const submissionId = ref<number | null>(null)
 const submissionStatus = ref(SubmissionStatus.PENDING)
-const polling = ref(false)
+const { polling, start: startPolling, stop: stopPolling } = useSubmissionPolling(
+  id => submissionsApi.getStatus(id),
+  status => { submissionStatus.value = status },
+  isFinalStatus,
+)
 
 const languageOptions = LANGUAGE_OPTIONS
 
@@ -203,14 +207,12 @@ onMounted(async () => {
   }
 })
 
-let pollTimer: ReturnType<typeof setTimeout> | null = null
-
 async function handleSubmit() {
   if (!code.value.trim()) return
   submitting.value = true
   submissionId.value = null
   submissionStatus.value = SubmissionStatus.PENDING
-  if (pollTimer) clearTimeout(pollTimer)
+  stopPolling()
 
   try {
     const res = await submissionsApi.create({
@@ -222,7 +224,7 @@ async function handleSubmit() {
     const sub = (res as any).data ?? res
     submissionId.value = sub.id
     submissionStatus.value = sub.status
-    startPolling(sub.id)
+    startPolling(sub.id, sub.status)
   }
   catch (e) {
     console.error(e)
@@ -232,32 +234,9 @@ async function handleSubmit() {
   }
 }
 
-function startPolling(id: number) {
-  if (isFinalStatus(submissionStatus.value)) return
-  polling.value = true
-
-  const poll = async () => {
-    try {
-      const res = await submissionsApi.getStatus(id)
-      const data = res.data ?? res
-      submissionStatus.value = data.status
-      if (!isFinalStatus(data.status)) {
-        pollTimer = setTimeout(poll, 2000)
-      }
-      else {
-        polling.value = false
-      }
-    }
-    catch {
-      polling.value = false
-    }
-  }
-
-  pollTimer = setTimeout(poll, 2000)
-}
+watch([contestId, problemId], stopPolling)
 
 onUnmounted(() => {
-  if (pollTimer) clearTimeout(pollTimer)
   if (timerInterval) clearInterval(timerInterval)
 })
 

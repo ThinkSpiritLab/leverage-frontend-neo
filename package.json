@@ -9,6 +9,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
+    "test:regression": "node scripts/frontend-regression-probe.mjs",
     "test:e2e:fe": "playwright test",
     "test:e2e:fe:ui": "playwright test --ui"
   },
