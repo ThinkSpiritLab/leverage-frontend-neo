@@ -28,7 +28,9 @@ this file explicitly.
 - `app/components/`: shared UI; CodeMirror editor and Markdown/KaTeX presentation.
   `components/botzone/` and `components/compete/` contain playback and match UI.
 - `e2e/`: Playwright Chromium tests, including mocked API responses.
-- `Dockerfile`, `nginx.conf`: build output served by Nginx, with backend proxying.
+- `Dockerfile`: builds Nuxt and serves `.output/server` (Nitro) on port 3000;
+  `ssr: false` does not make `.output/public` a complete static site.
+  Backend's `deploy/nginx.conf` owns the production `/api` reverse proxy.
 
 ## Development and checks
 
