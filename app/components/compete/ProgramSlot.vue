@@ -30,7 +30,7 @@
         <NSpace align="center" style="margin-bottom:8px">
           <NSelect
             :value="lang"
-            :options="LANGUAGE_OPTIONS"
+            :options="BOTZONE_LANGUAGE_OPTIONS"
             size="small"
             style="width:140px"
             @update:value="onLangChange"
@@ -105,9 +105,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { NTag, NButton, NRadioGroup, NRadioButton, NSelect, NInput, NCard, NText, NSpace, NSpin, NCheckbox } from 'naive-ui'
-import { LANGUAGE_OPTIONS } from '~/types'
+import { BOTZONE_LANGUAGE_OPTIONS, botzoneEditorLanguage, botzoneLanguage } from '~/utils/botzone-language'
 
 const props = defineProps<{
   label: string
@@ -138,10 +138,7 @@ const hasContent = computed(() => {
   return !!importedItem.value
 })
 
-const editorLang = computed(() => {
-  const m: Record<string, string> = { python: 'python', cpp: 'cpp', java: 'java', javascript: 'javascript', go: 'go', c: 'c' }
-  return m[props.lang] || 'python'
-})
+const editorLang = computed(() => botzoneEditorLanguage(props.lang))
 
 const competeApi = useCompeteApi()
 
@@ -188,7 +185,7 @@ async function selectImportGame(game: any) {
     const item = {
       id: game.id,
       name: `${game.title || game.name} 的裁判`,
-      language: judger.judgerLanguage || 'python',
+      language: botzoneLanguage(judger.judgerLanguage),
       code: judger.judgerCode || '',
     }
     importedItem.value = item

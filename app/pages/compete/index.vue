@@ -1,34 +1,37 @@
 <template>
   <div class="compete-page">
     <div class="page-header">
-      <NH2>Bot 对战</NH2>
-      <NSpace>
-        <NButton secondary @click="navigateTo('/compete/leaderboard')">🏆 全局排行榜</NButton>
-        <NButton secondary @click="navigateTo('/compete/leaderboard')">🏆 排行榜</NButton>
-        <NButton secondary @click="navigateTo('/compete/playground')">🧪 Playground</NButton>
+      <div>
+        <NH2>Bot 对战</NH2>
+        <NText depth="3">选择游戏、参赛或查看已完成的对局。</NText>
+      </div>
+      <div class="header-actions">
+        <NButton secondary @click="navigateTo('/compete/leaderboard')">全局排行榜</NButton>
+        <NButton secondary @click="navigateTo('/compete/playground')">Bot 测试</NButton>
         <NButton
           v-if="canCreateGame"
           secondary
           type="info"
           @click="navigateTo('/admin/compete/game/new')"
         >
-          ➕ 创建新游戏
+          创建游戏
         </NButton>
-        <NButton type="primary" @click="showCreateRoom = true">创建房间</NButton>
-      </NSpace>
+        <NButton secondary @click="showCreateRoom = true">创建房间</NButton>
+      </div>
     </div>
 
     <NTabs v-model:value="activeTab" type="line" animated>
       <!-- 游戏列表 -->
       <NTabPane name="games" tab="游戏列表">
         <NSpin :show="gamesLoading">
-          <div class="game-grid">
+          <NAlert v-if="gamesError" type="error" title="游戏加载失败" class="state-alert">
+            {{ gamesError }} <NButton text type="primary" @click="fetchGames">重试</NButton>
+          </NAlert>
+          <div v-else-if="games.length" class="game-grid">
             <NCard
               v-for="g in games"
               :key="g.id"
               class="game-card"
-              hoverable
-              @click="navigateTo(`/compete/games/${g.id}`)"
             >
               <template #header>
                 <NSpace align="center" justify="space-between">
@@ -52,11 +55,11 @@
                 block
                 @click.stop="navigateTo(`/compete/games/${g.id}`)"
               >
-                参与
+                查看游戏与参赛
               </NButton>
             </NCard>
-            <NEmpty v-if="!games.length" description="暂无游戏" style="grid-column:1/-1;padding:48px 0" />
           </div>
+          <NEmpty v-else-if="!gamesLoading" description="暂无可浏览的游戏" class="empty-state" />
         </NSpin>
         <NPagination
           v-if="gamesTotal > gamesPageSize"
@@ -71,14 +74,14 @@
       <!-- 活跃房间 -->
       <NTabPane name="rooms" tab="活跃房间">
         <NSpin :show="roomsLoading">
-          <NEmpty v-if="!roomsLoading && rooms.length === 0" description="暂无活跃房间" />
-          <NDataTable
-            v-else
+          <NAlert v-if="roomsError" type="error" title="房间加载失败" class="state-alert">{{ roomsError }} <NButton text type="primary" @click="fetchRooms">重试</NButton></NAlert>
+          <NEmpty v-else-if="!roomsLoading && rooms.length === 0" description="暂无活跃房间" class="empty-state" />
+          <div v-else class="table-scroll"><NDataTable
             :columns="roomColumns"
             :data="rooms"
             :bordered="false"
             :row-key="(row: any) => row.id"
-          />
+          /></div>
         </NSpin>
       </NTabPane>
 
@@ -107,14 +110,14 @@
           </NCheckbox>
         </NSpace>
         <NSpin :show="matchesLoading">
-          <NEmpty v-if="!matchesLoading && matches.length === 0" description="暂无对局记录" />
-          <NDataTable
-            v-else
+          <NAlert v-if="matchesError" type="error" title="对局加载失败" class="state-alert">{{ matchesError }} <NButton text type="primary" @click="fetchMatches">重试</NButton></NAlert>
+          <NEmpty v-else-if="!matchesLoading && matches.length === 0" description="暂无对局记录" class="empty-state" />
+          <div v-else class="table-scroll"><NDataTable
             :columns="matchColumns"
             :data="matches"
             :bordered="false"
             :row-key="(row: any) => row.id"
-          />
+          /></div>
         </NSpin>
         <NPagination
           v-if="matchesTotal > matchesPageSize"
@@ -132,7 +135,7 @@
       v-model:show="showCreateRoom"
       title="创建房间"
       preset="card"
-      style="width: 420px"
+      style="width: min(420px, calc(100vw - 24px))"
     >
       <NForm label-placement="left" label-width="80">
         <NFormItem label="选择游戏">
@@ -187,9 +190,11 @@ const gamesPageSize = ref(20)
 const games = ref<any[]>([])
 const gamesTotal = ref(0)
 const gamesLoading = ref(false)
+const gamesError = ref('')
 
 async function fetchGames() {
   gamesLoading.value = true
+  gamesError.value = ''
   try {
     const res = await competeApi.listGames({ page: gamesPage.value, perPage: gamesPageSize.value })
     games.value = res.data.items
@@ -197,63 +202,29 @@ async function fetchGames() {
   }
   catch (e) {
     console.error(e)
+    gamesError.value = '请检查连接后重试。'
   }
   finally {
     gamesLoading.value = false
   }
 }
 
-const gameColumns: DataTableColumns<any> = [
-  {
-    title: 'ID',
-    key: 'id',
-    width: 80,
-  },
-  {
-    title: '游戏名称',
-    key: 'name',
-    render(row) {
-      return h(
-        NButton,
-        { text: true, type: 'primary', onClick: () => navigateTo(`/compete/games/${row.id}`) },
-        { default: () => row.name },
-      )
-    },
-  },
-  {
-    title: '描述',
-    key: 'description',
-    ellipsis: { tooltip: true },
-    render(row) {
-      return h('span', row.description || '-')
-    },
-  },
-  {
-    title: '操作',
-    key: 'actions',
-    width: 120,
-    render(row) {
-      return h(
-        NButton,
-        { size: 'small', type: 'primary', onClick: () => navigateTo(`/compete/games/${row.id}`) },
-        { default: () => '进入' },
-      )
-    },
-  },
-]
 
 // ─── 活跃房间 ──────────────────────────────────────────────────────────────────
 const rooms = ref<any[]>([])
 const roomsLoading = ref(false)
+const roomsError = ref('')
 
 async function fetchRooms() {
   roomsLoading.value = true
+  roomsError.value = ''
   try {
     const res = await competeApi.listRooms()
     rooms.value = Array.isArray(res.data) ? res.data : []
   }
   catch (e) {
     console.error(e)
+    roomsError.value = '请检查连接后重试。'
   }
   finally {
     roomsLoading.value = false
@@ -333,6 +304,7 @@ const roomColumns: DataTableColumns<any> = [
 // ─── 历史对局 ──────────────────────────────────────────────────────────────────
 const matches = ref<any[]>([])
 const matchesLoading = ref(false)
+const matchesError = ref('')
 const matchesPage = ref(1)
 const matchesPageSize = ref(20)
 const matchesTotal = ref(0)
@@ -361,6 +333,7 @@ function onFilterChange() {
 
 async function fetchMatches() {
   matchesLoading.value = true
+  matchesError.value = ''
   try {
     const params: { gameId?: number; page?: number; perPage?: number; status?: number; isTest?: boolean } = {
       page: matchesPage.value,
@@ -375,6 +348,7 @@ async function fetchMatches() {
   }
   catch (e) {
     console.error(e)
+    matchesError.value = '请检查连接后重试。'
   }
   finally {
     matchesLoading.value = false
@@ -513,9 +487,14 @@ useHead({ title: '对战竞技 — Leverage OJ' })
 
 .page-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
 }
+.header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.state-alert { margin: 12px 0; }
+.empty-state { padding: 40px 0; }
+.table-scroll { width: 100%; overflow-x: auto; }
 
 .page-header :deep(.n-h2) {
   margin: 0;
@@ -529,11 +508,11 @@ useHead({ title: '对战竞技 — Leverage OJ' })
 }
 
 .game-card {
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.15s;
+  min-width: 0;
 }
-
-.game-card:hover {
-  transform: translateY(-2px);
+@media (max-width: 767px) {
+  .page-header { flex-direction: column; }
+  .header-actions { justify-content: flex-start; width: 100%; }
+  .game-grid { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh"><meta charset="utf-8"><title>Closest to 5</title>
+<style>body{font:16px system-ui;background:#101827;color:#e2e8f0;padding:1rem}button{padding:.5rem}pre{white-space:pre-wrap}</style>
+<h2>最接近 5</h2><div id="board">等待数据…</div><div id="controls"></div>
+<script>
+  const board = document.getElementById('board');
+  const controls = document.getElementById('controls');
+  let sent = false;
+  window.addEventListener('message', event => {
+    // The srcdoc iframe has an opaque origin; source, not origin, identifies its parent.
+    if (event.source !== window.parent || !event.data || typeof event.data !== 'object') return;
+    const data = event.data;
+    if (data.type === 'gameLog') {
+      if (!Array.isArray(data.gameLog?.rounds) || !Number.isInteger(data.round)) return;
+      const r = data.gameLog.rounds[data.round];
+      if (!r) return;
+      const display = r.judgeCmd?.display ?? r.display ?? r.judgerDisplay;
+      board.textContent = `第 ${data.round + 1} 回合\n` + JSON.stringify(display ?? {}, null, 2);
+      controls.replaceChildren();
+    } else if (data.type === 'gameState') {
+      if (!Array.isArray(data.gameState?.requests) || !Number.isInteger(data.playerIndex)) return;
+      let request;
+      try { request = JSON.parse(data.gameState.requests.at(-1) || '{}'); }
+      catch { return; }
+      sent = false;
+      board.textContent = '目标：' + String(request.target ?? '?');
+      const input = document.createElement('input');
+      input.type = 'number'; input.min = '0'; input.max = '9'; input.value = '5';
+      const button = document.createElement('button'); button.textContent = '出手';
+      button.onclick = () => {
+        const n = Number(input.value);
+        if (sent || !Number.isInteger(n) || n < 0 || n > 9) return;
+        sent = true; button.disabled = true;
+        const move = { [String(data.playerIndex)]: n };
+        window.parent.postMessage({ type: 'humanMove', move: JSON.stringify(move) }, '*');
+      };
+      controls.replaceChildren(input, button);
+    }
+  });
+  window.parent.postMessage({ type: 'capabilities', interactive: true }, '*');
+</script>
+</html>

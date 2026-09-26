@@ -1,0 +1,15 @@
+{
+  "verdict": "OK",
+  "roundCount": 1,
+  "rounds": [{
+    "round": 1,
+    "judgeCmd": {
+      "display": { "target": 5, "moves": { "0": 5, "1": 4 } },
+      "verdict": "finish",
+      "content": { "0": null }
+    },
+    "botResponses": { "0": 5, "1": 4 },
+    "debug": { "judge": "test" }
+  }],
+  "finalResult": { "0": 1, "1": 0 }
+}

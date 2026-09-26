@@ -14,7 +14,7 @@ this file explicitly.
 
 - `nuxt.config.ts`: SPA (`ssr: false`), compatibility-version-4 conventions,
   module registration, `/api` proxy and public API base configuration. The package
-  manifest currently declares Nuxt **3.x**, even though README calls it Nuxt 4.
+  manifest declares Nuxt **3.x** with v4 compatibility conventions.
 - `app/app.vue`, `app/layouts/`: application shell and public/auth/admin layouts.
 - `app/pages/`: file-based routes, including problems, courses, contests,
   submissions, messaging, admin and compete/playground views.
@@ -42,6 +42,8 @@ Use pnpm, preserve `pnpm-lock.yaml`, and install explicitly with
 - `pnpm lint`: ESLint check.
 - `pnpm test:regression`: executable refresh/polling regressions and SSE/iframe
   source contracts; does not start a browser or the backend.
+- `pnpm test:botzone`: fresh production build, trusted Python example checks and
+  a real Chrome iframe-message probe with mock API/SSE; not real judge acceptance.
 - `pnpm test:e2e:fe`: Playwright tests; configuration starts/reuses a server at
   `http://localhost:3001`. Requires an installed Chromium browser.
 - `pnpm test:e2e:fe -- <spec>`: narrow browser checks to the changed feature.
@@ -51,9 +53,13 @@ Use pnpm, preserve `pnpm-lock.yaml`, and install explicitly with
 is `pnpm start:dev`, not `pnpm dev`. Check Nginx behavior as well when changing
 paths, uploads, SSE or deployment configuration.
 
-Do not claim a mocked Playwright test verifies the live backend contract. There
-is no dedicated unit-test or typecheck script in the current package manifest;
-state exactly which checks were actually run.
+Do not claim a mocked Playwright test verifies the live backend contract. Source
+probes cover selected logic and are not broad component-unit coverage. There is
+no separate typecheck package script; state exactly which checks were run.
+
+Mock API routes by URL pathname prefix, not `**/api/**`: Vite also serves
+`/_nuxt/composables/api/*.ts`. Seed synthetic auth only in the top-level frame;
+sandboxed renderers must not gain storage or same-origin access for a test.
 
 ## Change boundaries
 

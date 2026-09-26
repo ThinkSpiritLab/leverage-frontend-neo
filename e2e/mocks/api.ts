@@ -19,6 +19,14 @@ export const mockTokens = {
  * Mock 认证相关 API：login / refresh / profile
  */
 export async function mockAuthApi(page: Page) {
+  page.on('pageerror', error => console.error('Browser error:', error.message))
+  // Keep fixture tests away from any unrelated service on localhost:3000.
+  await page.route(url => url.pathname.startsWith('/api/'), async (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/messages/count') return route.fulfill({ json: { count: 0 } })
+    if (path === '/api/notifications') return route.fulfill({ json: { items: [], total: 0 } })
+    return route.fulfill({ status: 404, json: { message: 'No fixture for this endpoint' } })
+  })
   // Mock 登录
   await page.route('**/api/auth/login', async (route) => {
     const body = JSON.parse(route.request().postData() || '{}')

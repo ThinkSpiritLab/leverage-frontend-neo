@@ -183,7 +183,7 @@
             <NFormItem label="裁判语言" label-width="120px">
               <NSelect
                 v-model:value="editForm.judgerLanguage"
-                :options="LANGUAGE_OPTIONS"
+                :options="BOTZONE_LANGUAGE_OPTIONS"
                 style="max-width:200px"
               />
             </NFormItem>
@@ -235,11 +235,15 @@
 </template>
 
 <script setup lang="ts">
+import exampleRenderer from '~~/examples/botzone/closest-renderer.html?raw'
+import previewFixture from '~~/examples/botzone/closest-log.json'
+import { normalizeGameLog } from '~/utils/botzone-log'
 import { h, computed } from 'vue'
 import { NTag, NButton, NSpace, NCollapse, NCollapseItem, NRadioGroup, NRadioButton, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import dayjs from 'dayjs'
-import { LANGUAGE_OPTIONS } from '~/types'
+import type { GameInput } from '~/types/compete'
+import { BOTZONE_LANGUAGE_OPTIONS, botzoneEditorLanguage, botzoneLanguage } from '~/utils/botzone-language'
 
 definePageMeta({
   layout: 'admin',
@@ -292,7 +296,7 @@ const editForm = ref({
   allowHuman: false,
   autoMatchEnabled: false,
   judgerCode: '',
-  judgerLanguage: 9,
+  judgerLanguage: 'python',
 })
 
 // 内存以 MB 为单位进行交互
@@ -309,107 +313,16 @@ const editFormEnabled = computed({
 const rendererHtmlLen = computed(() => editForm.value.rendererHtml?.length ?? 0)
 const rendererHtmlOverLimit = computed(() => rendererHtmlLen.value > 512000)
 
-// 将 LANGUAGE_OPTIONS value (number) 映射到 CodeEditor language string
-const langValueToEditor: Record<number, string> = {
-  0: 'c', 1: 'cpp', 6: 'java', 8: 'python', 9: 'python', 10: 'javascript', 11: 'typescript',
-}
-const judgerEditorLanguage = computed(() => langValueToEditor[editForm.value.judgerLanguage] ?? 'python')
+const judgerEditorLanguage = computed(() => botzoneEditorLanguage(editForm.value.judgerLanguage))
 
-const minimalTemplate = `<!DOCTYPE html>
-<html lang="zh">
-<head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: sans-serif; background: #0f1117; color: #e2e8f0; padding: 16px; min-height: 400px; }
-  button { padding: 10px 24px; border: none; border-radius: 8px; background: #3182ce; color: #fff; font-size: 1rem; cursor: pointer; margin: 4px; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-</style>
-</head>
-<body>
-<div id="app">等待游戏数据…</div>
-<script>
-  // 1. 声明交互能力（必须第一行）
-  window.parent.postMessage({ type: 'capabilities', interactive: true }, '*');
-
-  const app = document.getElementById('app');
-  let submitted = false;
-
-  // 2. 监听平台消息
-  window.addEventListener('message', (e) => {
-    const data = e.data;
-    if (!data || !data.type) return;
-    if (data.type === 'gameLog') renderReplay(data.gameLog, data.round);
-    else if (data.type === 'gameState') renderHumanTurn(data.gameState, data.playerIndex);
-  });
-
-  // 3. 回放模式
-  function renderReplay(gameLog, highlightRound) {
-    const rounds = gameLog.rounds || [];
-    let html = '<h3>📺 回放</h3><ul>';
-    for (const r of rounds) {
-      html += \`<li>第 \${r.round} 轮：\${JSON.stringify(r.botResponses)}</li>\`;
-    }
-    html += '</ul>';
-    if (gameLog.finalResult) html += \`<p>最终结果：\${JSON.stringify(gameLog.finalResult)}</p>\`;
-    app.innerHTML = html;
-  }
-
-  // 4. 人类出手模式
-  function renderHumanTurn(gameState, playerIndex) {
-    if (submitted) return;
-    const requests = gameState.requests || [];
-    const lastReq = requests.length > 0 ? JSON.parse(requests[requests.length - 1]) : {};
-    app.innerHTML = \`
-      <h3>🎮 你的回合（玩家 \${playerIndex}）</h3>
-      <p>当前请求：<code>\${JSON.stringify(lastReq)}</code></p>
-      <button id="btn">提交操作</button>
-    \`;
-    document.getElementById('btn').addEventListener('click', () => {
-      if (submitted) return;
-      submitted = true;
-      document.getElementById('btn').disabled = true;
-      const move = {};
-      move[String(playerIndex)] = 1; // ← 替换为实际操作值
-      window.parent.postMessage({ type: 'humanMove', move: JSON.stringify(move) }, '*');
-      app.innerHTML += '<p>✅ 已提交，等待结果…</p>';
-    });
-  }
-<\/script>
-</body>
-</html>`
-
-const rendererHtmlPlaceholder = `<!DOCTYPE html>
-<html>
-<body>
-<div id="app"></div>
-<script>
-  window.addEventListener('message', function({ data }) {
-    if (data.type === 'gameLog') {
-      document.getElementById('app').innerHTML =
-        '<pre>' + JSON.stringify(data.gameLog, null, 2) + '<\\/pre>';
-    }
-  });
-<\/script>
-</body>
-</html>`
+const minimalTemplate = exampleRenderer
+const rendererHtmlPlaceholder = '粘贴自定义 HTML，或使用最小模板；协议见开发指南'
 
 // ── 渲染器预览 ──
 const showRendererPreview = ref(false)
 const previewIframeEl = ref<HTMLIFrameElement | null>(null)
 
-const previewGameLog = {
-  gameId: 'preview',
-  rounds: [
-    {
-      round: 1,
-      judgerDisplay: { info: '示例回合数据' },
-      botOutputs: { '0': '示例输出A', '1': '示例输出B' },
-    },
-  ],
-  finalResult: { '0': 100, '1': 80 },
-  verdict: 'Player 0 wins',
-}
+const previewGameLog = normalizeGameLog(previewFixture, 'preview')
 
 function sendPreviewMessage() {
   previewIframeEl.value?.contentWindow?.postMessage(
@@ -435,7 +348,7 @@ async function openEditModal() {
     allowHuman: !!game.value.allowHuman,
     autoMatchEnabled: !!game.value.autoMatchEnabled,
     judgerCode: '',
-    judgerLanguage: 9,
+    judgerLanguage: 'python',
   }
   // 加载裁判程序
   if (!isNew) {
@@ -444,7 +357,7 @@ async function openEditModal() {
       const judger = jRes.data
       if (judger) {
         editForm.value.judgerCode = judger.judgerCode || ''
-        editForm.value.judgerLanguage = judger.judgerLanguage ?? 9
+        editForm.value.judgerLanguage = botzoneLanguage(judger.judgerLanguage)
       }
     }
     catch { /* 无裁判程序，忽略 */ }
@@ -468,7 +381,7 @@ async function handleSaveEdit() {
   saving.value = true
   try {
     const { judgerCode, judgerLanguage, ...rest } = editForm.value
-    const payload: Record<string, any> = { ...rest }
+    const payload: GameInput = { ...rest }
     if (!payload.rendererHtml) payload.rendererHtml = null
     if (judgerCode) {
       payload.judgerCode = judgerCode
@@ -498,7 +411,7 @@ async function handleSaveEdit() {
 async function triggerAutoMatch() {
   try {
     const res = await competeApi.triggerAutoMatch(gameId)
-    const { created, matchIds } = res.data as any
+    const { created } = res.data
     message.success(`已触发 ${created} 场对战`)
   }
   catch (e: any) {
@@ -560,20 +473,6 @@ async function fetchMatches() {
   }
   catch (e) { console.error(e) }
   finally { matchesLoading.value = false }
-}
-
-const matchStatusLabel: Record<string, string> = {
-  pending: '等待中',
-  running: '进行中',
-  finished: '已完成',
-  error: '错误',
-}
-
-const matchStatusColor: Record<string, any> = {
-  pending: 'default',
-  running: 'info',
-  finished: 'success',
-  error: 'error',
 }
 
 const statusNumMap: Record<number, { type: any; label: string }> = {

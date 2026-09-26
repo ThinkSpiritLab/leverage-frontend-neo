@@ -5,6 +5,7 @@
         <NLoadingBarProvider>
           <NLayout has-sider class="app-layout">
             <NLayoutSider
+              class="desktop-sider"
               :collapsed="uiStore.sidebarCollapsed"
               collapse-mode="width"
               :collapsed-width="64"
@@ -14,13 +15,13 @@
               @collapse="uiStore.toggleSidebar"
               @expand="uiStore.toggleSidebar"
             >
-              <div class="logo-area" :class="{ collapsed: uiStore.sidebarCollapsed }" style="cursor:pointer" @click="navigateTo('/')">
+              <NuxtLink to="/" class="logo-area" :class="{ collapsed: uiStore.sidebarCollapsed }" aria-label="Leverage OJ 首页">
                 <div class="logo-main">
                   <span v-if="!uiStore.sidebarCollapsed" class="logo-text">Leverage OJ</span>
                   <span v-else class="logo-icon">OJ</span>
                 </div>
                 <div v-if="!uiStore.sidebarCollapsed" class="logo-version">v2.0</div>
-              </div>
+              </NuxtLink>
               <NMenu
                 :collapsed="uiStore.sidebarCollapsed"
                 :collapsed-width="64"
@@ -30,8 +31,17 @@
               />
             </NLayoutSider>
 
+            <NDrawer v-model:show="uiStore.mobileNavOpen" placement="left" :width="260">
+              <NDrawerContent title="Leverage OJ" closable>
+                <NMenu :options="menuOptions" :value="activeKey" @update:value="uiStore.closeMobileNav" />
+              </NDrawerContent>
+            </NDrawer>
+
             <NLayout class="main-layout">
               <NLayoutHeader bordered class="header-bar">
+                <NButton class="mobile-menu-button" quaternary aria-label="打开导航菜单" :aria-expanded="uiStore.mobileNavOpen" @click="uiStore.mobileNavOpen = true">
+                  <NIcon size="22"><MenuOutline /></NIcon>
+                </NButton>
                 <NBreadcrumb>
                   <NBreadcrumbItem>{{ currentRouteLabel }}</NBreadcrumbItem>
                 </NBreadcrumb>
@@ -96,6 +106,7 @@ import {
   GameControllerOutline,
   PulseOutline,
   KeyOutline,
+  MenuOutline,
 } from '@vicons/ionicons5'
 
 const authStore = useAuthStore()
@@ -110,6 +121,7 @@ const unreadCount = computed(() => unreadNotifCount.value + unreadMsgCount.value
 let unreadTimer: ReturnType<typeof setInterval> | null = null
 
 const activeKey = computed(() => route.name as string)
+watch(() => route.fullPath, () => uiStore.closeMobileNav())
 
 const baseMenuOptions = [
   {
@@ -300,13 +312,14 @@ function handleUserMenuSelect(key: string) {
 
 <style scoped>
 .app-layout {
-  height: 100vh;
+  min-height: 100vh;
   background: #f5f7fa;
 }
 
 .main-layout,
 .content-shell {
   background: #f5f7fa;
+  min-width: 0;
 }
 
 .logo-area {
@@ -318,7 +331,9 @@ function handleUserMenuSelect(key: string) {
   gap: 2px;
   border-bottom: 1px solid #efeff5;
   background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+  text-decoration: none;
 }
+.logo-area:focus-visible { outline: 2px solid #2080f0; outline-offset: -3px; }
 
 .logo-main {
   font-weight: 700;
@@ -376,5 +391,14 @@ function handleUserMenuSelect(key: string) {
 .content-inner {
   max-width: 1200px;
   margin: 0 auto;
+}
+.mobile-menu-button { display: none; }
+@media (max-width: 767px) {
+  .desktop-sider { display: none; }
+  .header-bar { gap: 8px; padding: 0 12px; }
+  .header-bar :deep(.n-breadcrumb) { flex: 1; min-width: 0; }
+  .mobile-menu-button { display: inline-flex; flex: none; }
+  .username, .user-trigger :deep(.n-tag) { display: none; }
+  .content-shell { padding: 16px 12px 32px; height: calc(100dvh - 56px); }
 }
 </style>

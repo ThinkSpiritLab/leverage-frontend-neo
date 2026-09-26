@@ -1,28 +1,37 @@
 <template>
   <div class="compete-game-page">
     <CompeteAdminViewBanner :admin-path="`/admin/compete/game/${gameId}`" />
+    <NAlert v-if="gameError" type="error" title="游戏加载失败">
+      {{ gameError }} <NButton text type="primary" @click="fetchGame">重试</NButton>
+      <NButton text @click="navigateTo('/compete')">返回游戏列表</NButton>
+    </NAlert>
     <NSpin :show="loading">
       <!-- Header -->
       <div v-if="game" class="game-header">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <NButton text type="primary" @click="navigateTo('/compete')">← 游戏列表</NButton>
+        <div class="game-title-row">
           <NH2 style="margin:0">{{ game.title }}</NH2>
           <NTag size="small" :type="game.disabled ? 'error' : 'success'">
             {{ game.disabled ? '已禁用' : '进行中' }}
           </NTag>
         </div>
-        <NText depth="3">{{ game.description }}</NText>
+        <NText depth="3">{{ game.description || '暂无游戏描述' }}</NText>
         <NDivider style="margin:12px 0" />
         <NSpace align="center">
           <NText depth="3">⏱ 时限 {{ game.timeLimit }}ms</NText>
           <NText depth="3">💾 内存 {{ game.memoryLimit }}MB</NText>
           <NText depth="3">👥 {{ game.gamerQuantity }} 人对战</NText>
         </NSpace>
+        <div class="game-actions">
+          <NButton type="primary" :disabled="game.disabled" @click="activeTab = 'participate'">选择参赛者</NButton>
+          <NButton secondary @click="activeTab = 'matches'">浏览对局与回放</NButton>
+        </div>
       </div>
 
-      <NTabs v-model:value="activeTab" type="line" animated style="margin-top:16px">
+      <NTabs v-if="game" v-model:value="activeTab" type="line" animated style="margin-top:16px">
 
         <!-- ── 排行榜 ─────────────────────────────────────────────────── -->
-        <NTabPane name="leaderboard" tab="🏆 排行榜">
+        <NTabPane name="leaderboard" tab="排行榜">
           <div style="margin-top:12px">
             <NSpace style="margin-bottom:12px" align="center">
               <NSwitch v-model:value="showNonBot" @update:value="fetchLeaderboard">
@@ -31,43 +40,48 @@
               </NSwitch>
               <NButton size="small" @click="fetchLeaderboard">刷新</NButton>
             </NSpace>
-            <NDataTable :columns="leaderboardColumns" :data="leaderboard" :loading="leaderboardLoading" :row-key="(r:any)=>r.gamerId" size="small" />
+            <NAlert v-if="leaderboardError" type="error" title="排行榜加载失败" class="state-alert">{{ leaderboardError }} <NButton text type="primary" @click="fetchLeaderboard">重试</NButton></NAlert>
+            <NEmpty v-if="!leaderboardLoading && !leaderboardError && !leaderboard.length" description="暂无排行数据" class="empty-state" />
+            <div v-else-if="!leaderboardError" class="table-scroll"><NDataTable :columns="leaderboardColumns" :data="leaderboard" :loading="leaderboardLoading" :row-key="(r:any)=>r.gamerId" size="small" /></div>
           </div>
         </NTabPane>
 
         <!-- ── 参赛 ──────────────────────────────────────────────────── -->
-        <NTabPane name="participate" tab="⚔️ 参赛">
+        <NTabPane name="participate" tab="参赛">
           <div style="margin-top:12px">
+            <NAlert v-if="game.disabled" type="warning" title="该游戏已禁用">目前无法发起新对局。</NAlert>
+            <NAlert v-if="!authStore.isLoggedIn" type="info" title="登录后参赛" class="state-alert"><NButton type="primary" @click="navigateTo('/login')">登录</NButton></NAlert>
 
             <!-- 我的 Bot -->
-            <NCard size="small" style="margin-bottom:16px">
+            <NCard v-if="authStore.isLoggedIn && !game.disabled" size="small" class="section-card">
               <template #header>
-                <NSpace justify="space-between" align="center">
+                <div class="section-heading">
                   <span style="font-weight:600">我的 Bot</span>
-                  <NSpace>
+                  <div class="section-actions">
                     <NButton
-                      v-if="game?.allowHuman && !myHumanGamer"
+                      v-if="game?.allowHuman"
                       size="small"
-                      type="warning"
+                      secondary
                       :loading="joiningAsHuman !== null"
-                      @click="quickJoinAsHuman"
+                      @click="myHumanGamer ? joinAsHuman(myHumanGamer) : quickJoinAsHuman()"
                     >
-                      🎮 我要参赛（真人）
+                      真人参赛
                     </NButton>
-                    <NButton size="small" type="primary" @click="showSubmitModal = true">+ 提交 Bot</NButton>
-                  </NSpace>
-                </NSpace>
+                    <NButton size="small" type="primary" @click="showSubmitModal = true">提交 Bot</NButton>
+                  </div>
+                </div>
               </template>
               <NSpin :show="myBotsLoading">
-                <NEmpty v-if="!myBots.length" description="还没有 Bot，点击右上角提交一个" style="padding:24px 0" />
-                <NSpace v-else vertical :size="8">
+                <NAlert v-if="myBotsError" type="error" title="我的 Bot 加载失败" class="state-alert">{{ myBotsError }} <NButton text type="primary" @click="fetchMyBots">重试</NButton></NAlert>
+                <NEmpty v-else-if="!myBotsLoading && !myBots.length" description="还没有 Bot，可提交代码 Bot 或以真人身份参赛" class="empty-state" />
+                <NSpace v-else-if="!myBotsError" vertical :size="8">
                   <div
                     v-for="bot in myBots"
                     :key="bot.id"
                     class="bot-card"
                     :class="{ selected: selectedGamerIds.includes(bot.id), disabled: bot.disabled }"
                   >
-                    <NSpace align="center" style="flex:1;min-width:0">
+                    <NSpace align="center" class="bot-details" style="flex:1;min-width:0">
                       <!-- checkbox for non-human, non-disabled -->
                       <NCheckbox
                         v-if="bot.type !== 'human' && !bot.disabled"
@@ -76,15 +90,15 @@
                         @update:checked="(v:boolean) => toggleGamer(bot.id, v)"
                       />
                       <div style="min-width:0;flex:1">
-                        <NSpace align="center" :wrap="false">
-                          <NText strong :style="bot.disabled ? 'color:#aaa;white-space:nowrap' : 'white-space:nowrap'">{{ bot.title || bot.name }}</NText>
+                        <NSpace align="center">
+                          <NText strong :style="bot.disabled ? 'color:#aaa' : undefined">{{ bot.title || bot.name }}</NText>
                           <NTag v-if="bot.disabled" size="small" type="error">已禁用</NTag>
                           <NTag v-else size="small" :type="botTagType(bot.type)">{{ botTypeLabel(bot) }}</NTag>
                           <NTag v-if="!bot.disabled" size="small" type="info">⚡ {{ bot.elo ?? 1200 }}</NTag>
                         </NSpace>
                       </div>
                     </NSpace>
-                    <NSpace align="center">
+                    <NSpace align="center" class="bot-tools">
                       <!-- Human bot: show join button + creator info, no edit -->
                       <template v-if="bot.type === 'human'">
                         <NText depth="3" style="font-size:12px">真人席位</NText>
@@ -99,7 +113,10 @@
                         </NButton>
                       </template>
                       <!-- Code/webhook/external: show edit button -->
-                      <NButton v-else size="small" text :disabled="bot.disabled" @click="navigateTo(`/compete/gamer/${bot.id}`)">编辑</NButton>
+                      <template v-else>
+                        <NButton v-if="bot.type === 'code'" size="small" secondary :disabled="bot.disabled" @click="navigateTo({ path: '/compete/playground', query: { gameId: String(gameId), gamerId: String(bot.id), tab: 'bot' } })">测试</NButton>
+                        <NButton size="small" text :disabled="bot.disabled" @click="navigateTo(`/compete/gamer/${bot.id}`)">编辑</NButton>
+                      </template>
                     </NSpace>
                   </div>
                 </NSpace>
@@ -107,14 +124,16 @@
             </NCard>
 
             <!-- 全部 Bot（选对手） -->
-            <NCard size="small">
+            <NCard v-if="authStore.isLoggedIn && !game.disabled" size="small">
               <template #header>
                 <NSpace justify="space-between" align="center">
                   <span style="font-weight:600">所有参赛者 <NText depth="3" style="font-size:12px">（勾选加入当前对局）</NText></span>
                   <NButton size="small" @click="fetchAllGamers">刷新</NButton>
                 </NSpace>
               </template>
-              <NDataTable
+              <NAlert v-if="allGamersError" type="error" title="参赛者加载失败" class="state-alert">{{ allGamersError }} <NButton text type="primary" @click="fetchAllGamers">重试</NButton></NAlert>
+              <NEmpty v-if="!allGamersLoading && !allGamersError && !otherGamers.length" description="暂无其他可选的代码 Bot" class="empty-state" />
+              <div v-else-if="!allGamersError" class="table-scroll"><NDataTable
                 :columns="allGamerColumns"
                 :data="otherGamers"
                 :loading="allGamersLoading"
@@ -123,16 +142,17 @@
                 size="small"
                 style="margin-top:4px"
                 @update:checked-row-keys="onOtherGamerCheck"
-              />
+              /></div>
             </NCard>
 
             <!-- 发起对局 banner（移到最下面） -->
             <NAlert
+              v-if="authStore.isLoggedIn && !game.disabled"
               type="success"
               style="margin-top:12px"
               :show-icon="false"
             >
-              <NSpace justify="space-between" align="center">
+              <div class="launch-actions">
                 <NText>
                   已选 <NText strong>{{ selectedGamerIds.length }}</NText> / {{ game?.gamerQuantity ?? 2 }} 个参赛者
                   <NText v-if="selectedGamerIds.length > 0" depth="3" style="margin-left:8px">({{ selectedGamerNames.join(' vs ') }})</NText>
@@ -149,16 +169,18 @@
                     ⚔️ 发起对局
                   </NButton>
                 </NSpace>
-              </NSpace>
+              </div>
             </NAlert>
           </div>
         </NTabPane>
 
         <!-- ── 对局记录 ────────────────────────────────────────────────── -->
-        <NTabPane name="matches" tab="📋 对局记录">
+        <NTabPane name="matches" tab="对局与回放">
           <div style="margin-top:12px">
             <NButton size="small" style="margin-bottom:12px" @click="fetchMatches">刷新</NButton>
-            <NDataTable :columns="matchColumns" :data="matches" :loading="matchesLoading" :row-key="(r:any)=>r.id" size="small" />
+            <NAlert v-if="matchesError" type="error" title="对局加载失败" class="state-alert">{{ matchesError }} <NButton text type="primary" @click="fetchMatches">重试</NButton></NAlert>
+            <NEmpty v-if="!matchesLoading && !matchesError && !matches.length" description="暂无对局记录" class="empty-state" />
+            <div v-else-if="!matchesError" class="table-scroll"><NDataTable :columns="matchColumns" :data="matches" :loading="matchesLoading" :row-key="(r:any)=>r.id" size="small" /></div>
             <NPagination v-if="matchTotal > matchPerPage" v-model:page="matchPage" :page-count="Math.ceil(matchTotal/matchPerPage)" style="margin-top:12px;justify-content:flex-end" @update:page="fetchMatches" />
           </div>
         </NTabPane>
@@ -166,19 +188,19 @@
     </NSpin>
 
     <!-- 人类加入对局：选对手弹窗 -->
-    <NModal v-model:show="showJoinModal" preset="card" title="🎮 选择对手 Bot" style="width:480px"
+    <NModal v-model:show="showJoinModal" preset="card" title="选择对手 Bot" style="width:min(480px, calc(100vw - 24px))"
       @update:show="(v) => { if (!v) joiningAsHuman = null }">
       <NText depth="3" style="display:block;margin-bottom:12px">
         选 {{ (game?.gamerQuantity ?? 2) - 1 }} 个代码 Bot 作为对手
       </NText>
-      <NDataTable
+      <div class="table-scroll"><NDataTable
         :columns="opponentColumns"
         :data="allGamers.filter((g:any) => g.id !== joiningHumanBotId && g.type === 'code' && !g.disabled)"
         :row-key="(r:any) => r.id"
         :checked-row-keys="selectedOpponents"
         size="small"
         @update:checked-row-keys="(keys:any) => selectedOpponents = keys"
-      />
+      /></div>
       <template #footer>
         <NSpace justify="end">
           <NButton @click="showJoinModal = false">取消</NButton>
@@ -195,7 +217,7 @@
     </NModal>
 
     <!-- 提交 Bot 弹窗 -->
-    <NModal v-model:show="showSubmitModal" title="提交 Bot" preset="card" style="width:640px;max-height:90vh;overflow-y:auto">
+    <NModal v-model:show="showSubmitModal" title="提交 Bot" preset="card" style="width:min(640px, calc(100vw - 24px));max-height:90vh;overflow-y:auto">
       <NForm :model="submitForm" label-placement="left" label-width="110px">
         <NFormItem label="Bot 名称" required>
           <NInput v-model:value="submitForm.title" placeholder="给你的 Bot 起个名字" />
@@ -249,7 +271,7 @@
     </NModal>
 
     <!-- API Key 弹窗 -->
-    <NModal v-model:show="showApiKeyModal" preset="card" title="🔑 Bot API Key" style="width:580px">
+    <NModal v-model:show="showApiKeyModal" preset="card" title="Bot API Key" style="width:min(580px, calc(100vw - 24px))">
       <NAlert type="success" style="margin-bottom:12px">Bot 创建成功！API Key <b>只显示一次</b>，请立即保存。</NAlert>
       <NFormItem label="Bot API Key">
         <NInputGroup>
@@ -274,6 +296,7 @@
 </template>
 
 <script setup lang="ts">
+import { BOTZONE_LANGUAGE_OPTIONS } from '~/utils/botzone-language'
 import { h, computed } from 'vue'
 import { NButton, NTag, NSpace, NInputGroup, NEmpty, useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
@@ -290,27 +313,38 @@ const message = useMessage()
 // ── Game ──
 const loading = ref(true)
 const game = ref<any>(null)
-const activeTab = ref('leaderboard')
+const gameError = ref('')
+const activeTab = ref('participate')
 
-onMounted(async () => {
+async function fetchGame() {
+  loading.value = true
+  gameError.value = ''
   try {
     const res = await competeApi.getGame(gameId.value)
     game.value = res.data || null
-  } catch (e) { console.error(e) }
+    if (!game.value) gameError.value = '游戏不存在。'
+  } catch (e) { console.error(e); game.value = null; gameError.value = '请检查连接后重试。' }
   finally { loading.value = false }
+}
 
-  // Prefetch on mount
-  fetchLeaderboard()
+onMounted(async () => {
+  await fetchGame()
+  if (game.value && authStore.isLoggedIn) { fetchMyBots(); fetchAllGamers() }
 })
 
 watch(activeTab, (tab) => {
   if (tab === 'participate') { fetchMyBots(); fetchAllGamers() }
   if (tab === 'matches') fetchMatches()
+  if (tab === 'leaderboard') fetchLeaderboard()
+})
+watch(() => authStore.isLoggedIn, (loggedIn) => {
+  if (loggedIn && game.value && activeTab.value === 'participate') { fetchMyBots(); fetchAllGamers() }
 })
 
 // ── Leaderboard ──
 const leaderboard = ref<any[]>([])
 const leaderboardLoading = ref(false)
+const leaderboardError = ref('')
 const showNonBot = ref(false)
 const leaderboardBoard = computed(() => showNonBot.value ? 'outer' : 'inner')
 
@@ -318,10 +352,11 @@ const TYPE_LABEL: Record<string, string> = { code: '', human: '🧑 真人', ext
 
 async function fetchLeaderboard() {
   leaderboardLoading.value = true
+  leaderboardError.value = ''
   try {
     const res = await competeApi.getLeaderboard(gameId.value, leaderboardBoard.value as 'inner'|'outer')
     leaderboard.value = Array.isArray(res.data) ? res.data : []
-  } catch (e) { console.error(e) }
+  } catch (e) { console.error(e); leaderboardError.value = '请检查连接后重试。' }
   finally { leaderboardLoading.value = false }
 }
 
@@ -343,22 +378,25 @@ const leaderboardColumns = computed<DataTableColumns<any>>(() => [
 // ── My Bots ──
 const myBots = ref<any[]>([])
 const myBotsLoading = ref(false)
+const myBotsError = ref('')
 const myHumanGamer = computed(() => myBots.value.find((b: any) => b.type === 'human') ?? null)
 
 async function fetchMyBots() {
   if (!authStore.user) return
   myBotsLoading.value = true
+  myBotsError.value = ''
   try {
-    const res = await competeApi.listGamers({ gameId: gameId.value, page: 1, perPage: 100 })
+    const res = await competeApi.listGamers({ gameId: gameId.value, userId: authStore.user?.id, page: 1, perPage: 100 })
     const all: any[] = (res.data as any)?.items || []
     myBots.value = all.filter((g:any) => g.userId === authStore.user?.id)
-  } catch (e) { console.error(e) }
+  } catch (e) { console.error(e); myBotsError.value = '请检查连接后重试。' }
   finally { myBotsLoading.value = false }
 }
 
 // ── All Gamers ──
 const allGamers = ref<any[]>([])
 const allGamersLoading = ref(false)
+const allGamersError = ref('')
 const otherGamers = computed(() => allGamers.value.filter((g:any) => !myBots.value.some((mb:any) => mb.id === g.id) && g.type === 'code' && !g.disabled))
 
 // IDs of other-gamers currently selected (subset of selectedGamerIds)
@@ -375,10 +413,11 @@ function onOtherGamerCheck(keys: (string | number)[]) {
 
 async function fetchAllGamers() {
   allGamersLoading.value = true
+  allGamersError.value = ''
   try {
     const res = await competeApi.listGamers({ gameId: gameId.value, page: 1, perPage: 100 })
     allGamers.value = (res.data as any)?.items || []
-  } catch (e) { console.error(e) }
+  } catch (e) { console.error(e); allGamersError.value = '请检查连接后重试。' }
   finally { allGamersLoading.value = false }
 }
 
@@ -424,12 +463,6 @@ function botTypeLabel(bot: any) {
 function botTagType(type: string): 'default'|'info'|'success'|'warning'|'error' {
   const m: Record<string, any> = { code: 'info', webhook: 'warning', external: 'success', human: 'error' }
   return m[type] || 'default'
-}
-function eloTagType(elo: number): 'default'|'info'|'success'|'warning'|'error' {
-  if (!elo || elo < 1100) return 'default'
-  if (elo < 1250) return 'info'
-  if (elo < 1400) return 'success'
-  return 'warning'
 }
 
 const allGamerColumns: DataTableColumns<any> = [
@@ -510,35 +543,26 @@ async function confirmJoinAsHuman() {
 // ── Matches ──
 const matches = ref<any[]>([])
 const matchesLoading = ref(false)
+const matchesError = ref('')
 const matchPage = ref(1)
 const matchPerPage = 10
 const matchTotal = ref(0)
 
 async function fetchMatches() {
   matchesLoading.value = true
+  matchesError.value = ''
   try {
     const res = await competeApi.listMatches({ gameId: gameId.value, page: matchPage.value, perPage: matchPerPage })
     const data = res.data as any
     matches.value = data?.items || []
     matchTotal.value = data?.total || 0
-  } catch (e) { console.error(e) }
+  } catch (e) { console.error(e); matchesError.value = '请检查连接后重试。' }
   finally { matchesLoading.value = false }
 }
 
 const statusLabel: Record<number,string> = { 0:'等待中', 1:'进行中', 2:'已完成', 3:'错误' }
 const statusType: Record<number,any> = { 0:'default', 1:'info', 2:'success', 3:'error' }
 
-function getWinner(r: any): string {
-  try {
-    const fr = typeof r.result === 'string' ? JSON.parse(r.result).finalResult : r.result?.finalResult
-    if (!fr) return '-'
-    const maxScore = Math.max(...Object.values(fr) as number[])
-    const winnerIds = Object.entries(fr).filter(([,v]) => v === maxScore).map(([k]) => k)
-    if (winnerIds.length === Object.keys(fr).length) return '平局'
-    const gamerMap = Object.fromEntries((r.links||[]).map((l:any) => [String(l.gamerId), l.gamer?.title||`Bot#${l.gamerId}`]))
-    return winnerIds.map(id => gamerMap[id]||`Bot#${id}`).join(', ')
-  } catch { return '-' }
-}
 
 function gamerLink(gamerId: number | string, name: string) {
   return h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => navigateTo(`/compete/gamer/${gamerId}`) }, () => name)
@@ -549,6 +573,7 @@ function matchLink(matchId: number, content: any) {
 }
 
 const matchColumns: DataTableColumns<any> = [
+  { title: '查看', key: 'replay', width: 96, render: r => h(NButton, { size: 'small', secondary: true, onClick: () => navigateTo(`/compete/matches/${r.id}`) }, () => r.status === 2 ? '浏览回放' : '查看对局') },
   { title: 'ID', key: 'id', width: 55, render: r => matchLink(r.id, `#${r.id}`) },
   { title: '状态', key: 'status', width: 80, render: r => h(NTag, { size:'small', type:statusType[r.status] }, () => statusLabel[r.status]??r.status) },
   { title: '参与者', key: 'links', render: r => {
@@ -601,22 +626,16 @@ const submitForm = ref({
   language: 'python', code: '', opensource: true, webhookUrl: '', webhookSecret: '',
 })
 
-const botLanguageOptions = [
-  { label: 'Python 3', value: 'python' },
-  { label: 'C++', value: 'cpp' },
-  { label: 'Java', value: 'java' },
-  { label: 'JavaScript', value: 'javascript' },
-]
+const botLanguageOptions = BOTZONE_LANGUAGE_OPTIONS
 const codePlaceholder = `import json
 inp = json.loads(input())
 requests = inp.get("requests", [])
 last = json.loads(requests[-1]) if requests else {}
 print(json.dumps({"0": 4}))`
 
-const webhookRequestDoc = `POST https://your-server.com/bot\n{ "requests": ["<JSON>", ...], "responses": [...] }\n// 返回: {"0": 4}`
 
 const externalBotDoc = computed(() => {
-  const server = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000` : 'http://SERVER:3000'
+  const server = new URL(useRuntimeConfig().public.apiBase, window.location.origin).href.replace(/\/$/, '')
   return `import requests, time, json
 SERVER = "${server}"
 GAMER_ID = <你的GamerId>
@@ -638,7 +657,7 @@ while True:
 })
 
 const generatedExternalCode = computed(() => {
-  const server = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000` : 'http://SERVER:3000'
+  const server = new URL(useRuntimeConfig().public.apiBase, window.location.origin).href.replace(/\/$/, '')
   return `import requests, time, json
 SERVER = "${server}"
 GAMER_ID = ${createdGamerId.value}
@@ -704,7 +723,15 @@ useHead(computed(() => ({ title: `${game.value?.title || '游戏'} — Leverage 
 
 <style scoped>
 .compete-game-page { display: flex; flex-direction: column; gap: 16px; }
-.game-header { }
+.game-header { min-width: 0; }
+.game-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.game-actions, .section-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.game-actions { margin-top: 18px; }
+.section-card { margin-bottom: 16px; }
+.section-heading, .launch-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.state-alert { margin: 12px 0; }
+.empty-state { padding: 28px 0; }
+.table-scroll { max-width: 100%; overflow-x: auto; }
 
 .bot-card {
   display: flex;
@@ -725,5 +752,13 @@ useHead(computed(() => ({ title: `${game.value?.title || '游戏'} — Leverage 
   opacity: 0.5;
   background: #fafafa;
   cursor: not-allowed;
+}
+@media (max-width: 767px) {
+  .game-actions > :deep(.n-button) { flex: 1; }
+  .bot-card { flex-wrap: wrap; padding: 10px; }
+  .bot-details { flex-basis: 100% !important; }
+  .bot-details :deep(.n-text) { overflow-wrap: anywhere; }
+  .bot-tools { margin-left: auto; }
+  .launch-actions > :deep(.n-space) { width: 100%; justify-content: flex-end; }
 }
 </style>

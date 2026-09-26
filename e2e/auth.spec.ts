@@ -11,7 +11,7 @@ test.describe('认证', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
     // auth layout 中显示 "Leverage OJ"
-    await expect(page.getByText('Leverage OJ')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Leverage OJ', exact: true })).toBeVisible()
     // NInput 渲染为标准 input
     await expect(page.locator('input').first()).toBeVisible()
     await expect(page.locator('input[type="password"]')).toBeVisible()

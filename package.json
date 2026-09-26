@@ -9,7 +9,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "test:regression": "node scripts/frontend-regression-probe.mjs",
+    "test:regression": "node scripts/frontend-regression-probe.mjs && node scripts/code-draft-probe.mjs && node scripts/botzone-language-probe.mjs",
+    "test:botzone": "pnpm build && python3 scripts/botzone-example-probe.py && node scripts/botzone-renderer-probe.mjs",
     "test:e2e:fe": "playwright test",
     "test:e2e:fe:ui": "playwright test --ui"
   },

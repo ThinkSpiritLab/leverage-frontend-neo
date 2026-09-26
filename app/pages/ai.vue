@@ -146,10 +146,10 @@ window.addEventListener('message', e => {
   if (e.data.type === 'gameState') {
     // 真人对局：gameState.requests 最后一项是最新裁判指令
     const latest = JSON.parse(e.data.gameState.requests.at(-1) || '{}');
-    // 展示 UI，玩家操作后 window.parent.postMessage({ move: ... }, '*')
+    // 展示 UI，玩家操作后 window.parent.postMessage({ type: 'humanMove', move: JSON.stringify({ [String(e.data.playerIndex)]: 5 }) }, '*')
   }
 });
-<\/script>
+</${'script'}>
 </body>
 </html>`
 

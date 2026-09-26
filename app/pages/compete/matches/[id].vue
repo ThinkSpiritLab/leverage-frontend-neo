@@ -187,7 +187,7 @@
 import { h } from 'vue'
 import { NTag, NButton, NCollapse, NCollapseItem, NDivider } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import type { BotzoneGameLog } from '~/types/botzone'
+import { normalizeGameLog } from '~/utils/botzone-log'
 
 definePageMeta({
   layout: 'default',
@@ -349,31 +349,7 @@ const parsedResult = computed<{ verdict?: string, finalResult?: Record<string, n
   }
 })
 
-// 构建 BotzoneGameLog（如果 result 包含 rounds 数据）
-const gameLog = computed<BotzoneGameLog | null>(() => {
-  if (!parsedResult.value) return null
-  const r = parsedResult.value as any
-  if (!r.rounds || !Array.isArray(r.rounds) || r.rounds.length === 0) return null
-  return {
-    gameId: String(match.value?.gameId || ''),
-    // botzone-neo format: { round, judgeCmd, botResponses }
-    // frontend type expects: { round, judgerDisplay, botOutputs }
-    rounds: r.rounds.map((rd: any) => ({
-      round: rd.round,
-      // Normalised fields (BotzoneGameLog interface)
-      // rd.display is the judge display data (top-level); rd.judgeCmd is per-bot commands dict
-      judgerDisplay: rd.display ?? rd.judgeCmd?.display ?? rd.judgerDisplay,
-      botOutputs: rd.botResponses ?? rd.botOutputs ?? {},
-      // Keep raw fields so renderer HTML can access them directly
-      display: rd.display,         // ← renderer reads gameLog.rounds[n].display
-      judgeCmd: rd.judgeCmd,       // ← per-bot commands { "0": cmd, "1": null, ... }
-      botResponses: rd.botResponses ?? rd.botOutputs ?? {},
-      debug: rd.debug,
-    })),
-    finalResult: r.finalResult || {},
-    verdict: r.verdict || '',
-  }
-})
+const gameLog = computed(() => normalizeGameLog(match.value?.result, match.value?.gameId ?? ''))
 
 // 得分表格行数据：将 finalResult map 转为数组
 const scoreRows = computed(() => {
@@ -440,7 +416,7 @@ const gamerList = computed(() => {
   if (!match.value) return []
   // links: [{ index, gamerId, gamer: { id, title/name, language, elo, user } }]
   if (Array.isArray(match.value.links) && match.value.links.length > 0) {
-    return match.value.links
+    return [...match.value.links]
       .sort((a: any, b: any) => a.index - b.index)
       .map((link: any) => ({
         id: link.gamerId,
@@ -527,13 +503,9 @@ const submittingMove = ref(false)
 // ── Human turn renderer (iframe postMessage protocol) ────────────────────────
 const humanRendererRef = ref<HTMLIFrameElement | null>(null)
 
-// srcdoc injects a postMessage listener into the renderer HTML for human turns
-// Use raw rendererHtml — the renderer is responsible for handling gameState/gameLog messages
-const humanRendererSrcdoc = computed(() => match.value?.game?.rendererHtml || '')
-
+// The renderer handles gameState/gameLog inside its isolated srcdoc frame.
 function onHumanRendererLoad() {
   const turn = humanTurn.value
-  console.log('[Renderer] @load fired, humanTurn=', !!turn)
   if (turn) sendGameStateToRenderer(turn)
 }
 
@@ -551,7 +523,7 @@ function onIframeMessage(e: MessageEvent) {
     return
   }
   // Renderer sends back a move → auto-submit
-  if (e.data.type === 'humanMove' && typeof e.data.move === 'string' && e.data.move.trim() && !submittingMove.value) {
+  if (humanTurn.value && e.data.type === 'humanMove' && typeof e.data.move === 'string' && e.data.move.trim() && !submittingMove.value) {
     humanMove.value = e.data.move
     submitHumanMove()
   }
@@ -645,9 +617,9 @@ function stopCountdown() {
   countdownSec.value = 0
 }
 
-// Start/stop countdown when humanTurn changes; reset iframe interactive state
+// Start/stop countdown when humanTurn changes; the mounted iframe's capability persists.
 watch(() => humanTurn.value, (turn) => {
-  if (turn) { startCountdown(); iframeInteractive.value = false }
+  if (turn) startCountdown()
   else stopCountdown()
 })
 

@@ -2,37 +2,46 @@
   <div class="playground-page">
     <NBreadcrumb style="margin-bottom:12px">
       <NBreadcrumbItem @click="navigateTo('/compete')">竞技场</NBreadcrumbItem>
-      <NBreadcrumbItem>🧪 Playground</NBreadcrumbItem>
+      <NBreadcrumbItem>Bot 工作台</NBreadcrumbItem>
     </NBreadcrumb>
 
     <!-- 教程模式 Banner（全局，所有 Tab 可见） -->
     <NAlert v-if="tutorialMode" type="info" :show-icon="false" style="margin-bottom:12px;border-radius:8px">
       <NSpace align="center" justify="space-between">
-        <span>📖 <strong>教程模式</strong> — 正在使用「猜数字」游戏进行练习，不影响 ELO；发布功能已禁用</span>
+        <span>📖 <strong>教程模式</strong> — 正在使用所选示例游戏进行练习，不影响 ELO；发布功能已禁用</span>
         <NButton size="tiny" text @click="exitTutorialMode">退出教程模式</NButton>
       </NSpace>
     </NAlert>
 
+    <div class="workbench-heading">
+      <div><h1>Bot 工作台</h1><p>选择游戏与对手，测试当前草稿，再保存版本或查看回放。</p></div>
+      <NSpace>
+        <NButton v-if="sourceGamerId || publishedGamerId" @click="navigateTo(`/compete/gamer/${publishedGamerId || sourceGamerId}`)">返回 Bot 编辑</NButton>
+        <NButton secondary @click="developerTools = !developerTools; handleTabChange(developerTools ? 'judge' : 'bot')">{{ developerTools ? '返回 Bot 测试' : '游戏开发工具' }}</NButton>
+      </NSpace>
+    </div>
+    <NText v-if="developerTools" depth="3">裁判、组合调试与渲染器面向游戏作者。只编写 Bot 时使用 Bot 工作台即可。</NText>
     <NTabs :value="activeTab" type="card" animated @update:value="handleTabChange">
 
       <!-- ══════════════════════════════════════
            Tab 1: Bot 测试
       ══════════════════════════════════════ -->
       <NTabPane name="bot" tab="🤖 Bot 测试">
-        <NGrid :cols="12" :x-gap="16" :y-gap="12" style="margin-top:12px">
+        <NGrid :cols="12" :x-gap="16" :y-gap="12" item-responsive responsive="screen" style="margin-top:12px">
 
           <!-- 配置面板 -->
-          <NGridItem :span="3">
+          <NGridItem span="12 m:3">
             <NSpace vertical :size="12">
+              <NAlert v-if="botError" type="warning" :show-icon="false">{{ botError }} <NButton text size="tiny" @click="loadBotContext(bot.gameId, sourceGamerId)">重新加载</NButton></NAlert>
               <NCard title="游戏 & 对手" size="small">
                 <NSpace vertical :size="8">
-                  <NSelect v-model:value="bot.gameId" :options="gameOptions" placeholder="选择游戏..." filterable :disabled="tutorialMode" @update:value="onBotGameChange" />
+                  <NSelect :value="bot.gameId" :options="gameOptions" placeholder="选择游戏..." filterable :disabled="tutorialMode" @update:value="onBotGameChange" />
                   <NSelect v-model:value="bot.opponentGamerId" :options="opponentOptions" placeholder="选择对手..." filterable :disabled="!bot.gameId" :loading="opponentsLoading" />
                 </NSpace>
               </NCard>
 
               <NButton type="primary" block :loading="bot.running"
-                :disabled="!bot.gameId || !bot.opponentGamerId || !botCode.trim()"
+                :disabled="!bot.gameId || !bot.opponentGamerId || !botCode.trim() || opponentsLoading || games.find(g => g.id === bot.gameId)?.gamerQuantity !== 2"
                 @click="runBotTest">
                 ▶ 运行测试对局
               </NButton>
@@ -42,7 +51,7 @@
                 查看完整对局 →
               </NButton>
 
-              <NButton v-if="bot.matchId && bot.status === 2 && !tutorialMode" block type="success" secondary
+              <NButton v-if="bot.matchId && bot.status === 2 && !tutorialMode && botCode === botCodeAtTest" block type="success" secondary
                 @click="publishBotModal = true">
                 🚀 发布为 Bot
               </NButton>
@@ -50,18 +59,19 @@
           </NGridItem>
 
           <!-- 代码编辑器 -->
-          <NGridItem :span="9">
+          <NGridItem span="12 m:9">
             <NCard size="small">
               <template #header>
                 <NSpace align="center" justify="space-between">
                   <span>代码编辑器</span>
                   <NSpace>
-                    <NSelect v-model:value="bot.language" :options="LANGUAGE_OPTIONS" size="small" style="width:130px" @update:value="onBotLangChange" />
+                    <NSelect v-model:value="bot.language" :options="BOTZONE_LANGUAGE_OPTIONS" size="small" style="width:130px" @update:value="onBotLangChange" />
                     <NButton size="small" text @click="insertBotTemplate">📋 插入模板</NButton>
                   </NSpace>
                 </NSpace>
               </template>
-              <CodeEditor v-model="botCode" :language="botEditorLang" height="400px" />
+              <CompeteCodeDraftStatus :dirty="botDraft.dirty.value" :restored="botDraft.restored.value" :storage-error="botDraft.storageError.value" @discard="botDraft.discard" />
+              <CodeEditor v-model="botCode" :language="botEditorLang" height="400px" :readonly="!bot.gameId || opponentsLoading" />
             </NCard>
           </NGridItem>
 
@@ -91,15 +101,15 @@
       <!-- ══════════════════════════════════════
            Tab 2: 裁判测试
       ══════════════════════════════════════ -->
-      <NTabPane name="judge" tab="⚖️ 裁判测试">
-        <NGrid :cols="12" :x-gap="16" :y-gap="12" style="margin-top:12px">
+      <NTabPane v-if="developerTools" name="judge" tab="⚖️ 裁判测试">
+        <NGrid :cols="12" :x-gap="16" :y-gap="12" item-responsive responsive="screen" style="margin-top:12px">
 
           <!-- 配置 -->
-          <NGridItem :span="3">
+          <NGridItem span="12 m:3">
             <NSpace vertical :size="12">
               <NCard title="游戏 & Bots" size="small">
                 <NSpace vertical :size="8">
-                  <NSelect v-model:value="judge.gameId" :options="gameOptions" placeholder="使用哪个游戏的Bots..." filterable :disabled="tutorialMode && tutorialActiveTab === 'judge'" @update:value="onJudgeGameChange" />
+                  <NSelect :value="judge.gameId" clearable :options="gameOptions" placeholder="使用哪个游戏的Bots..." filterable :disabled="tutorialMode && tutorialActiveTab === 'judge'" @update:value="onJudgeGameChange" />
                   <NSelect v-model:value="judge.bot0Id" :options="judgeOpponentOptions" placeholder="Bot 0 (先手)..." :loading="judgeOpponentsLoading" />
                   <NSelect v-model:value="judge.bot1Id" :options="judgeOpponentOptions" placeholder="Bot 1 (后手)..." :loading="judgeOpponentsLoading" />
                 </NSpace>
@@ -116,17 +126,18 @@
           </NGridItem>
 
           <!-- 裁判代码 -->
-          <NGridItem :span="9">
+          <NGridItem span="12 m:9">
             <NCard size="small">
               <template #header>
                 <NSpace align="center" justify="space-between">
                   <span>裁判代码</span>
                   <NSpace>
-                    <NSelect v-model:value="judge.language" :options="LANGUAGE_OPTIONS" size="small" style="width:130px" @update:value="onJudgeLangChange" />
+                    <NSelect v-model:value="judge.language" :options="BOTZONE_LANGUAGE_OPTIONS" size="small" style="width:130px" @update:value="onJudgeLangChange" />
                     <NButton size="small" text @click="insertJudgeTemplate">📋 插入裁判模板</NButton>
                   </NSpace>
                 </NSpace>
               </template>
+              <CompeteCodeDraftStatus :dirty="judgeDraft.dirty.value" :restored="judgeDraft.restored.value" :storage-error="judgeDraft.storageError.value" @discard="judgeDraft.discard" />
               <CodeEditor v-model="judgeCode" :language="judgeEditorLang" height="400px" />
             </NCard>
           </NGridItem>
@@ -157,14 +168,15 @@
       <!-- ══════════════════════════════════════
            Tab 3: 组合调试器
       ══════════════════════════════════════ -->
-      <NTabPane name="combo" tab="🔬 组合调试">
+      <NTabPane v-if="developerTools" name="combo" tab="🔬 组合调试">
+        <CompeteCodeDraftStatus :dirty="comboDrafts.some(d => d.dirty.value)" :restored="comboDrafts.some(d => d.restored.value)" :storage-error="comboDrafts.some(d => d.storageError.value)" @discard="comboDrafts.forEach(d => d.discard())" />
         <div style="margin-top:12px">
           <NAlert type="info" :show-icon="false" style="margin-bottom:16px;font-size:13px">
             将裁判 + 两个 Bot 组合运行，查看完整通信时序图。可自己编写或引入已有程序。
           </NAlert>
 
           <!-- 三个 Slot -->
-          <NGrid :cols="3" :x-gap="16" style="margin-bottom:16px">
+          <NGrid cols="1 m:3" item-responsive responsive="screen" :x-gap="16" style="margin-bottom:16px">
             <NGridItem>
               <ProgramSlot
                 label="裁判"
@@ -209,7 +221,7 @@
           <!-- 运行控制 -->
           <NCard size="small" style="margin-bottom:16px">
             <NSpace align="center" justify="space-between">
-              <NSelect v-model:value="combo.gameId" :options="gameOptions" placeholder="参考游戏（用于搜索Bot）..." filterable style="width:280px" />
+              <NSelect :value="combo.gameId" clearable @update:value="setComboGame" :options="gameOptions" placeholder="参考游戏（用于搜索Bot）..." filterable style="width:280px" />
               <NSpace>
                 <NButton
                   type="primary"
@@ -252,8 +264,9 @@
       <!-- ══════════════════════════════════════
            Tab 4: 渲染器测试
       ══════════════════════════════════════ -->
-      <NTabPane name="renderer" tab="🎨 渲染器">
-        <NGrid :cols="2" :x-gap="16" :y-gap="12" style="margin-top:12px">
+      <NTabPane v-if="developerTools" name="renderer" tab="🎨 渲染器">
+        <CompeteCodeDraftStatus :dirty="rendererDraft.dirty.value" :restored="rendererDraft.restored.value" :storage-error="rendererDraft.storageError.value" @discard="rendererDraft.discard" />
+        <NGrid cols="1 m:2" item-responsive responsive="screen" :x-gap="16" :y-gap="12" style="margin-top:12px">
           <NGridItem>
             <NCard size="small">
               <template #header>
@@ -285,9 +298,9 @@
           </NGridItem>
 
           <!-- Test data -->
-          <NGridItem :span="2">
+          <NGridItem span="1 m:2">
             <NCard title="🧪 测试数据注入" size="small">
-              <NGrid :cols="2" :x-gap="12">
+              <NGrid cols="1 m:2" item-responsive responsive="screen" :x-gap="12">
                 <NGridItem>
                   <NFormItem label="gameLog JSON" style="margin-bottom:0">
                     <NInput v-model:value="testGameLog" type="textarea" :rows="5" style="font-family:monospace;font-size:12px" />
@@ -308,11 +321,12 @@
           </NGridItem>
 
           <!-- Publish -->
-          <NGridItem :span="2">
+          <NGridItem span="1 m:2">
             <NCard title="发布渲染器到游戏" size="small">
+              <NText v-if="!authStore.isAdmin" depth="3">本地预览不受限；发布到游戏需要管理员权限。</NText>
               <NSpace align="center">
-                <NSelect v-model:value="rendererTargetGame" :options="gameOptions" placeholder="目标游戏..." style="width:260px" />
-                <NButton type="success" :loading="publishingRenderer" :disabled="!rendererTargetGame || !rendererHtml || tutorialMode" @click="publishRenderer">
+                <NSelect :value="rendererTargetGame" clearable @update:value="setRendererGame" :options="gameOptions" placeholder="目标游戏..." style="width:260px" />
+                <NButton type="success" :loading="publishingRenderer" :disabled="!authStore.isAdmin || !rendererTargetGame || !rendererHtml || tutorialMode" @click="publishRenderer">
                   🚀 发布
                 </NButton>
               </NSpace>
@@ -337,7 +351,7 @@
     </NTabs>
 
     <!-- Publish Bot Modal -->
-    <NModal v-model:show="publishBotModal" title="发布为 Bot" preset="card" style="width:400px">
+    <NModal v-model:show="publishBotModal" title="发布为 Bot" preset="card" style="width:min(440px, calc(100vw - 24px))">
       <NForm label-placement="left" label-width="80">
         <NFormItem label="Bot 名称">
           <NInput v-model:value="publishBotName" placeholder="给 Bot 起个名字" />
@@ -357,16 +371,20 @@
 </template>
 
 <script setup lang="ts">
+import exampleRenderer from '~~/examples/botzone/closest-renderer.html?raw'
+import previewFixture from '~~/examples/botzone/closest-log.json'
+import { normalizeGameLog } from '~/utils/botzone-log'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   NTabs, NTabPane, NGrid, NGridItem, NCard, NSpace, NButton, NSelect, NInput,
-  NTag, NText, NAlert, NDescriptions, NDescriptionsItem, NEmpty, NSpin,
-  NCollapse, NCollapseItem, NModal, NForm, NFormItem, NSwitch,
+  NTag, NText, NAlert, NEmpty, NSpin,
+  NModal, NForm, NFormItem, NSwitch,
   useMessage,
 } from 'naive-ui'
-import { LANGUAGE_OPTIONS } from '~/types'
+import { BOTZONE_LANGUAGE_OPTIONS, botzoneEditorLanguage, botzoneLanguage } from '~/utils/botzone-language'
 import type { TimelineRound } from '~/components/compete/MatchTimeline.vue'
 import ProgramSlot from '~/components/compete/ProgramSlot.vue'
+import type { Game, Gamer, Match } from '~/types/compete'
 import confetti from 'canvas-confetti'
 import MatchTimeline from '~/components/compete/MatchTimeline.vue'
 import WikiContent from '~/components/compete/WikiContent.vue'
@@ -375,10 +393,12 @@ const message = useMessage()
 const competeApi = useCompeteApi()
 const authStore = useAuthStore()
 
-const activeTab = ref('wiki')
+const route = useRoute()
+const router = useRouter()
+const activeTab = ref('bot')
+const developerTools = ref(false)
 const tutorialMode = ref(false)
 const tutorialActiveTab = ref('bot') // which test tab the tutorial is on
-const TUTORIAL_GAME_ID = 3  // 猜数字 — 系统内置游戏
 
 // In tutorial mode, only tutorialActiveTab and 'wiki' are accessible
 function handleTabChange(tab: string) {
@@ -387,10 +407,12 @@ function handleTabChange(tab: string) {
     return
   }
   activeTab.value = tab
+  const id = tab === 'judge' ? judge.value.gameId : tab === 'combo' ? combo.value.gameId : tab === 'renderer' ? rendererTargetGame.value : bot.value.gameId
+  void router.replace({ query: { tab, gameId: id ?? undefined, gamerId: tab === 'bot' ? sourceGamerId.value ?? undefined : undefined } })
 }
 
 // ── Games ──
-const games = ref<any[]>([])
+const games = ref<Game[]>([])
 const gameOptions = computed(() => games.value.map(g => ({ label: g.name || g.title, value: g.id })))
 
 onMounted(async () => {
@@ -401,42 +423,18 @@ onMounted(async () => {
 })
 
 // ── Helper: convert match result to timeline ──
-function buildTimeline(result: any): TimelineRound[] {
-  if (!result?.rounds) return []
-  return result.rounds.map((r: any) => {
-    const events: any[] = []
-    const cmd = r.judgeCmd
-    if (cmd?.content) {
-      for (const [pid, data] of Object.entries(cmd.content)) {
-        events.push({ from: 'Judge', to: `Bot${pid}`, type: 'cmd', data, debug: cmd.debug, stderr: cmd.stderr })
-      }
+function buildTimeline(result: unknown): TimelineRound[] {
+  const log = normalizeGameLog(result)
+  return (log?.rounds ?? []).map(r => {
+    const events: TimelineRound['events'] = []
+    const cmd = r.judgeCmd as Record<string, any> | undefined
+    for (const [pid, data] of Object.entries(cmd?.content ?? cmd?.commands ?? {})) {
+      events.push({ from: 'Judge', to: `Bot${pid}`, type: 'cmd', data, debug: cmd?.debug, stderr: cmd?.stderr })
     }
-    if (r.botResponses) {
-      const responses = r.botResponses as Record<string, unknown>
-
-      // Legacy buggy format: botzone-neo pre-fix incorrectly merged {"move":x,"debug":"..."} into botResponses
-      // Recover by finding which numeric player ID is missing and assigning "move" to it
-      const legacyMove = 'move' in responses ? responses['move'] : undefined
-      const legacyDebug = 'debug' in responses ? String(responses['debug'] ?? '') : undefined
-
-      const numericPids = Object.keys(responses).filter(k => /^\d+$/.test(k))
-
-      for (const pid of numericPids) {
-        const resp = responses[pid]
-        const debugInfo = r.debug?.[`bot_${pid}`]
-        const stderrInfo = r.debug?.[`bot_${pid}_stderr`]
-        events.push({ from: `Bot${pid}`, to: 'Judge', type: 'resp', data: resp, debug: debugInfo, stderr: stderrInfo })
-      }
-
-      // Recover missing player's data from legacy "move" key
-      if (legacyMove !== undefined) {
-        // Find missing player index (e.g. if only "1" present, missing is "0")
-        const allPids = Array.from({ length: numericPids.length + 1 }, (_, i) => String(i))
-        const missingPid = allPids.find(p => !numericPids.includes(p)) ?? String(numericPids.length)
-        events.push({ from: `Bot${missingPid}`, to: 'Judge', type: 'resp', data: legacyMove, debug: legacyDebug || undefined, stderr: undefined })
-      }
+    for (const [pid, data] of Object.entries(r.botOutputs)) {
+      if (/^\d+$/.test(pid)) events.push({ from: `Bot${pid}`, to: 'Judge', type: 'resp', data, debug: r.debug?.[`bot_${pid}`], stderr: r.debug?.[`bot_${pid}_stderr`] })
     }
-    return { round: r.round, events, display: cmd?.display }
+    return { round: r.round, events, display: r.judgerDisplay }
   })
 }
 
@@ -447,22 +445,8 @@ function matchStatusType(s: number): 'default' | 'info' | 'success' | 'error' {
   return ({ 0: 'default', 1: 'info', 2: 'success', 3: 'error' } as Record<number, any>)[s] || 'default'
 }
 
-// ── Poll helper ──
-function startPoll(matchId: number, onUpdate: (m: any) => void, onDone: (m: any) => void) {
-  const timer = setInterval(async () => {
-    try {
-      const res = await competeApi.getMatch(matchId)
-      const m = res.data as any
-      onUpdate(m)
-      if (m.status === 2 || m.status === 3) {
-        clearInterval(timer)
-        onDone(m)
-      }
-    } catch (e) { console.error(e) }
-  }, 1500)
-  onUnmounted(() => clearInterval(timer))
-  return timer
-}
+const matchPolling = useMatchPolling()
+function startPoll(id: number, update: (match: Match) => void, done: (match: Match) => void, error = (text: string) => message.error(text)) { return matchPolling.start(id, update, done, error) }
 
 // ══════════════════════════════════════
 // BOT TEST
@@ -480,7 +464,7 @@ const bot = ref({
 })
 const botCode = ref('')
 const botCodeAtTest = ref('')   // code snapshot at time of last test run
-const botOpponents = ref<any[]>([])
+const botOpponents = ref<Gamer[]>([])
 const opponentsLoading = ref(false)
 const publishBotModal = ref(false)
 const publishBotName = ref('')
@@ -492,21 +476,62 @@ const opponentOptions = computed(() => botOpponents.value.map(g => ({
   value: g.id,
 })))
 
-const botEditorLang = computed(() => editorLangMap[bot.value.language] || 'python')
+const botEditorLang = computed(() => botzoneEditorLanguage(bot.value.language))
 
-const editorLangMap: Record<string, string> = {
-  python: 'python', cpp: 'cpp', java: 'java', javascript: 'javascript', go: 'go', c: 'c',
-}
-
-async function onBotGameChange(id: number | null) {
-  if (!id) return
+let contextVersion = 0
+let loadedContext = ''
+let stopBotPoll: (() => void) | undefined
+const sourceGamerId = ref<number | null>(null)
+const botError = ref('')
+const publishedGamerId = ref<number | null>(null)
+const botDraft = useCodeDraft(
+  () => ({ code: botCode.value, language: bot.value.language, title: publishBotName.value }),
+  value => { botCode.value = value.code; bot.value.language = value.language; publishBotName.value = value.title },
+)
+async function loadBotContext(id: number | null, gamerId: number | null = null) {
+  const owner = authStore.user?.id
+  loadedContext = `${owner}:${id}:${gamerId}`
+  const version = ++contextVersion
+  const current = () => version === contextVersion && authStore.user?.id === owner
+  stopBotPoll?.()
+  bot.value.running = false
+  bot.value.matchId = null
+  bot.value.timeline = []
+  bot.value.opponentGamerId = null
+  botOpponents.value = []
+  sourceGamerId.value = gamerId
+  botError.value = ''
+  publishedGamerId.value = null
+  if (!id || !owner) return
   opponentsLoading.value = true
   try {
-    const res = await competeApi.listGamers({ gameId: id, page: 1, perPage: 100 })
-    const all = (res.data as any)?.items || res.data || []
-    botOpponents.value = all.filter((g: any) => g.type === 'code' && !g.disabled)
-  } catch (e) { console.error(e) }
-  finally { opponentsLoading.value = false }
+    const [opponents, selectedGame, selectedBot] = await Promise.all([
+      competeApi.listGamers({ gameId: id, page: 1, perPage: 100 }),
+      competeApi.getGame(id),
+      gamerId ? competeApi.getGamer(gamerId) : Promise.resolve(null),
+    ])
+    if (!current()) return
+    if (selectedBot && selectedBot.data.gameId !== id) throw new Error('Bot 不属于当前游戏')
+    if (selectedBot && selectedBot.data.code === undefined) throw new Error('此 Bot 的代码不可读取，请从自己的 Bot 开始测试')
+    if (!games.value.some(game => game.id === id)) games.value.push(selectedGame.data)
+    botOpponents.value = opponents.data.items.filter(g => g.type === 'code' && !g.disabled && !g.isTest)
+    bot.value.opponentGamerId = botOpponents.value.find(g => g.id !== gamerId)?.id ?? null
+    const original = selectedBot?.data
+    botDraft.load(original ? `bot:${original.id}` : `new:${id}`, {
+      code: original?.code ?? '', language: botzoneLanguage(original?.language), title: original?.title ?? '',
+    })
+    if (selectedGame.data.gamerQuantity !== 2) botError.value = '此测试工作台适用于双人游戏；请保存 Bot 后从游戏页面发起多人对局'
+    else if (!botOpponents.value.length) botError.value = '当前没有可用对手，请先在游戏页面创建或启用一个 Bot'
+  }
+  catch (error: unknown) { if (current()) botError.value = error instanceof Error ? error.message : '加载测试环境失败，请重试' }
+  finally { if (current()) opponentsLoading.value = false }
+}
+async function onBotGameChange(id: number | null) {
+  if (!botDraft.canLeave()) return false
+  bot.value.gameId = id
+  await loadBotContext(id)
+  if (id) await router.replace({ query: { ...route.query, gameId: id, gamerId: undefined, tab: 'bot' } })
+  return !botError.value
 }
 
 function onBotLangChange(lang: string) {
@@ -587,6 +612,11 @@ function insertBotTemplate() {
 
 async function runBotTest() {
   if (!bot.value.gameId || !bot.value.opponentGamerId) return
+  const version = contextVersion
+  const owner = authStore.user?.id
+  stopBotPoll?.()
+  botError.value = ''
+  bot.value.matchId = null
   botCodeAtTest.value = botCode.value   // snapshot for staleness check
   bot.value.running = true
   bot.value.timeline = []
@@ -597,17 +627,19 @@ async function runBotTest() {
       language: bot.value.language,
       opponentGamerId: bot.value.opponentGamerId,
     })
-    const data = res.data as any
+    if (version !== contextVersion || owner !== authStore.user?.id) return
+    const data = res.data
     bot.value.matchId = data.matchId
     bot.value.status = 0
     const testGamerId = data.testGamerId
     const oppGamerId = bot.value.opponentGamerId
     const opp = botOpponents.value.find(g => g.id === oppGamerId)
     bot.value.botNames = { '0': '我的 Bot', '1': opp?.title || opp?.name || 'Opponent' }
-    startPoll(data.matchId, (m) => { bot.value.status = m.status },
+    stopBotPoll = startPoll(data.matchId, (m) => { bot.value.status = m.status },
       (m) => {
+        bot.value.running = false
         bot.value.status = m.status
-        const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
+        const r = normalizeGameLog(m.result, m.gameId)
         // finalResult keys are gamer IDs; map to position keys so botNames lookup works
         const rawResult = r?.finalResult as Record<string, number> | undefined
         if (rawResult) {
@@ -622,29 +654,35 @@ async function runBotTest() {
           bot.value.finalResult = rawResult ?? null
         }
         bot.value.timeline = buildTimeline(r)
-      })
+        if (m.status === 3) botError.value = '评测失败，请查看对局日志后重试'
+      }, text => { bot.value.running = false; botError.value = text })
   } catch (e: any) {
-    message.error(e?.message || '运行失败')
+    if (version === contextVersion) botError.value = e?.response?.data?.message || e?.message || '运行失败，草稿已保留'
   } finally {
-    bot.value.running = false
+    if (version === contextVersion && !bot.value.matchId) bot.value.running = false
   }
 }
 
 async function publishBot() {
   if (!publishBotName.value.trim() || !bot.value.gameId) return
   publishingBot.value = true
+  const snapshot = botDraft.capture()
+  const owner = authStore.user?.id
   try {
     const res = await competeApi.createGamer({
       gameId: bot.value.gameId,
-      title: publishBotName.value,
-      language: bot.value.language,
-      code: botCode.value,
+      title: snapshot.data.title,
+      language: snapshot.data.language,
+      code: snapshot.data.code,
       type: 'code',
       opensource: publishBotOpenSource.value,
     })
-    message.success('Bot 发布成功！')
+    if (owner !== authStore.user?.id) return
+    botDraft.markSaved(snapshot)
+    publishedGamerId.value = res.data.id
+    message.success(`Bot #${res.data.id} 发布成功！`)
     publishBotModal.value = false
-    navigateTo(`/compete/gamer/${(res.data as any).id}`)
+    if (!botDraft.dirty.value) await navigateTo(`/compete/gamer/${res.data.id}`)
   } catch (e: any) {
     message.error(e?.message || '发布失败')
   } finally {
@@ -676,17 +714,24 @@ const judgeOpponentOptions = computed(() => judgeOpponents.value.map(g => ({
   label: `${g.title || g.name} (ELO ${g.elo ?? 1200})`,
   value: g.id,
 })))
-const judgeEditorLang = computed(() => editorLangMap[judge.value.language] || 'python')
+const judgeEditorLang = computed(() => botzoneEditorLanguage(judge.value.language))
 
 async function onJudgeGameChange(id: number | null) {
+  if (!judgeDraft.canLeave()) return false
+  judge.value.gameId = id
+  judge.value.bot0Id = null
+  judge.value.bot1Id = null
+  judgeOpponents.value = []
+  if (activeTab.value === 'judge') void router.replace({ query: { tab: 'judge', gameId: id ?? undefined } })
   if (!id) return
+  const owner = authStore.user?.id
   judgeOpponentsLoading.value = true
   try {
-    const res = await competeApi.listGamers({ gameId: id, page: 1, perPage: 100 })
-    const all = (res.data as any)?.items || res.data || []
-    judgeOpponents.value = all.filter((g: any) => g.type === 'code' && !g.disabled)
-  } catch (e) { console.error(e) }
-  finally { judgeOpponentsLoading.value = false }
+    const { data } = await competeApi.listGamers({ gameId: id, page: 1, perPage: 100 })
+    if (judge.value.gameId === id && authStore.user?.id === owner) judgeOpponents.value = data.items.filter(g => g.type === 'code' && !g.disabled)
+  } catch { message.error('无法加载测试对手，请重试') }
+  finally { if (judge.value.gameId === id) judgeOpponentsLoading.value = false }
+  return judge.value.gameId === id && authStore.user?.id === owner
 }
 
 function onJudgeLangChange(lang: string) { judge.value.language = lang }
@@ -771,7 +816,7 @@ async function runJudgeTest() {
     startPoll(matchId, (m) => { judge.value.status = m.status },
       (m) => {
         judge.value.status = m.status
-        const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
+        const r = normalizeGameLog(m.result, m.gameId)
         const rawResult = r?.finalResult as Record<string, number> | undefined
         if (rawResult) {
           const normalized: Record<string, number> = {}
@@ -837,7 +882,7 @@ async function runCombo() {
     startPoll(matchId, (m) => { combo.value.status = m.status },
       (m) => {
         combo.value.status = m.status
-        const r = typeof m.result === 'string' ? JSON.parse(m.result) : m.result
+        const r = normalizeGameLog(m.result, m.gameId)
         combo.value.finalResult = r?.finalResult
         combo.value.timeline = buildTimeline(r)
       })
@@ -854,26 +899,7 @@ async function runCombo() {
 const rendererHtml = ref('')
 const rendererPreview = ref('')
 const rendererRef = ref<HTMLIFrameElement | null>(null)
-const testGameLog = ref(JSON.stringify({
-  rounds: [
-    {
-      round: 1,
-      judgeCmd: { content: { "0": { round: 1, rounds: 5 }, "1": { round: 1, rounds: 5 } }, display: { round: 1, secret: 42 } },
-      botResponses: { "0": 50, "1": 70 },
-    },
-    {
-      round: 2,
-      judgeCmd: { content: { "0": { round: 2, rounds: 5, hint: "smaller" }, "1": { round: 2, rounds: 5, hint: "smaller" } }, display: { round: 2, scores: [0, 0] } },
-      botResponses: { "0": 30, "1": 55 },
-    },
-    {
-      round: 3,
-      judgeCmd: { content: { "0": { round: 3, rounds: 5, hint: "bigger" }, "1": { round: 3, rounds: 5, hint: "smaller" } }, display: { round: 3, scores: [0, 0] } },
-      botResponses: { "0": 42, "1": 48 },
-    },
-  ],
-  finalResult: { "0": 1, "1": 0 },
-}, null, 2))
+const testGameLog = ref(JSON.stringify(previewFixture, null, 2))
 const testGameState = ref(JSON.stringify({
   requests: [
     JSON.stringify({ round: 1, rounds: 5 }),
@@ -889,30 +915,47 @@ const lastIframeMsg = ref('')
 const rendererTargetGame = ref<number | null>(null)
 const publishingRenderer = ref(false)
 
+// Only code/language is stored. Imported keys, webhook secrets and tokens stay out.
+function useScratchDraft(name: string, scope: () => number | null, read: () => { code: string; language: string; title: string }, apply: (value: { code: string; language: string; title: string }) => void) {
+  const state = useCodeDraft(read, apply)
+  watch([scope, () => authStore.user?.id], ([id]) => {
+    state.load(`${name}:${id ?? 'scratch'}`, { code: '', language: name === 'renderer' ? 'html' : 'python', title: '' })
+  }, { immediate: true })
+  return state
+}
+const judgeDraft = useScratchDraft('judge', () => judge.value.gameId,
+  () => ({ code: judgeCode.value, language: judge.value.language, title: '' }),
+  value => { judgeCode.value = value.code; judge.value.language = value.language })
+const rendererDraft = useScratchDraft('renderer', () => rendererTargetGame.value,
+  () => ({ code: rendererHtml.value, language: 'html', title: '' }),
+  value => { rendererHtml.value = value.code })
+const comboDrafts = [
+  useScratchDraft('combo-judge', () => combo.value.gameId,
+    () => ({ code: combo.value.judgeCode, language: combo.value.judgeLang, title: '' }),
+    value => { combo.value.judgeCode = value.code; combo.value.judgeLang = value.language; combo.value.importedJudgeId = null }),
+  useScratchDraft('combo-bot0', () => combo.value.gameId,
+    () => ({ code: combo.value.bot0Code, language: combo.value.bot0Lang, title: '' }),
+    value => { combo.value.bot0Code = value.code; combo.value.bot0Lang = value.language; combo.value.importedBot0Id = null }),
+  useScratchDraft('combo-bot1', () => combo.value.gameId,
+    () => ({ code: combo.value.bot1Code, language: combo.value.bot1Lang, title: '' }),
+    value => { combo.value.bot1Code = value.code; combo.value.bot1Lang = value.language; combo.value.importedBot1Id = null }),
+]
+
+
+function setComboGame(id: number | null) {
+  if (!comboDrafts.every(draft => draft.canLeave())) return
+  combo.value.gameId = id
+  void router.replace({ query: { tab: 'combo', gameId: id ?? undefined } })
+}
+function setRendererGame(id: number | null) {
+  if (!rendererDraft.canLeave()) return
+  rendererTargetGame.value = id
+  void router.replace({ query: { tab: 'renderer', gameId: id ?? undefined } })
+}
+
 function insertRendererTemplate() {
-  rendererHtml.value = `<!DOCTYPE html>
-<html lang="zh"><head><meta charset="UTF-8">
-<style>body{font-family:sans-serif;background:#0f1117;color:#e2e8f0;padding:16px;min-height:400px;}</style>
-</head><body>
-<div id="app">等待游戏数据…</div>
-<script>
-  window.parent.postMessage({type:'capabilities',interactive:true},'*');
-  const app=document.getElementById('app');let done=false;
-  window.addEventListener('message',(e)=>{
-    if(!e.data?.type)return;
-    if(e.data.type==='gameLog'){
-      app.innerHTML='<h3>回放</h3><pre>'+JSON.stringify(e.data.gameLog,null,2)+'</pre>';
-    } else if(e.data.type==='gameState'){
-      const req=JSON.parse(e.data.gameState.requests?.slice(-1)[0]||'{}');
-      app.innerHTML=\`<h3>你的回合(玩家\${e.data.playerIndex})</h3><p>\${JSON.stringify(req)}</p><button id="b">提交</button>\`;
-      document.getElementById('b').onclick=()=>{
-        if(done)return;done=true;
-        const m={};m[String(e.data.playerIndex)]=1;
-        window.parent.postMessage({type:'humanMove',move:JSON.stringify(m)},'*');
-      };
-    }
-  });
-<\/script></body></html>`
+  if (rendererHtml.value.trim() && !window.confirm('替换当前 HTML？原有未发布修改将被覆盖。')) return
+  rendererHtml.value = exampleRenderer
 }
 
 function reloadRenderer() {
@@ -921,7 +964,8 @@ function reloadRenderer() {
 
 function sendGameLog() {
   try {
-    const gameLog = JSON.parse(testGameLog.value)
+    const gameLog = normalizeGameLog(JSON.parse(testGameLog.value))
+    if (!gameLog) { message.error('日志中没有有效回合'); return }
     rendererRef.value?.contentWindow?.postMessage({ type: 'gameLog', gameLog, round: 0 }, '*')
   } catch { message.error('gameLog JSON 格式错误') }
 }
@@ -934,19 +978,22 @@ function sendGameState() {
 }
 
 function onIframeMsg(e: MessageEvent) {
-  if (e.data?.type && e.data.type !== 'capabilities') {
+  if (e.source !== rendererRef.value?.contentWindow || !e.data || typeof e.data !== 'object') return
+  if (e.data.type === 'humanMove' && typeof e.data.move === 'string') {
     lastIframeMsg.value = JSON.stringify(e.data)
   }
 }
 onMounted(() => window.addEventListener('message', onIframeMsg))
 onUnmounted(() => window.removeEventListener('message', onIframeMsg))
-watch(rendererHtml, html => { if (html) rendererPreview.value = html })
+watch(rendererHtml, html => { rendererPreview.value = html })
 
 async function publishRenderer() {
-  if (!rendererTargetGame.value || !rendererHtml.value) return
+  if (!rendererTargetGame.value || !rendererHtml.value || !authStore.isAdmin) return
+  const saved = rendererDraft.capture()
   publishingRenderer.value = true
   try {
-    await competeApi.updateGame(rendererTargetGame.value, { rendererHtml: rendererHtml.value })
+    await competeApi.updateGame(rendererTargetGame.value, { rendererHtml: saved.data.code })
+    rendererDraft.markSaved(saved)
     message.success('渲染器已发布！')
   } catch (e: any) { message.error(e?.message || '发布失败') }
   finally { publishingRenderer.value = false }
@@ -955,63 +1002,8 @@ async function publishRenderer() {
 // ══════════════════════════════════════
 // WIKI
 // ══════════════════════════════════════
-const wikiGameId = ref<number | null>(null)
-const wikiGame = ref<any>(null)
-
-async function loadWikiGame(id: number | null) {
-  if (!id) { wikiGame.value = null; return }
-  try {
-    const res = await competeApi.getGame(id)
-    wikiGame.value = res.data
-  } catch (e) { console.error(e) }
-}
-
-function goPlayWithGame() {
-  if (!wikiGame.value) return
-  activeTab.value = 'bot'
-  bot.value.gameId = wikiGame.value.id
-  onBotGameChange(wikiGame.value.id)
-}
-
-const simpleBotTemplate = `import sys, json
-
-for line in sys.stdin:
-    data = json.loads(line.strip())
-    # data = game-specific input JSON
-    
-    move = 42  # your logic here
-    print(move)  # simple: just print the value
-    sys.stdout.flush()`
-
-const jsonBotTemplate = `import sys, json
-
-for line in sys.stdin:
-    data = json.loads(line.strip())
-    move = 42  # your logic
-    
-    # JSON format: supports debug info shown in timeline
-    print(json.dumps({"move": move, "debug": f"chose {move}"}))
-    sys.stdout.flush()
-    
-    # You can also write to stderr for debug:
-    print(f"Input was: {data}", file=sys.stderr)`
-
-const judgeProtocolExample = `# stdin each round:  {"round": 1, "responses": {"0": 42, "1": 87}}
-# stdout each round: {"commands": {"0": {...}, "1": {...}}, "display": {...},
-#                    "verdict": "continue"|"finish", "scores": {...}, "debug": "..."}
-
-import sys, json
-for line in sys.stdin:
-    data = json.loads(line.strip())
-    responses = data.get('responses', {})
-    # ... your judging logic ...
-    print(json.dumps({"commands": {"0": {}, "1": {}}, "verdict": "continue"}))
-    sys.stdout.flush()`
-
-// ══════════════════════════════════════
-// WIKI → Playground navigation
-// ══════════════════════════════════════
 function fireConfetti() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   confetti({ particleCount: 80, spread: 70, origin: { y: 0.5 }, colors: ['#18a058', '#2080f0', '#f0a020', '#d03050', '#7fe7c4'] })
 }
 
@@ -1022,46 +1014,63 @@ function exitTutorialMode() {
 
 async function handleWikiGoPlayground(opts: { tab?: string; code?: string; lang?: string; gameId?: number }) {
   const targetTab = opts.tab || 'bot'
+  const targetGame = opts.gameId || games.value.find(game => game.title === '猜数字')?.id
+  if (!targetGame) { message.warning('请先配置或选择与教程匹配的示例游戏'); return }
+  tutorialMode.value = false
+  if (targetTab === 'judge') {
+    developerTools.value = true
+    if (!await onJudgeGameChange(targetGame)) return
+    await nextTick()
+    if (opts.code && judgeCode.value.trim() && !window.confirm('用教程代码替换当前裁判草稿？')) return
+    if (opts.code) judgeCode.value = opts.code
+    if (opts.lang) judge.value.language = botzoneLanguage(opts.lang)
+    judge.value.bot0Id = judgeOpponents.value[0]?.id ?? null
+    judge.value.bot1Id = judgeOpponents.value[1]?.id ?? null
+  } else {
+    // A tutorial edits a new-Bot draft, never the caller's existing Bot draft.
+    if (!await onBotGameChange(targetGame)) return
+    if (opts.code && botCode.value.trim() && !window.confirm('用教程代码替换当前新 Bot 草稿？')) return
+    if (opts.code) botCode.value = opts.code
+    if (opts.lang) bot.value.language = botzoneLanguage(opts.lang)
+  }
   tutorialMode.value = true
   tutorialActiveTab.value = targetTab
-
-  const targetGame = opts.gameId || TUTORIAL_GAME_ID
-
-  if (targetTab === 'judge') {
-    // Pre-fill judge code
-    if (opts.code) { judgeCode.value = opts.code; nextTick(fireConfetti) }
-    if (opts.lang) judge.value.language = opts.lang || 'python'
-    // Auto-select game for judge tab
-    if (judge.value.gameId !== targetGame) {
-      judge.value.gameId = targetGame
-      await onJudgeGameChange(targetGame)
-      if (!judge.value.bot0Id && judgeOpponents.value.length) judge.value.bot0Id = judgeOpponents.value[0]?.id
-      if (!judge.value.bot1Id && judgeOpponents.value.length > 1) judge.value.bot1Id = judgeOpponents.value[1]?.id
-    }
-  } else {
-    // Bot tab (default)
-    if (opts.code) { botCode.value = opts.code; nextTick(fireConfetti) }
-    if (opts.lang) bot.value.language = opts.lang || 'python'
-    if (bot.value.gameId !== targetGame) {
-      bot.value.gameId = targetGame
-      await onBotGameChange(targetGame)
-      if (!bot.value.opponentGamerId && botOpponents.value.length) {
-        bot.value.opponentGamerId = botOpponents.value[0].id
-      }
-    }
-  }
-
   activeTab.value = targetTab
+  nextTick(fireConfetti)
 }
 
 function handleWikiGoRenderer(opts: { html?: string }) {
+  developerTools.value = true
   if (opts.html) { rendererHtml.value = opts.html; rendererPreview.value = opts.html }
   activeTab.value = 'renderer'
 }
+
+watch(() => [route.query.gameId, route.query.gamerId, route.query.tab, authStore.user?.id], async () => {
+  const id = Number(route.query.gameId)
+  const gamer = Number(route.query.gamerId)
+  const gameId = Number.isSafeInteger(id) && id > 0 ? id : null
+  const gamerId = Number.isSafeInteger(gamer) && gamer > 0 ? gamer : null
+  const tab = String(route.query.tab ?? 'bot')
+  if (['bot', 'judge', 'combo', 'renderer', 'wiki'].includes(tab)) activeTab.value = tab
+  if (['judge', 'combo', 'renderer'].includes(tab)) developerTools.value = true
+  if (tab === 'judge') {
+    if (judge.value.gameId !== gameId) await onJudgeGameChange(gameId)
+  } else if (tab === 'combo') combo.value.gameId = gameId
+  else if (tab === 'renderer') rendererTargetGame.value = gameId
+  else if (tab === 'bot') {
+    bot.value.gameId = gameId
+    if (loadedContext !== `${authStore.user?.id}:${gameId}:${gamerId}`) await loadBotContext(gameId, gamerId)
+  }
+}, { immediate: true })
+onUnmounted(() => { contextVersion++; stopBotPoll?.() })
 </script>
 
 <style scoped>
-.playground-page { max-width: 1500px; margin: 0 auto; }
+.playground-page { max-width: 1500px; min-width: 0; margin: 0 auto; }
+.workbench-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+.workbench-heading h1 { font-size: 24px; margin: 0 0 6px; }
+.workbench-heading p { margin: 0; opacity: .7; line-height: 1.6; }
+.playground-page :deep(.n-grid > div) { min-width: 0; }
 .wiki-code {
   background: #f5f5f5; padding: 12px; border-radius: 6px;
   font-size: 12px; font-family: monospace; overflow: auto;

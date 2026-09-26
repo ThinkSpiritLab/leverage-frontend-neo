@@ -8,9 +8,122 @@
       <NBreadcrumbItem>{{ isNew ? '新建 Bot' : gamerForm.type === 'human' ? '我的参赛席位' : (gamerForm.name || `Bot#${gamerId}`) }}</NBreadcrumbItem>
     </NBreadcrumb>
     <NSpin :show="loading">
-      <NGrid v-if="game" :cols="12" :x-gap="16" :y-gap="16">
+      <NGrid v-if="game" :cols="12" :x-gap="16" :y-gap="16" item-responsive responsive="screen">
+        <!-- 右侧：编辑区 / 真人席位信息 -->
+        <NGridItem span="12 m:9">
+          <!-- 真人席位：不是 Bot，显示专属信息页 -->
+          <NCard v-if="!isNew && currentGamer?.type === 'human'" title="🎮 我的参赛席位" size="small">
+            <NDescriptions :column="2" bordered size="small" style="margin-bottom:16px">
+              <NDescriptionsItem label="席位名称">{{ currentGamer.name }}</NDescriptionsItem>
+              <NDescriptionsItem label="参赛游戏">
+                <NButton text type="primary" @click="navigateTo(`/compete/games/${game.id}`)">
+                  {{ game.name }}
+                </NButton>
+              </NDescriptionsItem>
+              <NDescriptionsItem label="类型">
+                <NTag type="warning" size="small">🧑 真人</NTag>
+              </NDescriptionsItem>
+              <NDescriptionsItem label="外榜 ELO">
+                <NTag type="info" :bordered="false" size="small">⚡ {{ currentGamer.eloExternal ?? 1200 }}</NTag>
+              </NDescriptionsItem>
+            </NDescriptions>
+            <NAlert type="info" :show-icon="false" style="margin-bottom:16px;font-size:13px">
+              真人席位无需编辑代码。前往游戏页面点击 <strong>🎮 加入对局</strong> 即可参赛，然后在对局详情页手动落子。
+            </NAlert>
+            <template #footer>
+              <NSpace justify="space-between">
+                <NButton type="error" ghost :loading="deleting" @click="confirmDelete">退出参赛</NButton>
+                <NButton type="primary" @click="navigateTo(`/compete/games/${game.id}`)">前往游戏页面 →</NButton>
+              </NSpace>
+            </template>
+          </NCard>
+
+          <!-- 普通 Bot 编辑卡片 -->
+          <NCard
+            v-else
+            :title="isNew ? '创建新 Bot' : `${canEdit ? '编辑' : '查看'} Bot：${gamerForm.name}`"
+            size="small"
+          >
+            <NSpace v-if="canEdit" style="margin-bottom:16px">
+              <NButton v-if="gamerForm.type === 'code'" type="primary" :disabled="!gamerForm.code.trim() || saving" @click="openTest">测试当前草稿</NButton>
+              <NButton :loading="saving" @click="handleSave">{{ isNew ? '创建 Bot' : '保存新版本' }}</NButton>
+            </NSpace>
+            <NAlert v-if="!canEdit" type="info" style="margin-bottom:12px">这是其他用户的 Bot。公开代码可查看，但只有作者可以修改。</NAlert>
+            <CompeteCodeDraftStatus v-if="canEdit && gamerForm.type === 'code'" :dirty="draft.dirty.value" :restored="draft.restored.value" :storage-error="draft.storageError.value" @discard="draft.discard" />
+            <NForm
+              ref="formRef"
+              :model="gamerForm"
+              :rules="formRules"
+              :disabled="!canEdit || saving"
+              label-placement="top"
+              label-width="80"
+            >
+              <NFormItem label="Bot 名称" path="name">
+                <NInput
+                  v-model:value="gamerForm.name"
+                  placeholder="输入 Bot 名称"
+                  style="max-width: 320px"
+                />
+              </NFormItem>
+
+              <!-- 代码 Bot -->
+              <template v-if="gamerForm.type === 'code'">
+                <NFormItem label="编程语言" path="language">
+                  <NSelect
+                    v-model:value="gamerForm.language"
+                    :options="languageOptions"
+                    style="max-width: 200px"
+                    @update:value="onLanguageChange"
+                  />
+                </NFormItem>
+                <NFormItem label="Bot 代码" path="code">
+                  <div style="width: 100%">
+                    <CodeEditor
+                      v-model="gamerForm.code"
+                      :readonly="!canEdit || saving"
+                      :language="editorLanguage"
+                      height="500px"
+                    />
+                  </div>
+                </NFormItem>
+              </template>
+
+              <!-- Webhook Bot（被动，服务器调用） -->
+              <template v-else-if="gamerForm.type === 'webhook'">
+                <NFormItem label="Webhook URL" path="webhookUrl">
+                  <NInput v-model:value="gamerForm.webhookUrl" placeholder="https://your-server.com/bot" />
+                </NFormItem>
+                <NFormItem label="签名密钥">
+                  <NInput v-model:value="gamerForm.webhookSecret" placeholder="可选" />
+                </NFormItem>
+                <NAlert type="warning" :show-icon="false" style="font-size:13px">
+                  📡 服务器会主动 POST 到你的 URL，需要公网 IP 或域名。
+                </NAlert>
+              </template>
+
+              <!-- External Bot（主动轮询） -->
+              <template v-else-if="gamerForm.type === 'external'">
+                <NAlert type="info" :show-icon="false" style="font-size:13px">
+                  🔗 你的程序主动轮询服务器，无需公网 IP。<br>
+                  如需刷新 API Key，请联系管理员或重新创建 Bot。
+                </NAlert>
+              </template>
+            </NForm>
+
+            <template #footer>
+              <NSpace justify="space-between">
+                <NButton v-if="!isNew && canEdit" type="error" ghost :loading="deleting" @click="confirmDelete">
+                  删除 Bot
+                </NButton>
+                <div v-else />
+                <NButton quaternary @click="navigateTo(`/compete/games/${game.id}`)">返回游戏</NButton>
+              </NSpace>
+            </template>
+          </NCard>
+        </NGridItem>
+
         <!-- 左侧：游戏信息 + Gamer 列表 -->
-        <NGridItem :span="3">
+        <NGridItem span="12 m:3">
           <NSpace vertical :size="12">
             <!-- 游戏信息 -->
             <NCard title="游戏信息" size="small">
@@ -254,116 +367,6 @@
           </NSpace>
         </NGridItem>
 
-        <!-- 右侧：编辑区 / 真人席位信息 -->
-        <NGridItem :span="9">
-          <!-- 真人席位：不是 Bot，显示专属信息页 -->
-          <NCard v-if="!isNew && currentGamer?.type === 'human'" title="🎮 我的参赛席位" size="small">
-            <NDescriptions :column="2" bordered size="small" style="margin-bottom:16px">
-              <NDescriptionsItem label="席位名称">{{ currentGamer.name }}</NDescriptionsItem>
-              <NDescriptionsItem label="参赛游戏">
-                <NButton text type="primary" @click="navigateTo(`/compete/games/${game.id}`)">
-                  {{ game.name }}
-                </NButton>
-              </NDescriptionsItem>
-              <NDescriptionsItem label="类型">
-                <NTag type="warning" size="small">🧑 真人</NTag>
-              </NDescriptionsItem>
-              <NDescriptionsItem label="外榜 ELO">
-                <NTag type="info" :bordered="false" size="small">⚡ {{ currentGamer.eloExternal ?? 1200 }}</NTag>
-              </NDescriptionsItem>
-            </NDescriptions>
-            <NAlert type="info" :show-icon="false" style="margin-bottom:16px;font-size:13px">
-              真人席位无需编辑代码。前往游戏页面点击 <strong>🎮 加入对局</strong> 即可参赛，然后在对局详情页手动落子。
-            </NAlert>
-            <template #footer>
-              <NSpace justify="space-between">
-                <NButton type="error" ghost :loading="deleting" @click="confirmDelete">退出参赛</NButton>
-                <NButton type="primary" @click="navigateTo(`/compete/games/${game.id}`)">前往游戏页面 →</NButton>
-              </NSpace>
-            </template>
-          </NCard>
-
-          <!-- 普通 Bot 编辑卡片 -->
-          <NCard
-            v-else
-            :title="isNew ? '创建新 Bot' : `编辑 Bot：${gamerForm.name}`"
-            size="small"
-          >
-            <NForm
-              ref="formRef"
-              :model="gamerForm"
-              :rules="formRules"
-              label-placement="left"
-              label-width="80"
-            >
-              <NFormItem label="Bot 名称" path="name">
-                <NInput
-                  v-model:value="gamerForm.name"
-                  placeholder="输入 Bot 名称"
-                  style="max-width: 320px"
-                />
-              </NFormItem>
-
-              <!-- 代码 Bot -->
-              <template v-if="gamerForm.type === 'code'">
-                <NFormItem label="编程语言" path="language">
-                  <NSelect
-                    v-model:value="gamerForm.language"
-                    :options="languageOptions"
-                    style="max-width: 200px"
-                    @update:value="onLanguageChange"
-                  />
-                </NFormItem>
-                <NFormItem label="Bot 代码" path="code">
-                  <div style="width: 100%">
-                    <CodeEditor
-                      v-model="gamerForm.code"
-                      :language="editorLanguage"
-                      height="500px"
-                    />
-                  </div>
-                </NFormItem>
-              </template>
-
-              <!-- Webhook Bot（被动，服务器调用） -->
-              <template v-else-if="gamerForm.type === 'webhook'">
-                <NFormItem label="Webhook URL" path="webhookUrl">
-                  <NInput v-model:value="gamerForm.webhookUrl" placeholder="https://your-server.com/bot" />
-                </NFormItem>
-                <NFormItem label="签名密钥">
-                  <NInput v-model:value="gamerForm.webhookSecret" placeholder="可选" />
-                </NFormItem>
-                <NAlert type="warning" :show-icon="false" style="font-size:13px">
-                  📡 服务器会主动 POST 到你的 URL，需要公网 IP 或域名。
-                </NAlert>
-              </template>
-
-              <!-- External Bot（主动轮询） -->
-              <template v-else-if="gamerForm.type === 'external'">
-                <NAlert type="info" :show-icon="false" style="font-size:13px">
-                  🔗 你的程序主动轮询服务器，无需公网 IP。<br>
-                  如需刷新 API Key，请联系管理员或重新创建 Bot。
-                </NAlert>
-              </template>
-            </NForm>
-
-            <template #footer>
-              <NSpace justify="space-between">
-                <NButton v-if="!isNew" type="error" ghost :loading="deleting" @click="confirmDelete">
-                  删除 Bot
-                </NButton>
-                <div v-else />
-                <NSpace>
-                  <NButton @click="navigateTo(`/compete/games/${game.id}`)">取消</NButton>
-                  <NButton type="primary" :loading="saving" @click="handleSave">
-                    {{ isNew ? '创建 Bot' : '保存修改' }}
-                  </NButton>
-                </NSpace>
-              </NSpace>
-            </template>
-          </NCard>
-        </NGridItem>
-
         <!-- 对局记录 Tab（跨整行） -->
         <NGridItem v-if="!isNew" :span="12">
           <NCard title="📋 对局记录" size="small">
@@ -404,6 +407,8 @@ import { h } from 'vue'
 import { useMessage, useDialog, NButton, NTag } from 'naive-ui'
 import type { FormInst, DataTableColumns } from 'naive-ui'
 import { useAuthStore } from '~/stores/auth'
+import { BOTZONE_LANGUAGE_OPTIONS, botzoneEditorLanguage, botzoneLanguage } from '~/utils/botzone-language'
+import type { Game, Gamer, GamerKind } from '~/types/compete'
 
 definePageMeta({
   layout: 'default',
@@ -423,42 +428,33 @@ const deleting = ref(false)
 // ─── State ────────────────────────────────────────────────────────────────────
 const loading = ref(true)
 const saving = ref(false)
-const game = ref<any>(null)
-const myGamers = ref<any[]>([])
+const game = ref<Game | null>(null)
+const myGamers = ref<Gamer[]>([])
 const currentGamerId = computed(() => gamerId.value)
-const currentGamer = ref<any>(null)
+const currentGamer = ref<Gamer | null>(null)
+const canEdit = computed(() => isNew.value || currentGamer.value?.userId === authStore.user?.id)
 
 const formRef = ref<FormInst | null>(null)
 const gamerForm = reactive({
   name: '',
   language: 'cpp17',
   code: '',
-  type: 'code' as string,
+  type: 'code' as GamerKind,
   webhookUrl: '',
   webhookSecret: '',
 })
 
 // ─── Language mapping ─────────────────────────────────────────────────────────
-const languageOptions = [
-  { label: 'C++17', value: 'cpp17' },
-  { label: 'C++', value: 'cpp' },
-  { label: 'Java', value: 'java' },
-  { label: 'Python 3', value: 'python3' },
-  { label: 'Python 2', value: 'python2' },
-  { label: 'Python', value: 'python' },
-  { label: 'JavaScript', value: 'javascript' },
-]
-
-// Map backend language id → CodeEditor language
-function mapLanguage(lang: string): string {
-  if (!lang) return 'cpp'
-  if (lang.startsWith('cpp')) return 'cpp'
-  if (lang.startsWith('java')) return 'java'
-  if (lang.startsWith('python')) return 'python'
-  return lang
+const languageOptions = BOTZONE_LANGUAGE_OPTIONS
+const editorLanguage = computed(() => botzoneEditorLanguage(gamerForm.language))
+const draft = useCodeDraft(
+  () => ({ code: gamerForm.code, language: gamerForm.language, title: gamerForm.name }),
+  value => { gamerForm.code = value.code; gamerForm.language = value.language; gamerForm.name = value.title },
+)
+function openTest() {
+  if (!game.value || !gamerForm.code.trim()) return
+  navigateTo({ path: '/compete/playground', query: { gameId: game.value.id, ...(isNew.value ? {} : { gamerId: gamerId.value }), tab: 'bot' } })
 }
-
-const editorLanguage = computed(() => mapLanguage(gamerForm.language))
 
 function onLanguageChange(_lang: string) {
   // Trigger CodeEditor to re-initialize language mode; it watches the prop
@@ -472,51 +468,48 @@ const formRules = {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-onMounted(async () => {
+let loadVersion = 0
+onBeforeUnmount(() => { loadVersion++ })
+watch(() => [route.params.id, route.query.gameId, authStore.user?.id], async () => {
+  const owner = authStore.user?.id
+  const version = ++loadVersion
+  if (!owner) return
+  loading.value = true
+  const current = () => version === loadVersion && authStore.user?.id === owner
   try {
     if (isNew.value) {
-      // 创建模式：需要 gameId query 参数
       const gameId = Number(route.query.gameId)
-      if (!gameId) {
-        message.error('缺少 gameId 参数')
-        navigateTo('/compete')
-        return
-      }
-      // 获取游戏信息
-      const res = await competeApi.getGame(gameId)
-      game.value = res.data || null
-      gamerForm.language = 'cpp17'
-      if (game.value) await fetchMyGamers(gameId)
+      if (!Number.isSafeInteger(gameId) || gameId < 1) { message.error('请先选择游戏'); await navigateTo('/compete'); return }
+      const { data } = await competeApi.getGame(gameId)
+      if (!current()) return
+      game.value = data
+      currentGamer.value = null
+      gamerForm.type = 'code'
+      draft.load(`new:${gameId}`, { title: '', language: 'python', code: '' })
+      await fetchMyGamers(gameId)
     }
     else {
-      // 编辑模式：获取 gamer 详情
-      const res = await competeApi.getGamer(gamerId.value)
-      const gamer = res.data
+      const { data: gamer } = await competeApi.getGamer(gamerId.value)
+      if (!current()) return
       currentGamer.value = gamer
-      game.value = gamer.game || null
-      gamerForm.name = gamer.name || ''
-      gamerForm.language = gamer.language || 'cpp17'
-      gamerForm.code = gamer.code || ''
+      game.value = gamer.game ?? null
       gamerForm.type = gamer.type || 'code'
       gamerForm.webhookUrl = gamer.webhookUrl || ''
       gamerForm.webhookSecret = gamer.webhookSecret || ''
+      draft.load(`bot:${gamer.id}`, { title: gamer.title, language: botzoneLanguage(gamer.language), code: gamer.code || '' })
       if (game.value) {
         await fetchMyGamers(game.value.id)
-        fetchEloRank(game.value.id, gamer.elo ?? 1200, gamerId.value)
-        fetchEloHistory(gamerId.value)
-        fetchGamerStats(gamerId.value)
+        if (!current()) return
+        fetchEloRank(game.value.id, gamer.elo ?? 1200, gamer.id)
+        fetchEloHistory(gamer.id)
+        fetchGamerStats(gamer.id)
         fetchGamerMatches()
       }
     }
   }
-  catch (e) {
-    console.error(e)
-    message.error('加载失败')
-  }
-  finally {
-    loading.value = false
-  }
-})
+  catch { if (current()) message.error('加载失败，请刷新后重试') }
+  finally { if (current()) loading.value = false }
+}, { immediate: true })
 
 // ─── ELO History ──────────────────────────────────────────────────────────────
 const eloHistory = ref<Array<{
@@ -690,7 +683,7 @@ const statPieSectors = computed(() => {
 
 async function fetchMyGamers(gameId: number) {
   try {
-    const res = await competeApi.listGamers({ gameId, page: 1, perPage: 100 })
+    const res = await competeApi.listGamers({ gameId, userId: authStore.user?.id, page: 1, perPage: 100 })
     const all: any[] = res.data.items || []
     myGamers.value = all.filter((g: any) => g.userId === authStore.user?.id)
   }
@@ -709,43 +702,28 @@ async function handleSave() {
   }
 
   saving.value = true
+  const snapshot = draft.capture()
+  const owner = authStore.user?.id
   try {
-    if (isNew.value) {
-      const gameId = Number(route.query.gameId)
-      const res = await competeApi.createGamer({
-        gameId,
-        title: gamerForm.name,
-        code: gamerForm.code,
-        language: gamerForm.language,
-        opensource: false,
-      })
-      message.success('Bot 创建成功！')
-      // 跳转到新 gamer 的编辑页
-      navigateTo(`/compete/gamer/${res.data.id}`)
+    const res = isNew.value
+      ? await competeApi.createGamer({ gameId: game.value!.id, title: snapshot.data.title, code: snapshot.data.code, language: snapshot.data.language, opensource: false })
+      : await competeApi.updateGamer(gamerId.value, {
+          title: snapshot.data.title,
+          ...(gamerForm.type === 'code' ? { code: snapshot.data.code, language: snapshot.data.language } : {}),
+          ...(gamerForm.type === 'webhook' ? { webhookUrl: gamerForm.webhookUrl, webhookSecret: gamerForm.webhookSecret || undefined } : {}),
+        })
+    if (authStore.user?.id !== owner) return
+    draft.markSaved(snapshot)
+    message.success(`已保存 Bot #${res.data.id}${isNew.value ? '' : ' 的新版本'}`)
+    if (draft.dirty.value) {
+      message.info('保存期间新增的修改仍保留在本地草稿中')
+      if (game.value) await fetchMyGamers(game.value.id)
+      return
     }
-    else {
-      const res = await competeApi.updateGamer(gamerId.value, {
-        title: gamerForm.name,
-        ...(gamerForm.type === 'code' ? { code: gamerForm.code, language: gamerForm.language } : {}),
-        ...(gamerForm.type === 'webhook' ? { webhookUrl: gamerForm.webhookUrl, webhookSecret: gamerForm.webhookSecret || undefined } : {}),
-      })
-      message.success('Bot 已保存（新版本已创建）！')
-      // Fork 返回新 gamer，跳转到新版本页面
-      const newId = res.data?.id
-      if (newId) {
-        navigateTo(`/compete/gamer/${newId}`)
-      }
-      else if (game.value) {
-        await fetchMyGamers(game.value.id)
-      }
-    }
+    await navigateTo(`/compete/gamer/${res.data.id}`)
   }
-  catch (e: any) {
-    message.error(e?.response?.data?.message || '保存失败')
-  }
-  finally {
-    saving.value = false
-  }
+  catch (e: any) { message.error(e?.response?.data?.message || '保存失败，草稿仍保留在本地') }
+  finally { saving.value = false }
 }
 
 function confirmDelete() {

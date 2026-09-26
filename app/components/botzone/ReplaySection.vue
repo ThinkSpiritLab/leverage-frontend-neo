@@ -1,7 +1,7 @@
 <template>
   <NCard title="Botzone 对局回放">
     <!-- gameLog 缺失时的占位 -->
-    <template v-if="!gameLog">
+    <template v-if="!gameLog || !gameLog.rounds.length">
       <NEmpty description="暂无对局数据" />
     </template>
 

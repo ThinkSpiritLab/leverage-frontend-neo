@@ -28,6 +28,7 @@ const editorEl = ref<HTMLElement>()
 let view: EditorView | null = null
 const themeCompartment = new Compartment()
 const languageCompartment = new Compartment()
+const editableCompartment = new Compartment()
 // 防止 CM 自身触发的 emit 再被 watcher 回写，形成反馈循环
 let internalUpdate = false
 
@@ -46,7 +47,7 @@ function getLanguageExtension(lang: string) {
     case 'typescript':
       return javascript()
     default:
-      return cpp()
+      return []
   }
 }
 
@@ -73,11 +74,15 @@ onMounted(() => {
         languageCompartment.of(getLanguageExtension(props.language)),
         themeCompartment.of(getThemeExtension(isDark.value)),
         buildUpdateListener(),
-        EditorView.editable.of(!props.readonly),
+        editableCompartment.of(EditorView.editable.of(!props.readonly)),
       ],
     }),
     parent: editorEl.value,
   })
+})
+
+watch(() => props.readonly, value => {
+  view?.dispatch({ effects: editableCompartment.reconfigure(EditorView.editable.of(!value)) })
 })
 
 // 动态切换主题（暗色/亮色）
@@ -121,7 +126,7 @@ watch(() => props.modelValue, (val) => {
           languageCompartment.of(getLanguageExtension(props.language)),
           themeCompartment.of(getThemeExtension(isDark.value)),
           buildUpdateListener(),
-          EditorView.editable.of(!props.readonly),
+          editableCompartment.of(EditorView.editable.of(!props.readonly)),
         ],
       }))
     }

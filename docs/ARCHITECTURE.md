@@ -2,9 +2,9 @@
 
 ## 项目概览
 
-LevOJ 前端基于 **Nuxt 4**（SPA 模式）构建，使用 **Naive UI** 作为组件库。
+LevOJ 前端基于 **Nuxt 3 (compatibilityVersion: 4)**（SPA 模式）构建，使用 **Naive UI** 作为组件库。
 
-- **框架：** Nuxt 4 (`ssr: false`)，启用 `compatibilityVersion: 4`
+- **框架：** Nuxt 3 (compatibilityVersion: 4) (`ssr: false`)，启用 `compatibilityVersion: 4`
 - **UI 库：** Naive UI（通过插件按需注册）
 - **状态管理：** Pinia
 - **HTTP 客户端：** Axios（封装于 `useApi()` composable）
@@ -18,7 +18,7 @@ LevOJ 前端基于 **Nuxt 4**（SPA 模式）构建，使用 **Naive UI** 作为
 
 ```
 leverage-frontend-neo/
-├── app/                      # Nuxt 4 应用根目录
+├── app/                      # Nuxt 3 (compatibilityVersion: 4) 应用根目录
 │   ├── app.vue               # 根组件，挂载 NaiveUI provider
 │   ├── error.vue             # 全局错误页
 │   ├── assets/               # 静态资源（CSS、图片等）
